@@ -11,6 +11,8 @@
   "include": [
     "src/**/*.ts",
     "scripts/**/*.ts",
+    "tests/**/*.ts",
+    "playwright.config.ts",
     "prisma.config.ts"
   ]
 }

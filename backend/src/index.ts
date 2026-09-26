@@ -9,4 +9,4 @@ export const app = new Elysia()
   }))
   .listen(port);
 
-console.log(`MedicalFlow API listening on ${app.server?.hostname}:${app.server?.port}`);
+console.log(`API listening on ${app.server?.hostname}:${app.server?.port}`);

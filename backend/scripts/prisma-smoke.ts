@@ -15,10 +15,10 @@ try {
   });
 
   if (!found) {
-    throw new Error("Prisma smoke test could not read the created probe");
+    throw new Error("Prisma smoke test could not read the probe.");
   }
 
-  console.log("Prisma PostgreSQL connection and Client query succeeded");
+  console.log("Prisma PostgreSQL smoke test passed.");
 } finally {
   if (probeId !== undefined) {
     await prisma.infrastructureProbe.deleteMany({
