@@ -2,261 +2,254 @@
 
 **Projeto:** MedicalFlow — Sistema Integrado de Gestão de Agenda e Prontuário Clínico  
 **Organização:** MedicalFlow-team  
-**Responsável QA & Segurança:** Edimar Gabriel Marques Mina  
-**Versão:** 1.0  
+**Repositório:** `MedicalFlow-team/medicalflow-monorepo`  
+**Responsável QA & Segurança:** Edimar Gabriel Marques Mina (`@GabrielMarques1`)  
+**Versão:** 2.1 (Mapeamento 1:1 com Épicos e Issues do Repositório)  
 **Data:** 26 de Setembro de 2026  
-**Status:** Baseline Aprovada  
+**Status:** Baseline Oficial Aprovada  
 
 ---
 
-## 1. Escopo do Plano de Testes
+## 1. Escopo e Governança do Plano de Testes
 
-### 1.1 Objetivo
-Definir a estratégia, governança, casos de teste e matriz de rastreabilidade para validação da conformidade técnica, funcional e de segurança do sistema MedicalFlow. O plano assegura cobertura completa para todos os Requisitos Funcionais priorizados como **Must Have** e **Should Have** (metodologia MoSCoW), garantindo estabilidade operacional para clínicas solo e pequenos consultórios, integridade dos dados médicos e estrita conformidade com a LGPD (Lei Geral de Proteção de Dados).
+### 1.1 Objetivo e Alinhamento com as Tarefas de QA
+Este documento estabelece a governança de qualidade, os casos de teste formais e a matriz de rastreabilidade bidirecional do projeto MedicalFlow. O plano extingue numerações genéricas e adota a taxonomia oficial de Requisitos Funcionais por Épico (`RF-A`, `RF-B`, `RF-C`, `RF-D`, `RF-E`) definida em `docs/TASK_BREAKDOWN.md`, cobrindo 100% das tarefas atribuídas à área de **QA & Security** (`QA-01` a `QA-10` / Épico 7):
 
-### 1.2 Delimitação de Escopo
-
-#### Itens no Escopo (In-Scope — MVP 2026/2):
-* **Módulo de Autenticação e Controle de Acesso (RBAC):** Gestão de sessões via tokens JWT, segregação de papéis (Médico, Recepcionista, Administrador) e proteção de endpoints.
-* **Módulo de Gestão de Pacientes (Ficha 360°):** Cadastro de dados pessoais, vínculos de convênio/particular, histórico médico consolidado e buscas com paginação.
-* **Módulo de Gestão de Agenda:** Grade diária e semanal com controle visual de status (`Agendado`, `Confirmado`, `Em Espera`, `Em Atendimento`, `Concluído`, `Cancelado`), detecção de conflitos de horário, encaixes operacionais e bloqueios de agenda.
-* **Módulo de Prontuário Eletrônico do Paciente (PEP):** Linha do tempo cronológica contínua, anotações de evolução clínica estruturadas, garantia de imutabilidade pós-conclusão e repositório de anexos clínicos (PDF/JPG/PNG).
-* **Módulo de Templates e Documentos Clínicos:** Gerenciamento de modelos com substituição de tags dinâmicas (*placeholders*), geração e exportação de laudos e receitas em formato PDF com cabeçalho institucional.
-* **Módulo de Transcrição Inteligente de Voz:** Captura via Web Audio API, envio para pipeline de transcrição, extração direcionada por tópicos clínicos e revisão com aprovação manual pelo médico.
-* **Segurança e Privacidade:** Sanitização de entradas contra injeções (SQL/NoSQL/XSS), criptografia de dados sensíveis em repouso e trânsito, e trilha de auditoria para registros médicos.
-
-#### Itens Fora de Escopo (Out-of-Scope — Versões Futuras):
-* Faturamento hospitalar e regras de glosa com operadoras no padrão TISS/TUSS.
-* Integração com gateways pagos de telefonia/SMS corporativo (serão utilizados disparos por e-mail e webhooks).
-* Assinatura digital via certificados ICP-Brasil com token físico/nuvem A3 (utiliza-se assinatura avançada baseada em hash SHA-256 e chave do sistema).
-* Módulo de diagnóstico autônomo por IA (a IA atua estritamente como suporte redacional na transcrição de anamnese).
-* Migração legada automatizada de bancos de dados hospitalares complexos (TASY/MV).
-
-### 1.3 Níveis e Tipos de Teste Aplicados
-1. **Testes Unitários:** Validação isolada de regras de domínio, funções utilitárias e parsers de tags via Vitest.
-2. **Testes de Integração de API:** Validação de rotas HTTP/REST, persistência relacional (Prisma/SQLite/PostgreSQL), transações ACID e middlewares de autorização.
-3. **Testes de Sistema / Ponta a Ponta (E2E):** Fluxos operacionais completos executados no navegador emulando ações de Médicos e Recepcionistas.
-4. **Testes de Segurança e Privacidade (SecOps / LGPD):** Validação de vazamento de credenciais, quebra de autorização em nível de objeto (BOLA/IDOR), injeções de código e sanitização de logs.
-5. **Testes de Usabilidade e Acessibilidade:** Conformidade do fluxo de 1 clique da grade para a ficha e legibilidade de status clínicos.
+* **[QA-01] (#52):** Plano de testes cobrindo todos os RFs Must/Should e matriz de rastreabilidade no repo.
+* **[QA-02] (#53):** E2E de RBAC (Médico × Recepcionista) e registro de tentativas bloqueadas em log.
+* **[QA-03] (#54):** E2E de Agenda (trava anti-sobreposição transacional no banco, 6 status visuais, encaixe e 1 clique).
+* **[QA-04] (#55):** E2E de Busca Normalizada (unaccent, CPF com/sem máscara, telefone com DDI, debounce e mascaramento LGPD).
+* **[QA-05] (#56):** E2E WhatsApp / WAHA (confirmação automática via palavras-chave, fila manual de ambíguas e reconexão).
+* **[QA-06] (#57):** E2E de Emissão/PDF (bloqueio amigável por dados faltantes, regressão visual BlockNote × PDF Chromium e snapshot imutável).
+* **[QA-07] (#58):** E2E de Transcrição Inteligente (Sintesy `stt-low` + gorouter, **descarte obrigatório do áudio pós-sucesso**, truncamento de 500 MB e **proibição diagnóstica da IA**).
+* **[QA-08] (#59):** Testes de Segurança e LGPD (criptografia TLS 1.3/bcrypt, minimização de dados e auditoria inalterável).
+* **[QA-09] (#60):** Termo de consentimento e esclarecimento sobre uso de IA na transcrição clínica.
+* **[QA-10] (#61):** Homologação com clínica parceira, fechamento da matriz de bugs e roteiro da demo com mocks para a AV2.
 
 ---
 
-## 2. Requisitos Funcionais Priorizados e Critérios de Aceite (BDD)
+## 2. Especificação Formal dos Requisitos Funcionais por Épico
 
-### 2.1 Requisitos "Must Have" (Obrigatórios para o MVP)
+### 2.1 ÉPICO 2: Autenticação, RBAC e Segurança da Informação
 
-#### [RF-01] [MUST] Autenticação e Controle de Acesso Baseado em Papéis (RBAC)
-* **Descrição:** O sistema deve autenticar usuários via credenciais únicas (e-mail/senha) e fornecer tokens JWT com expiração, restringindo as ações de acordo com o perfil atribuído (`MEDICO`, `RECEPCIONISTA`, `ADMIN`).
-* **Critérios de Aceite:**
-  * **Cenário 1 (Sucesso):** *Dado* que um usuário ativo fornece credenciais válidas, *Quando* solicita login via `/api/auth/login`, *Então* recebe status HTTP 200, token JWT assinado e informações do seu perfil.
-  * **Cenário 2 (Perfil Recepcionista bloqueado para Prontuário):** *Dado* que uma recepcionista autenticada tenta consultar os registros clínicos detalhados de evolução de um paciente em `/api/prontuarios/{id}`, *Quando* a requisição é disparada, *Então* o sistema retorna HTTP 403 Forbidden e registra o bloqueio em auditoria.
-  * **Cenário 3 (Credenciais inválidas):** *Dado* um e-mail não cadastrado ou senha incorreta, *Quando* a tentativa de autenticação ocorre, *Então* retorna HTTP 401 Unauthorized sem especificar se o erro foi no e-mail ou na senha.
+#### [RF-E1] [MUST] Autenticação JWT e Sessão Persistente
+* **Descrição:** Autenticação única por e-mail e senha, com emissão de token JWT seguro e persistência da sessão na interface web.
+* **Critérios de Aceite (BDD):**
+  * *Dado* credenciais válidas fornecidas na tela de login, *Quando* a rota `/api/auth/login` for acionada, *Então* retorna HTTP 200 com token assinado e perfil (`role`) do usuário.
+  * *Dado* token JWT presente no armazenamento local, *Quando* o usuário recarrega a página, *Então* a sessão permanece ativa sem exigir novo login.
 
-#### [RF-02] [MUST] Cadastro e Visão 360° do Paciente
-* **Descrição:** O sistema deve manter o registro unificado do paciente, incluindo dados civis (Nome, CPF, Data de Nascimento, Telefone, E-mail), convênio (ou Particular) e histórico consolidado.
-* **Critérios de Aceite:**
-  * **Cenário 1 (Cadastro válido):** *Dado* um formulário preenchido com nome completo, CPF válido não duplicado e telefone, *Quando* a gravação for acionada, *Então* o paciente é registrado com status ativo e UUID único.
-  * **Cenário 2 (CPF duplicado):** *Dado* que já existe um paciente com o CPF `123.456.789-00`, *Quando* outro cadastro tentar utilizar o mesmo documento, *Então* a operação é rejeitada com HTTP 409 Conflict e mensagem informativa.
-  * **Cenário 3 (Consulta 360°):** *Dado* um paciente existente, *Quando* o médico acessa a sua ficha, *Então* o sistema renderiza em tela única seus dados demográficos, histórico de consultas anteriores e lista de alergias.
+#### [RF-E2] [MUST] RBAC: Segregação Estrita Médico × Recepcionista
+* **Descrição:** Controle de acesso granular onde médicos possuem acesso integral e recepcionistas têm acesso restrito a agenda, cadastro civil e download de prescrições/exames, sendo terminantemente bloqueadas para anamnese e evolução clínica.
+* **Critérios de Aceite (BDD):**
+  * *Dado* recepcionista autenticada, *Quando* tentar acessar registros clínicos em `/api/pacientes/{id}/prontuario`, *Então* recebe HTTP 403 Forbidden e nenhum dado clínico vaza no payload.
+  * *Dado* recepcionista autenticada, *Quando* solicitar o download de uma receita ou laudo já emitido pelo médico, *Então* a operação é autorizada com HTTP 200.
 
-#### [RF-03] [MUST] Grade Dinâmica de Agendamento e Prevenção de Conflitos
-* **Descrição:** A interface de agendamento deve apresentar visualização diária e semanal com slots de horários parametrizáveis, impedindo sobreposição de atendimentos para o mesmo profissional.
-* **Critérios de Aceite:**
-  * **Cenário 1 (Agendamento em horário vago):** *Dado* um intervalo disponível no dia 15/10/2026 às 14:00, *Quando* a recepcionista vincula um paciente ao médico, *Então* o agendamento é salvo no estado `Agendado` e o slot fica ocupado na grade.
-  * **Cenário 2 (Bloqueio de sobreposição direta):** *Dado* que o Dr. Silva já possui consulta agendada para 15/10/2026 das 14:00 às 14:30, *Quando* uma tentativa de agendar outro paciente nesse mesmo intervalo é submetida, *Então* a transação é abortada com HTTP 400/409, alertando conflito de horário.
+#### [RF-E3 / RF-E6] [MUST] Criptografia e Minimização de Dados (LGPD)
+* **Descrição:** Criptografia mandatória em trânsito (HTTPS/TLS 1.3) e em repouso (senhas com hash bcrypt). Proibição de exposição de stack traces e dados sensíveis desnecessários em logs.
 
-#### [RF-04] [MUST] Gestão de Ciclo de Vida e Status do Atendimento
-* **Descrição:** Cada agendamento deve transitar ordenadamente entre os estados: `Agendado` ➔ `Confirmado` ➔ `Em Espera` ➔ `Em Atendimento` ➔ `Concluído` (ou `Cancelado` a qualquer momento anterior à conclusão).
-* **Critérios de Aceite:**
-  * **Cenário 1 (Transição regular de fluxo):** *Dado* um paciente com status `Em Espera`, *Quando* o médico clica em "Iniciar Atendimento", *Então* o status migra para `Em Atendimento`, o timestamp inicial é gravado e o prontuário é aberto.
-  * **Cenário 2 (Bloqueio de transição inválida):** *Dado* uma consulta com status `Concluído`, *Quando* houver requisição para alterar o status para `Agendado`, *Então* a alteração deve ser rejeitada pelo servidor com HTTP 422 Unprocessable Entity.
+#### [RF-E4] [MUST] Invalidação de Sessão pós-Troca de Senha ou Desativação
+* **Descrição:** Se uma senha for alterada ou a conta desativada, todos os tokens JWT ativos emitidos anteriormente devem ser sumariamente invalidados.
 
-#### [RF-05] [MUST] Prontuário Eletrônico e Linha do Tempo Cronológica
-* **Descrição:** O sistema deve registrar a evolução médica do paciente em linha do tempo sequencial e imutável após finalização da consulta.
-* **Critérios de Aceite:**
-  * **Cenário 1 (Registro de evolução clínica):** *Dado* um atendimento em andamento, *Quando* o médico preenche a queixa principal, hipótese diagnóstica e conduta e finaliza o atendimento, *Então* a evolução é gravada com carimbo de data/hora e assinatura do médico (CRM).
-  * **Cenário 2 (Garantia de imutabilidade):** *Dado* um registro de prontuário com status `Finalizado`, *Quando* uma requisição PUT/PATCH tentar alterar o texto da anotação, *Então* o sistema retorna HTTP 403/422 e impede a modificação.
-
-#### [RF-06] [MUST] Segurança, Trilha de Auditoria e Conformidade LGPD
-* **Descrição:** Toda operação de leitura ou escrita em dados clínicos e prontuários deve gerar registro de auditoria inalterável, contendo identificação do operador, timestamp e endereço IP.
-* **Critérios de Aceite:**
-  * **Cenário 1 (Auditoria de acesso ao prontuário):** *Dado* que um médico visualiza o prontuário do paciente X, *Quando* a resposta HTTP 200 é gerada, *Então* um evento de log de auditoria é persistido no banco contendo `user_id`, `action=VIEW_MEDICAL_RECORD`, `patient_id` e `timestamp`.
-  * **Cenário 2 (Proteção de dados em trânsito e repouso):** *Dado* o tráfego de dados da aplicação, *Quando* inspecionado, *Então* todas as rotas operam sob HTTPS/TLS e as senhas de usuários utilizam hash criptográfico irreversível (bcrypt/argon2).
+#### [RF-E5] [MUST] Trilha Inalterável de Auditoria de Acessos Clínicos
+* **Descrição:** Qualquer leitura, emissão ou tentativa desautorizada em registros de prontuário deve gravar registro imediato na tabela `audit_logs` contendo autor, perfil, recurso, IP e timestamp.
 
 ---
 
-### 2.2 Requisitos "Should Have" (Alta Prioridade)
+### 2.2 ÉPICO 3: Gestão de Agenda e Integração WhatsApp
 
-#### [RF-07] [SHOULD] Encaixes Operacionais e Bloqueios de Agenda
-* **Descrição:** O sistema deve permitir a inclusão de atendimentos extras (encaixes) devidamente sinalizados visualmente e permitir o bloqueio de intervalos (almoço, congressos, férias).
-* **Critérios de Aceite:**
-  * **Cenário 1 (Criação de encaixe com justificativa):** *Dado* um horário já preenchido, *Quando* a recepção marca a flag "Encaixe" e informa a justificativa médica/urgência, *Então* a consulta é inserida com destaque visual (ícone de encaixe).
-  * **Cenário 2 (Tentativa de agendamento em horário bloqueado):** *Dado* que o médico bloqueou a agenda das 12:00 às 13:30 para intervalo, *Quando* o sistema tentar alocar uma consulta padrão nessa faixa, *Então* o slot deve ser exibido como indisponível e a operação impedida.
+#### [RF-A1 / RF-A5] [MUST] Grade Dinâmica Diária/Semanal com 6 Status
+* **Descrição:** Exibição da agenda em grade diária e semanal com intervalos visíveis e suporte estrito aos 6 status operacionais: `Agendado`, `Confirmado`, `Em Espera`, `Em Atendimento`, `Concluído` e `Cancelado`.
 
-#### [RF-08] [SHOULD] Repositório e Gestão de Anexos Clínicos (Exames e Laudos)
-* **Descrição:** Permitir o upload de arquivos laboratoriais e relatórios médicos nos formatos PDF, JPG e PNG, associados à ficha do paciente, com validação de extensão e limite de tamanho.
-* **Critérios de Aceite:**
-  * **Cenário 1 (Upload válido de exame):** *Dado* um arquivo em formato `.pdf` de 5MB, *Quando* o médico realiza o upload na ficha do paciente, *Então* o arquivo é salvo no repositório de mídia, validado quanto ao MIME-type real e linkado à linha do tempo do paciente.
-  * **Cenário 2 (Rejeição de arquivo malicioso ou não permitido):** *Dado* um arquivo executável `.exe` ou arquivo com extensão falsa, *Quando* o upload é submetido, *Então* o backend rejeita com HTTP 415 Unsupported Media Type antes da persistência.
+#### [RF-A2 / RF-A3] [MUST/SHOULD] Agendamentos, Bloqueios e Encaixes
+* **Descrição:** Permitir marcação de consultas regulares, criação de bloqueios de intervalos médicos e inclusão de encaixes com sinalização visual sem corromper a grade.
 
-#### [RF-09] [SHOULD] Gerenciador de Templates com Placeholders Dinâmicos
-* **Descrição:** Permitir que o médico crie e edite modelos padronizados de receitas e atestados com substituição automática de dados do paciente e data.
-* **Critérios de Aceite:**
-  * **Cenário 1 (Renderização de tags):** *Dado* um template contendo a tag `{{paciente_nome}}` e `{{data_atual}}`, *Quando* o médico seleciona esse template para o paciente "Carlos Eduardo", *Então* o sistema substitui os campos automaticamente pelo nome real e a data formatada no texto final.
-  * **Cenário 2 (Salvamento de novo template):** *Dado* um texto modelo criado pelo médico, *Quando* salvo com o título "Atestado 3 Dias", *Então* ele passa a estar disponível na listagem de modelos reutilizáveis.
+#### [RF-A4] [MUST] Trava Anti-Sobreposição Transacional no Banco
+* **Descrição:** Bloqueio direto a nível de banco de dados (PostgreSQL `exclusion constraint`) contra agendamentos simultâneos ou conflitantes para o mesmo médico sob concorrência real.
+* **Critérios de Aceite (BDD):**
+  * *Dado* duas requisições concorrentes disparadas para o mesmo slot médico, *Quando* processadas simultaneamente, *Então* uma é confirmada (HTTP 201) e a outra é abortada pelo banco com HTTP 409 Conflict.
 
-#### [RF-10] [SHOULD] Emissão e Exportação de Documentos Clínicos em PDF
-* **Descrição:** Gerar documentos clínicos padronizados prontos para impressão ou envio digital, contendo dados institucionais da clínica, assinatura e identificação do médico.
-* **Critérios de Aceite:**
-  * **Cenário 1 (Geração de PDF de receituário):** *Dado* um receituário preenchido e confirmado pelo médico, *Quando* clicado em "Gerar PDF", *Então* o sistema compila o arquivo PDF contendo layout médico oficial, cabeçalho da clínica, dados do paciente, posologia legível e dados do prescritor (CRM).
-  * **Cenário 2 (Consistência do download):** *Dado* a requisição de download de documento emitido, *Quando* o arquivo é transferido, *Então* o cabeçalho `Content-Type: application/pdf` é retornado e o documento abre sem corrupção.
+#### [RF-A6] [MUST] Transição Contextual "1 Clique" Grade ➔ Ficha 360°
+* **Descrição:** Atalho direto no card da consulta na grade que transfere o médico instantaneamente para a Ficha 360° do paciente selecionado, preservando o contexto do atendimento.
 
-#### [RF-11] [SHOULD] Transcrição e Sumarização de Anamnese por Voz
-* **Descrição:** Capturar áudio da consulta via navegador e gerar automaticamente minutas de texto estruturadas divididas nas seções: Queixa Principal, Sintomas e Conduta.
-* **Critérios de Aceite:**
-  * **Cenário 1 (Processamento de áudio com sucesso):** *Dado* um áudio capturado de 60 segundos com relato clínico do paciente, *Quando* o envio para transcrição é concluído, *Então* os campos da anamnese são pré-preenchidos nos tópicos correspondentes para conferência do médico.
-  * **Cenário 2 (Aprovação médica obrigatória):** *Dado* o texto transcrito pelo assistente, *Quando* exibido em tela, *Então* nenhuma informação é salva permanentemente no prontuário até que o médico clique no botão explícito "Revisar e Gravar".
-
-#### [RF-12] [SHOULD] Navegação Ágil e Acesso Rápido "1 Clique" Grade ➔ Ficha 360°
-* **Descrição:** A partir do card de agendamento na grade diária, disponibilizar transição instantânea de contexto para a ficha clínica integral do paciente.
-* **Critérios de Aceite:**
-  * **Cenário 1 (Navegação contextual em 1 clique):** *Dado* um paciente agendado visível na grade de hoje, *Quando* o médico clica no atalho da ficha ou card, *Então* a rota transiciona diretamente para a Ficha 360° daquele paciente mantendo o contexto do atendimento ativo.
+#### [RF-A8] [SHOULD] Integração WhatsApp via WAHA (Lembrete e Confirmação Automática)
+* **Descrição:** Automação de comunicação com o paciente via container WAHA self-hosted, realizando o envio de lembrete preventivo 24h antes e triagem automática das respostas.
+* **Critérios de Aceite (BDD):**
+  * **Cenário 1 (Confirmação Automática):** *Dado* um lembrete enviado via WAHA, *Quando* o paciente responde com palavras-chave afirmativas (`SIM`, `1`, `CONFIRMO`, `OK`), *Então* o webhook processa a resposta e o status da consulta na grade migra automaticamente para `Confirmado`.
+  * **Cenário 2 (Cancelamento Automático):** *Dado* o lembrete enviado, *Quando* o paciente responde com termos negativos (`NÃO`, `2`, `CANCELAR`), *Então* o status transiciona automaticamente para `Cancelado` e o horário é liberado.
+  * **Cenário 3 (Fila Manual para Ambiguidade):** *Dado* uma resposta ambígua (ex: *"Vou me atrasar um pouco"*, *"Ainda não sei"*), *Quando* o webhook processa a mensagem, *Então* o status não é alterado indevidamente e a consulta é incluída na fila *"Aguardando confirmação manual"* da agenda.
+  * **Cenário 4 (Resiliência de Sessão):** *Dado* que a sessão do WAHA é desconectada, *Quando* mensagens de lembrete forem enfileiradas, *Então* o sistema exibe alerta visual na tela e armazena os envios em fila de pendentes para reenvio manual após reconexão.
 
 ---
 
-## 3. Especificação dos Casos de Teste Detalhados
+### 2.3 ÉPICO 4: Ficha do Paciente 360° e Busca Normalizada
 
-| ID do Caso | Requisito | Título do Teste | Tipo | Severidade |
-| :--- | :--- | :--- | :--- | :--- |
-| **CT-01** | RF-01 | Autenticação com credenciais válidas (Médico e Recepcionista) | Funcional (Positivo) | Alta |
-| **CT-02** | RF-01 | Rejeição de login com senha incorreta ou usuário inexistente | Funcional (Negativo) | Alta |
-| **CT-03** | RF-01 | Validação de expiração e integridade do token JWT | Segurança | Crítica |
-| **CT-04** | RF-01 | Bloqueio de autorização RBAC (Recepcionista acessando Prontuário) | Segurança (BOLA/RBAC) | Crítica |
-| **CT-05** | RF-02 | Cadastro de novo paciente com campos obrigatórios íntegros | Funcional (Positivo) | Alta |
-| **CT-06** | RF-02 | Bloqueio de cadastro de paciente com CPF duplicado | Funcional (Borda/Negativo)| Média |
-| **CT-07** | RF-02 | Validação de formato inválido de e-mail e telefone no cadastro | Funcional (Borda) | Média |
-| **CT-08** | RF-02 | Carregamento integral dos dados na Ficha 360° do Paciente | Funcional (Positivo) | Alta |
-| **CT-09** | RF-03 | Agendamento de consulta em slot vago com sucesso | Funcional (Positivo) | Alta |
-| **CT-10** | RF-03 | Prevenção de conflito de horário para o mesmo médico | Regra de Negócio | Crítica |
-| **CT-11** | RF-03 | Alternância entre visualização diária e semanal da grade | Usabilidade / UI | Média |
-| **CT-12** | RF-04 | Transição completa do ciclo de vida do atendimento | Funcional (Positivo) | Alta |
-| **CT-13** | RF-04 | Bloqueio de cancelamento ou edição de consulta já concluída | Regra de Negócio | Alta |
-| **CT-14** | RF-05 | Inclusão de evolução clínica no prontuário pelo médico | Funcional (Positivo) | Crítica |
-| **CT-15** | RF-05 | Garantia de imutabilidade do registro de prontuário finalizado | Segurança / Integridade | Crítica |
-| **CT-16** | RF-05 | Exibição cronológica correta dos atendimentos anteriores | Funcional | Média |
-| **CT-17** | RF-06 | Registro automático de log de auditoria em consulta de prontuário | Auditoria / LGPD | Crítica |
-| **CT-18** | RF-06 | Verificação de proteção de dados sensíveis e sanitização de logs | Segurança / LGPD | Crítica |
-| **CT-19** | RF-06 | Teste de injeção SQL/NoSQL em rotas de busca de pacientes | Segurança (AppSec) | Crítica |
-| **CT-20** | RF-07 | Cadastro de agendamento de encaixe operacional com justificativa | Regra de Negócio | Alta |
-| **CT-21** | RF-07 | Bloqueio de novos agendamentos sobre intervalo reservado | Regra de Negócio | Média |
-| **CT-22** | RF-08 | Upload de anexo de exame laboratorial em formato PDF válido | Funcional (Positivo) | Alta |
-| **CT-23** | RF-08 | Rejeição de arquivo com formato executável ou MIME spoofing | Segurança | Alta |
-| **CT-24** | RF-08 | Rejeição de arquivo com tamanho superior ao limite máximo (15MB) | Limite / Borda | Média |
-| **CT-25** | RF-09 | Criação e salvamento de template clínico com placeholders | Funcional (Positivo) | Média |
-| **CT-26** | RF-09 | Substituição dinâmica de tags no preenchimento do documento | Funcional | Alta |
-| **CT-27** | RF-10 | Emissão e download de receituário médico em PDF formatado | Funcional / Integração | Alta |
-| **CT-28** | RF-10 | Validação dos dados do profissional (CRM) e clínica no cabeçalho PDF | Funcional | Média |
-| **CT-29** | RF-11 | Captura e envio de áudio para pipeline de transcrição | Integração | Média |
-| **CT-30** | RF-11 | Mapeamento semântico da transcrição nos tópicos da anamnese | Funcional / IA | Média |
-| **CT-31** | RF-11 | Exigência de confirmação manual do médico antes de gravar o prontuário | Regra de Negócio | Alta |
-| **CT-32** | RF-12 | Acesso à Ficha 360° do paciente em 1 clique a partir da grade | Usabilidade / E2E | Média |
+#### [RF-B1 / RF-B2] [MUST] Cadastro Unificado e Ficha 360°
+* **Descrição:** Registro centralizado de dados civis, convênio/particular e visão 360° com histórico de consultas anteriores, diagnósticos e alergias.
+
+#### [RF-B3] [MUST] Timeline Cronológica Contínua de Evolução
+* **Descrição:** Linha do tempo sequencial dos atendimentos médicos com anotações de evolução clínica e conduta terapêutica.
+
+#### [RF-B4] [SHOULD] Repositório e Gestão de Anexos Clínicos (PDF/JPG)
+* **Descrição:** Armazenamento seguro de exames laboratoriais e laudos em PDF e JPG, com validação de *magic bytes* e limite de tamanho.
+
+#### [RF-B5] [MUST] Busca Incremental Normalizada de Pacientes
+* **Descrição:** Mecanismo de busca rápida com debounce de 250 a 300 ms, busca normalizada insensível a acentos (`unaccent`) e pontuação de documentos, com privacidade de dados (mascaramento).
+* **Critérios de Aceite (BDD):**
+  * *Dado* digitação rápida de nome ou CPF, *Quando* o usuário digita caracteres, *Então* as requisições ao backend aguardam debounce de 250–300 ms antes do disparo.
+  * *Dado* buscas por `"Joao"`, `"João"` ou `"JOÃO"`, *Quando* executadas, *Então* todas retornam com sucesso o paciente cadastrado.
+  * *Dado* pesquisa com CPF puro (`12345678900`) ou pontuado (`123.456.789-00`), *Quando* consultada, *Então* ambas localizam o registro, exibindo o documento mascarado (`***.456.789-**`) no dropdown de resultados.
 
 ---
 
-### 3.1 Detalhamento dos Procedimentos de Execução
+### 2.4 ÉPICO 5: Templates e Emissão de Documentos Clínicos
 
-#### CT-01: Autenticação com credenciais válidas
-* **Pré-condições:** Usuário cadastrado no banco com perfil `MEDICO` ativo.
-* **Passos de Execução:**
-  1. Enviar requisição POST para `/api/auth/login` com payload `{"email": "medico@medicalflow.local", "senha": "SenhaValida123!"}`.
-  2. Inspecionar o código de status HTTP e o corpo da resposta.
-* **Resultado Esperado:** HTTP 200 OK; objeto JSON contendo `token` JWT assinado; payload do token decodificado contém `role: "MEDICO"`.
+#### [RF-C1 / RF-C2] [SHOULD] Editor BlockNote A4 (WYSIWYG) e Chips Dinâmicos
+* **Descrição:** Editor de texto rico no padrão folha A4 com catálogo de campos dinâmicos clicáveis via chips (`{{paciente.nome}}`, `{{medico.crm}}`, etc.).
 
-#### CT-04: Bloqueio de autorização RBAC (Recepcionista acessando Prontuário)
-* **Pré-condições:** Usuário autenticado com perfil `RECEPCIONISTA`. Prontuário id `p-99` existente.
-* **Passos de Execução:**
-  1. Enviar requisição GET para `/api/prontuarios/p-99` anexando o cabeçalho `Authorization: Bearer <TOKEN_RECEPCIONISTA>`.
-* **Resultado Esperado:** HTTP 403 Forbidden; mensagem de erro `"Acesso negado: Perfil sem permissão para acessar registros de prontuário"`; nenhum dado médico retornado.
+#### [RF-C6 / RNF-11] [SHOULD] Renderizador PDF via Chromium Headless
+* **Descrição:** Compilação de BlockNote JSON para HTML/CSS e conversão em PDF via Chromium headless com exata fidelidade visual WYSIWYG.
 
-#### CT-10: Prevenção de conflito de horário para o mesmo médico
-* **Pré-condições:** Consulta agendada para o Dr. Silva em 20/10/2026 das 10:00 às 10:30.
-* **Passos de Execução:**
-  1. Submeter POST para `/api/agendamentos` com dados de outro paciente para o Dr. Silva em 20/10/2026 às 10:15.
-* **Resultado Esperado:** HTTP 409 Conflict; transação no banco revertida (Rollback); agendamento existente mantido intacto sem sobreposição.
+#### [RF-C7 / RF-C10] [MUST] Snapshot Imutável e Assinatura Simples
+* **Descrição:** Documentos emitidos tornam-se snapshots congelados e imutáveis. Edições posteriores no template ou dados civis não alteram retroativamente os documentos emitidos. Assinatura médica contendo CRM, data/hora e hash de integridade.
 
-#### CT-15: Garantia de imutabilidade do registro de prontuário finalizado
-* **Pré-condições:** Consulta com status `Concluído` e evolução gravada com id `evo-50`.
-* **Passos de Execução:**
-  1. Submeter requisição PUT para `/api/prontuarios/evolucoes/evo-50` com payload contendo alteração de texto do diagnóstico.
-* **Resultado Esperado:** HTTP 422 Unprocessable Entity ou HTTP 403 Forbidden; o registro original permanece inalterado na base de dados.
-
-#### CT-17: Registro automático de log de auditoria em consulta de prontuário
-* **Pré-condições:** Médico autenticado com token válido.
-* **Passos de Execução:**
-  1. Realizar requisição GET para `/api/pacientes/pac-01/prontuario`.
-  2. Consultar a tabela de logs de auditoria (`audit_logs`) no banco de dados.
-* **Resultado Esperado:** Novo registro presente contendo `action: "READ_PRONTUARIO"`, `user_id: <id_do_medico>`, `patient_id: "pac-01"`, endereço IP do solicitante e timestamp exato.
-
-#### CT-23: Rejeição de arquivo com formato executável ou MIME spoofing
-* **Pré-condições:** Paciente selecionado na tela de anexos.
-* **Passos de Execução:**
-  1. Tentar upload de arquivo renomeado como `exame.pdf` contendo cabeçalho/conteúdo binário de arquivo PE (`.exe`) ou shell script.
-* **Resultado Esperado:** O serviço de backend valida os *magic bytes* do arquivo; rejeita a operação com HTTP 415 Unsupported Media Type; o arquivo não é gravado em disco/S3.
+#### [RF-C8] [SHOULD] Validação em 3 Camadas e Bloqueio Amigável
+* **Descrição:** Prevenção contra emissão de documentos corrompidos ou com tags cruas. Se faltar dado obrigatório (ex: CPF do paciente), a emissão é travada amigavelmente com botão *"Corrigir dados"*.
 
 ---
 
-## 4. Matriz de Rastreabilidade Bidirecional (RF ↔ Casos de Teste)
+### 2.5 ÉPICO 6: Transcrição Inteligente de Voz e Medição de Consumo
 
-A tabela abaixo estabelece o vínculo formal entre cada Requisito Funcional priorizado no projeto e seus respectivos Casos de Teste implementados:
+#### [RF-D1] [SHOULD] Configuração de Tópicos de Anamnese por Médico (JSONB)
+* **Descrição:** O médico personaliza previamente em quais seções estruturadas deseja que a transcrição seja dividida (ex: Queixa Principal, História da Moléstia, Conduta).
 
-| Requisito Funcional | Título do Requisito | Prioridade MoSCoW | Casos de Teste Vinculados | Tipo de Cobertura | Status Cobertura |
-| :--- | :--- | :---: | :--- | :--- | :---: |
-| **RF-01** | Autenticação e Controle de Acesso (RBAC) | **MUST** | CT-01, CT-02, CT-03, CT-04 | Funcional, Segurança, Permissões | 100% |
-| **RF-02** | Cadastro e Visão 360° do Paciente | **MUST** | CT-05, CT-06, CT-07, CT-08 | Funcional, Validação de Dados | 100% |
-| **RF-03** | Grade de Agendamento e Prevenção de Conflitos| **MUST** | CT-09, CT-10, CT-11 | Funcional, Integridade de Agenda | 100% |
-| **RF-04** | Gestão de Ciclo de Vida do Atendimento | **MUST** | CT-12, CT-13 | Máquina de Estados, Negócio | 100% |
-| **RF-05** | Prontuário Eletrônico e Linha do Tempo | **MUST** | CT-14, CT-15, CT-16 | Integridade Clínica, Imutabilidade | 100% |
-| **RF-06** | Segurança, Trilha de Auditoria e LGPD | **MUST** | CT-17, CT-18, CT-19 | Auditoria, AppSec, Privacidade | 100% |
-| **RF-07** | Encaixes Operacionais e Bloqueios de Agenda | **SHOULD** | CT-20, CT-21 | Regras Operacionais de Agenda | 100% |
-| **RF-08** | Repositório de Anexos Clínicos (Exames) | **SHOULD** | CT-22, CT-23, CT-24 | Upload, Filtro MIME, Limites | 100% |
-| **RF-09** | Gerenciador de Templates com Placeholders | **SHOULD** | CT-25, CT-26 | Processamento de Texto, Templates| 100% |
-| **RF-10** | Emissão e Exportação de Documentos em PDF | **SHOULD** | CT-27, CT-28 | Exportação, Formatação Gráfica | 100% |
-| **RF-11** | Transcrição e Sumarização de Anamnese (Voz)| **SHOULD** | CT-29, CT-30, CT-31 | Áudio, IA Redatora, Aprovação | 100% |
-| **RF-12** | Acesso Rápido "1 Clique" Grade ➔ Ficha 360° | **SHOULD** | CT-32 | Usabilidade, Navegação E2E | 100% |
+#### [RF-D2] [SHOULD] Captura de Áudio e Truncamento de 500 MB
+* **Descrição:** Gravação de áudio no navegador em formato MP3. Arquivos que excederem o teto de 500 MB são cortados automaticamente no backend, marcados com a flag `truncated` e sinalizados ao usuário.
 
-### Sumário da Cobertura:
-* **Total de Requisitos Priorizados:** 12 (6 Must Have / 6 Should Have)
-* **Total de Casos de Teste Mapeados:** 32 casos
-* **Média de Casos por Requisito:** 2.67 casos/RF
-* **Taxa de Rastreabilidade:** **100% dos Requisitos Must/Should cobertos por testes formais**
+#### [RF-D4] [SHOULD] Extração Semântica Direcionada via gorouter
+* **Descrição:** Sumarização via prompt com schema JSON estrito, mapeando o áudio aos tópicos configurados e descartando conversas triviais (*small talk*).
 
----
+#### [RF-D6] [MUST - CRÍTICO DE SEGURANÇA E CONFORMIDADE] Proibição de Parecer Diagnóstico Autônomo pela IA
+* **Descrição:** Restrição mandatória de segurança clínica e conformidade médica: **a inteligência artificial atua estritamente como redatora e secretária estruturada**, sendo terminantemente proibida de inferir diagnósticos, receitar medicamentos ou sugerir condutas terapêuticas que não tenham sido verbalizadas explicitamente pelo profissional médico durante a consulta.
+* **Critérios de Aceite (BDD):**
+  * **Cenário 1 (Fidelidade ao relato verbal):** *Dado* um áudio onde o médico relata sintomas de dor torácica sem emitir conclusão clínica, *Quando* a extração do `gorouter` for executada, *Então* a IA resume unicamente os sintomas citados e preenche a hipótese diagnóstica como `null` ou não mencionada, sem tentar inferir infarto ou patologia autônoma.
+  * **Cenário 2 (Tentativa de indução):** *Dado* um áudio capcioso com perguntas diretas sobre diagnóstico, *Quando* processado, *Então* o modelo restringe sua resposta ao schema estruturado de transcrição, recusando qualquer formulação de parecer clínico próprio.
 
-## 5. Critérios de Aceite Globais e Políticas de Qualidade
+#### [RF-D8] [SHOULD] Pipeline TranscriptionJob com Estados e Resiliência
+* **Descrição:** Pipeline assíncrono com polling e estados visíveis (`processando`, `concluido`, `falhou`). Em caso de timeout da API Sintesy B2B, o atendimento é preservado e um botão de reenvio manual é habilitado.
 
-### 5.1 Critérios de Aceite da Release (DoD - Definition of Done)
-Para que uma funcionalidade seja considerada concluída e aceita para a branch `main`:
-1. **Rastreabilidade:** Deve estar associada a pelo menos um Requisito Funcional priorizado e coberta pelos respectivos casos de teste na matriz.
-2. **Sucesso nos Testes:** 100% dos testes unitários e de integração vinculados devem executar com status verde (*passing*) na esteira de CI (`ci.yml`).
-3. **Auditoria de Segurança:** Nenhuma vulnerabilidade de severidade Alta ou Crítica identificada nas dependências (`npm audit` / `snyk`) ou em code review de segurança.
-4. **Conformidade de Acesso:** Endpoints de prontuário e dados médicos devem obrigatoriamente possuir middleware de autenticação JWT e validação de perfil médico.
-5. **Code Review:** Aprovação mandatória de pelo menos um revisor (com bloqueio por Ruleset na branch `main`), sem conversas não resolvidas.
+#### [RF-D9] [SHOULD] Revisão Lado a Lado e Aprovação em 1 Clique
+* **Descrição:** Interface de conferência lado a lado (áudio transcrito vs. tópicos extraídos), permitindo edição rápida e gravação no prontuário somente após confirmação do médico.
 
-### 5.2 Critérios de Suspensão e Retomada dos Testes
-* **Critério de Suspensão:** Os testes de homologação/E2E serão imediatamente suspensos se houver indisponibilidade persistente do banco de dados, falha crítica no middleware de autenticação (impossibilitando login) ou corrupção de schema do Prisma.
-* **Critério de Retomada:** A execução é retomada após o deploy de hotfix comprovado via log de build limpo e restabelecimento das migrações do banco.
+#### [RF-D10] [SHOULD SECUNDÁRIO] Painel de Medição de Consumo e Custos por Clínica
+* **Descrição:** Registro de auditoria financeira por atendimento transcrito (minutos de áudio e custo estimado Sintesy/gorouter), disponibilizando painel gerencial de consumo sem bloqueio operacional do fluxo de atendimento.
+* **Critérios de Aceite (BDD):**
+  * *Dado* uma transcrição concluída com sucesso, *Quando* o job finaliza, *Então* grava na tabela de métricas a duração do áudio (segundos) e o cálculo proporcional de custo da clínica.
+  * *Dado* o acesso ao painel gerencial da clínica, *Quando* o administrador consulta o mês corrente, *Então* o sistema totaliza os minutos consumidos e a estimativa de custos sem impactar a execução das consultas.
+
+#### [RF-D12] [MUST - CRÍTICO DE PRIVACIDADE E LGPD] Descarte Físico Obrigatório do Arquivo de Áudio
+* **Descrição:** Mandato estrito de proteção de dados sensíveis de saúde: **o arquivo de áudio original capturado deve ser destruído física e permanentemente do disco/storage** imediatamente após a conclusão bem-sucedida do processamento da transcrição e extração dos tópicos.
+* **Critérios de Aceite (BDD):**
+  * *Dado* um arquivo `temp_audio_123.mp3` processado com sucesso pelo `TranscriptionJob`, *Quando* o status migra para `concluido`, *Então* a rotina invoca a exclusão do arquivo no sistema de arquivos/S3 e a verificação de existência do arquivo retorna 404/falso.
 
 ---
 
-## 6. Governança, Ferramentas e Ambiente de Execução
+## 3. Matriz Completa de Casos de Teste (CT-01 a CT-36)
 
-| Camada / Função | Ferramenta Selecionada | Propósito no Plano |
-| :--- | :--- | :--- |
-| **Testes Unitários / Integração** | Vitest | Execução automatizada de asserções lógicas e testes de rotas Elysia |
-| **Validação de Schemas e Modelos**| Prisma / TypeScript | Verificação estática de tipagem e integridade do banco relacional |
-| **Automação de CI** | GitHub Actions (`.github/workflows/ci.yml`) | Execução de linters, testes e verificação de integridade a cada PR |
-| **Segurança e Pentest de APIs** | OWASP ZAP / Burp Suite Community | Varredura de parâmetros, injeções e verificação de headers de proteção |
-| **Gestão de Bugs e Rastreabilidade** | GitHub Issues / GitHub Projects v2 | Registro estruturado via template `bug_report.md` com vínculo ao CT |
+| ID do Caso | Issue QA | Requisito Formal | Título do Caso de Teste | Categoria | Severidade |
+| :--- | :---: | :---: | :--- | :--- | :---: |
+| **CT-01** | QA-02 | RF-E1 | Autenticação bem-sucedida com JWT e persistência de sessão | Funcional / Auth | Alta |
+| **CT-02** | QA-02 | RF-E1/E4 | Invalidação de credenciais pós-troca de senha | Segurança / Auth | Alta |
+| **CT-03** | QA-02 | RF-E2 | Bloqueio RBAC: Recepcionista acessando prontuário (HTTP 403) | Segurança / RBAC | Crítica |
+| **CT-04** | QA-02 | RF-E2/E5 | Registro em log de auditoria ao bloquear recepcionista | Auditoria / LGPD | Crítica |
+| **CT-05** | QA-02 | RF-E2 | Permissão RBAC: Recepcionista baixando prescrições/exames emitidos | Funcional / RBAC | Alta |
+| **CT-06** | QA-03 | RF-A1/A5 | Renderização da grade diária/semanal com os 6 status visuais | Interface / UI | Média |
+| **CT-07** | QA-03 | RF-A4 | Rejeição de sobreposição concorrente de horários no PostgreSQL | Concorrência / Banco | Crítica |
+| **CT-08** | QA-03 | RF-A2/A7 | Inclusão de encaixe operacional sinalizado sem quebrar horários | Regra de Negócio | Alta |
+| **CT-09** | QA-03 | RF-A3 | Bloqueio de agendamento sobre intervalos médicos reservados | Regra de Negócio | Média |
+| **CT-10** | QA-03 | RF-A6 | Navegação contextual em 1 clique da grade para a Ficha 360° | Usabilidade / E2E | Alta |
+| **CT-11** | QA-04 | RF-B5 | Busca de pacientes com debounce de 250–300 ms na digitação | Performance / UI | Média |
+| **CT-12** | QA-04 | RF-B5 | Busca insensível a acentuação gráfica (unaccent) e maiúsculas | Funcional / Busca | Alta |
+| **CT-13** | QA-04 | RF-B5 | Busca por CPF com e sem máscara pontuada retornando mesmo registro| Funcional / Busca | Alta |
+| **CT-14** | QA-04 | RF-B5 | Mascaramento de CPF na listagem de resultados da busca (LGPD) | Privacidade / UI | Alta |
+| **CT-15** | QA-04 | RF-B5 | Desambiguação de homônimos por data de nascimento e telefone | Usabilidade / Dados | Média |
+| **CT-16** | QA-05 | RF-A8 | Disparo automático de lembrete de consulta 24h antes via WAHA | Integração / Job | Alta |
+| **CT-17** | QA-05 | RF-A8 | Confirmação de consulta via WhatsApp com palavras-chave afirmativas | Integração / Regra | Alta |
+| **CT-18** | QA-05 | RF-A8 | Cancelamento de consulta via WhatsApp com palavras-chave negativas | Integração / Regra | Alta |
+| **CT-19** | QA-05 | RF-A8 | Triagem de resposta ambígua para fila "Aguardando confirmação manual"| Regra / Exceção | Alta |
+| **CT-20** | QA-05 | RF-A8 | Tratamento de queda de sessão do WAHA com alerta e fila de pendentes| Resiliência / Infra | Alta |
+| **CT-21** | QA-06 | RF-C1/C2 | Editor BlockNote A4 com inserção e renderização de chips dinâmicos | Interface / Editor | Média |
+| **CT-22** | QA-06 | RF-C8 | Bloqueio amigável na emissão com botão "Corrigir dados" (CPF faltante)| Validação em Camadas| Alta |
+| **CT-23** | QA-06 | RF-C6/RNF-11| Regressão visual e fidelidade entre preview BlockNote e PDF Chromium| Interface / PDF | Alta |
+| **CT-24** | QA-06 | RF-C7 | Snapshot imutável (alteração no template não afeta PDF emitido) | Integridade / PEP | Crítica |
+| **CT-25** | QA-06 | RF-C10 | Assinatura simples no PDF contendo CRM, nome, data/hora e hash | Conformidade Médica | Alta |
+| **CT-26** | QA-07 | RF-D2 | Captura de áudio no navegador em formato MP3 com filtro de ruído | Mídia / Frontend | Média |
+| **CT-27** | QA-07 | RF-D2 | Truncamento automático de áudio > 500 MB com log e aviso ao usuário | Limite / Borda | Alta |
+| **CT-28** | QA-07 | RF-D4 | Extração semântica descartando small talk e preenchendo tópicos JSONB| IA / Sumarização | Alta |
+| **CT-29** | QA-07 | RF-D6 | **CT DEDICADO: Bloqueio estrito de parecer diagnóstico por IA** | **Segurança e Ética**| **Crítica** |
+| **CT-30** | QA-07 | RF-D8 | Resiliência do SintesyClient com reenvio manual sem perda de consulta | Resiliência / API | Alta |
+| **CT-31** | QA-07 | RF-D12 | **CT DEDICADO: Descarte físico definitivo do áudio pós-sucesso** | **Privacidade / LGPD**| **Crítica** |
+| **CT-32** | QA-07 | RF-D9 | Revisão lado a lado na interface e gravação mediante 1 clique | Usabilidade / E2E | Alta |
+| **CT-33** | QA-08 | RF-E3 | Criptografia TLS 1.3 em trânsito e hashing bcrypt para senhas | Segurança / Infra | Crítica |
+| **CT-34** | QA-08 | RF-E5 | Rastreabilidade e completude dos logs de auditoria clínica | Auditoria / LGPD | Crítica |
+| **CT-35** | QA-08 | RF-E6/RNF-5 | Testes de injeção SQL/NoSQL e blindagem contra vazamento de erros | AppSec / OWASP | Crítica |
+| **CT-36** | QA-07 | RF-D10 | **CT DEDICADO: Medição de consumo e custo por clínica sem bloqueio** | **Should Secundário** | **Média** |
+
+---
+
+## 4. Matriz de Rastreabilidade Bidirecional (RF ↔ Task QA ↔ Casos de Teste)
+
+```
+┌───────────┬──────────────┬─────────────┬────────────────────────────────┬──────────────┐
+│ Requisito │ Classificação│ Task QA     │ Casos de Teste Vinculados      │ Cobertura    │
+├───────────┼──────────────┼─────────────┼────────────────────────────────┼──────────────┤
+│ RF-E1     │ MUST         │ QA-01, QA-02│ CT-01, CT-02                   │ 100% (2 CTs) │
+│ RF-E2     │ MUST         │ QA-02       │ CT-03, CT-04, CT-05            │ 100% (3 CTs) │
+│ RF-E3/E6  │ MUST         │ QA-08       │ CT-14, CT-33, CT-35            │ 100% (3 CTs) │
+│ RF-E4     │ MUST         │ QA-02, QA-08│ CT-02, CT-33                   │ 100% (2 CTs) │
+│ RF-E5     │ MUST         │ QA-02, QA-08│ CT-04, CT-34                   │ 100% (2 CTs) │
+│ RF-A1/A5  │ MUST         │ QA-03       │ CT-06                          │ 100% (1 CT)  │
+│ RF-A2/A7  │ SHOULD       │ QA-03       │ CT-08                          │ 100% (1 CT)  │
+│ RF-A3     │ SHOULD       │ QA-03       │ CT-09                          │ 100% (1 CT)  │
+│ RF-A4     │ MUST         │ QA-03       │ CT-07                          │ 100% (1 CT)  │
+│ RF-A6     │ MUST         │ QA-03       │ CT-10                          │ 100% (1 CT)  │
+│ RF-A8     │ SHOULD       │ QA-05       │ CT-16, CT-17, CT-18, CT-19, 20 │ 100% (5 CTs) │
+│ RF-B1/B2  │ MUST         │ QA-03, QA-04│ CT-10, CT-15                   │ 100% (2 CTs) │
+│ RF-B3     │ MUST         │ QA-03       │ CT-10                          │ 100% (1 CT)  │
+│ RF-B4     │ SHOULD       │ QA-08       │ CT-35                          │ 100% (1 CT)  │
+│ RF-B5     │ MUST         │ QA-04       │ CT-11, CT-12, CT-13, CT-14, 15 │ 100% (5 CTs) │
+│ RF-C1/C2  │ SHOULD       │ QA-06       │ CT-21                          │ 100% (1 CT)  │
+│ RF-C6/R11 │ SHOULD       │ QA-06       │ CT-23                          │ 100% (1 CT)  │
+│ RF-C7     │ MUST         │ QA-06       │ CT-24                          │ 100% (1 CT)  │
+│ RF-C8/C9  │ SHOULD       │ QA-06       │ CT-21, CT-22, CT-23            │ 100% (3 CTs) │
+│ RF-C10    │ SHOULD       │ QA-06       │ CT-25                          │ 100% (1 CT)  │
+│ RF-D1/D4  │ SHOULD       │ QA-07       │ CT-28                          │ 100% (1 CT)  │
+│ RF-D2     │ SHOULD       │ QA-07       │ CT-26, CT-27                   │ 100% (2 CTs) │
+│ RF-D6     │ MUST (Ética) │ QA-07       │ CT-29 (Dedicado)               │ 100% (1 CT)  │
+│ RF-D8     │ SHOULD       │ QA-07       │ CT-30                          │ 100% (1 CT)  │
+│ RF-D9     │ SHOULD       │ QA-07       │ CT-32                          │ 100% (1 CT)  │
+│ RF-D10    │ SHOULD Sec.  │ QA-07       │ CT-36 (Dedicado)               │ 100% (1 CT)  │
+│ RF-D12    │ MUST (Priv.) │ QA-07, QA-08│ CT-31 (Dedicado)               │ 100% (1 CT)  │
+└───────────┴──────────────┴─────────────┴────────────────────────────────┴──────────────┘
+Total: 27 Requisitos Atômicos Mapeados | 36 Casos de Teste Detalhados | Cobertura MoSCoW: 100%
+```
+
+---
+
+## 5. Governança das Tarefas de Homologação e Regulatórias
+
+### 5.1 [QA-09] (#60): Termo de Consentimento e Uso Ético de IA
+* **Classificação:** Documentação Regulatória / Jurídica (LGPD).
+* **Diretrizes Incorporadas:**
+  * Consentimento prévio do paciente para captação do áudio no consultório médico.
+  * Declaração inequívoca de que o modelo atua unicamente como assistente redator estruturado, sem autonomia diagnóstica.
+  * Notificação sobre a destruição imediata e definitiva do registro sonoro após o processamento.
+
+### 5.2 [QA-10] (#61): Homologação em Clínica Parceira e Matriz de Defeitos
+* **Classificação:** Aceite Final e Homologação de Usuário Real (AV2).
+* **Diretrizes Incorporadas:**
+  * Ambiente de homologação provisionado com dados simulados (`INF-08`).
+  * Matriz de bugs classificada em Bloqueante, Alta, Média e Baixa, com critério de liberação: **Zero bugs Bloqueantes ou Altos**.
+  * Roteiro da demonstração ao vivo para a banca acadêmica operando com mocks locais dos serviços externos (Sintesy e WAHA).
 
 ---
 **Assinatura Técnica:**  
