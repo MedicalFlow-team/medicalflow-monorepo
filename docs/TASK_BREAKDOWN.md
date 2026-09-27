@@ -89,3 +89,79 @@
 - BE-04 (ADR-002) trava BE-17: sem contrato B2B, o `SintesyClient` usa o fallback de conta de serviço + mock.
 - INF-03 e BE-09 são o par WAHA; INF-04 é pré-requisito de tudo que vai pro deploy.
 - Total: **60 tasks** (INF 8 · BE 22 — Ruan 9 / Samuel 13 · FE 20 · QA 10).
+
+## Grafo de dependências (issue # = entre parênteses)
+
+> Formato: `TASK (issue)` → o que ela precisa antes. **Caminho crítico: INF-01 (#2) → BE-01 (#10) → BE-02 (#11) → BE-03 (#12) → resto.** Front pode começar FE-01/02/11 em paralelo (mock/mock-server) sem esperar back.
+
+```text
+INFRA
+  INF-01 (2)  ← base de tudo (workspaces)
+  INF-02 (3)  ← INF-01
+  INF-03 (4)  ← INF-02 (WAHA sobe no compose)            ┐ par WAHA
+  INF-04 (5)  ← INF-01                                   │
+  INF-05 (6)  ← INF-04 (secrets no CI)                   │
+  INF-06 (7)  ← INF-02 (Postgres externo ao compose dev)  │
+  INF-07 (8)  ← INF-04 · BE-09 (23)  (alerta sessão WAHA) │
+  INF-08 (9)  ← INF-04 · BE-01/02 · CI verde             ┘
+
+BACKEND
+  BE-01 (10) spike      ← INF-01 · [resultado: mantém Prisma+Playwright ou migra]
+  BE-02 (11) schema     ← BE-01
+  BE-03 (12) OpenAPI    ← BE-02 · (materializa o CONTRATOS_API.md)
+  BE-04 (13) ADRs       ← (—)          [trava de contrato B2B, sem dependência técnica]
+  BE-05 (19) auth       ← BE-02 · BE-03
+  BE-06 (20) RBAC       ← BE-05
+  BE-07 (21) auditoria  ← BE-05
+  BE-08 (22) agenda     ← BE-02 · BE-03 · BE-06
+  BE-09 (23) WAHA cli   ← INF-03 (4) · BE-08
+  BE-10 (24) lembrete   ← BE-09
+  BE-11 (25) busca      ← BE-02 · BE-03
+  BE-12 (26) anexos     ← BE-02 · BE-03
+  BE-13 (14) snapshot   ← BE-02 · BE-16 (16)
+  BE-14 (15) PDF        ← BE-01 (decisão do spike) · BE-03
+  BE-15 (27) validação  ← BE-13 · BE-16
+  BE-16 (16) catálogo   ← BE-02
+  BE-17 (17) Sintesy    ← BE-04 (13) · INF-05 (6) · BE-03
+  BE-18 (28) pipeline   ← BE-17 · BE-02
+  BE-19 (29) truncamento← BE-18
+  BE-20 (18) extração   ← BE-17 · BE-22 (31)
+  BE-21 (30) medição    ← BE-18
+  BE-22 (31) tópicos    ← BE-02 · BE-03
+
+FRONTEND  (todas dependem de FE-01 (32); back indicado é o mínimo p/ integrar de verdade)
+  FE-02 (33) login       ← back: BE-05 (19) · BE-06 (20)
+  FE-03 (34) grade       ← back: BE-03 (12, endpoints prontos) · BE-08 (22)
+  FE-04 (35) formulários ← back: BE-08 (22) · BE-06 (20)
+  FE-05 (36) busca       ← back: BE-11 (25)
+  FE-06 (37) ficha 360°  ← back: BE-11 (25) · BE-12 (26) · BE-21/13 p/ docs (14/30)
+  FE-07 (38) timeline    ← back: BE-08 (22, GET /appointments?patientId)
+  FE-08 (39) anexos      ← back: BE-12 (26)
+  FE-09 (40) fila manual ← back: BE-09 (23)
+  FE-10 (41) WhatsApp    ← back: BE-09 (23) · INF-03 (4)
+  FE-11 (42) editor      ← back: (nenhum — BlockNote local)
+  FE-12 (43) chips       ← back: BE-16 (16, GET /fields-catalog)
+  FE-13 (44) preview     ← back: BE-14 (15, POST /templates/{id}/preview)
+  FE-14 (45) emissão     ← back: BE-15 (27) · BE-13 (14)
+  FE-15 (46) central doc ← back: BE-13 (14) · BE-14 (15)
+  FE-16 (47) captura     ← back: (upload só com BE-18 (28); gravação é local)
+  FE-17 (48) polling     ← back: BE-18 (28) · BE-19 (29)
+  FE-18 (49) revisão     ← back: BE-20 (18) · BE-22 (31)
+  FE-19 (50) consumo     ← back: BE-21 (30)
+  FE-20 (51) config      ← back: BE-22 (31) · BE-09 (23) · clinic/logo (31)
+
+QA
+  QA-01 (52) plano       ← (—) começa já
+  QA-02 (53) RBAC        ← BE-06 (20) · BE-07 (21) · FE-02 (33)
+  QA-03 (54) agenda      ← BE-08 (22) · FE-03 (34) · FE-04 (35) · FE-06 (37)
+  QA-04 (55) busca       ← BE-11 (25) · FE-05 (36)
+  QA-05 (56) WhatsApp    ← BE-09 (23) · BE-10 (24) · FE-10 (41) · INF-03 (4)
+  QA-06 (57) PDF         ← BE-14 (15) · BE-15 (27) · FE-13 (44) · FE-14 (45) · FE-15 (46)
+  QA-07 (58) transcrição ← BE-17 (17) · BE-18 (28) · BE-19 (29) · BE-20 (18) · FE-17 (48) · FE-18 (49)
+  QA-08 (59) segurança   ← BE-07 (21) · BE-18 (28, descarte áudio)
+  QA-09 (60) termo IA    ← (—) começa já
+  QA-10 (61) homologação ← INF-08 (9) · QA-02..QA-08
+```
+
+## Contrato de API
+Todos os endpoints, bodies, retornos, enums e o **modelo de entidades completo** estão em [`docs/CONTRATOS_API.md`](CONTRATOS_API.md) — fonte única: o back implementa exatamente o que está lá, o front consome pelo contrato (via Eden Treaty, BE-03). Checklist endpoint↔task na seção 15 do contrato.
