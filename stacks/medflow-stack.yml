@@ -62,7 +62,7 @@ services:
       labels:
         - traefik.enable=true
         - traefik.docker.network=traefik-public
-        - traefik.http.routers.medflow-api.rule=Host(`api.medflow.selbr.com`)
+        - traefik.http.routers.medflow-api.rule=Host(`api.selbr.com`)
         - traefik.http.routers.medflow-api.entrypoints=websecure
         - traefik.http.routers.medflow-api.tls=true
         - traefik.http.routers.medflow-api.tls.certresolver=letsencrypt
@@ -94,7 +94,7 @@ services:
       labels:
         - traefik.enable=true
         - traefik.docker.network=traefik-public
-        - traefik.http.routers.medflow-web.rule=Host(`medflow.selbr.com`)
+        - traefik.http.routers.medflow-web.rule=(Host(`selbr.com`) || Host(`www.selbr.com`))
         - traefik.http.routers.medflow-web.entrypoints=websecure
         - traefik.http.routers.medflow-web.tls=true
         - traefik.http.routers.medflow-web.tls.certresolver=letsencrypt
