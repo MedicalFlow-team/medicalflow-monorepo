@@ -1,0 +1,120 @@
+# ============================================================
+# MedicalFlow — stack de PRODUÇÃO (Docker Swarm)
+# Deploy: pipeline (push na main) → infra/deploy.sh → docker stack deploy.
+#
+# Decisões do time (issues #3/#5/#7):
+#   - Postgres roda DENTRO da stack (sem serviço externo), rede interna medflow_net.
+#   - Sem ambiente de staging — só produção.
+#   - WAHA NÃO está aqui: é a stack `waha` já existente (docs/infra/WAHA.md).
+#
+# Requisitos no host (docs/infra/DEPLOY.md):
+#   - /root/medflow/.env  (variáveis de produção — docs/infra/SECRETS.md)
+#   - rede externa traefik-public já criada
+#   - MEDFLOW_TAG exportado no deploy (sha do commit)
+#
+# DNS interno da stack: postgres = `medflow_postgres` (usado no DATABASE_URL).
+# ============================================================
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 50m
+    max-file: "5"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    env_file: /root/medflow/.env
+    volumes:
+      - medflow_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - medflow_net
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+        delay: 5s
+      resources:
+        limits:
+          memory: 1g
+    logging: *logging
+
+  api:
+    image: ghcr.io/medicalflow-team/medicalflow-monorepo-api:${MEDFLOW_TAG:?MEDFLOW_TAG e obrigatorio (infra/deploy.sh exporta)}
+    env_file: /root/medflow/.env
+    healthcheck:
+      test: ["CMD", "bun", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - medflow_net
+      - traefik-public
+    deploy:
+      replicas: 1
+      labels:
+        - traefik.enable=true
+        - traefik.docker.network=traefik-public
+        - traefik.http.routers.medflow-api.rule=Host(`api.medflow.selbr.com`)
+        - traefik.http.routers.medflow-api.entrypoints=websecure
+        - traefik.http.routers.medflow-api.tls=true
+        - traefik.http.routers.medflow-api.tls.certresolver=letsencrypt
+        - traefik.http.services.medflow-api.loadbalancer.server.port=3000
+      restart_policy:
+        condition: any
+        delay: 5s
+      update_config:
+        order: start-first
+        failure_action: rollback
+      resources:
+        limits:
+          memory: 768m
+    logging: *logging
+
+  web:
+    image: ghcr.io/medicalflow-team/medicalflow-monorepo-web:${MEDFLOW_TAG:?MEDFLOW_TAG e obrigatorio (infra/deploy.sh exporta)}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    networks:
+      - medflow_net # permite SSR chamar a api por `medflow_api:3000`
+      - traefik-public
+    deploy:
+      replicas: 1
+      labels:
+        - traefik.enable=true
+        - traefik.docker.network=traefik-public
+        - traefik.http.routers.medflow-web.rule=Host(`medflow.selbr.com`)
+        - traefik.http.routers.medflow-web.entrypoints=websecure
+        - traefik.http.routers.medflow-web.tls=true
+        - traefik.http.routers.medflow-web.tls.certresolver=letsencrypt
+        - traefik.http.services.medflow-web.loadbalancer.server.port=3000
+      restart_policy:
+        condition: any
+        delay: 5s
+      update_config:
+        order: start-first
+        failure_action: rollback
+      resources:
+        limits:
+          memory: 512m
+    logging: *logging
+
+volumes:
+  medflow_postgres_data:
+
+networks:
+  medflow_net:
+    driver: overlay
+  traefik-public:
+    external: true

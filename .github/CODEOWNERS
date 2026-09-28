@@ -3,14 +3,20 @@
 # Geral
 * @GabrielMarques1
 
-# Backend (Elysia, Prisma, SQLite)
-/backend/ @JuaDevBR @GabrielMarques1
+# Backend (Elysia, Bun, Prisma)
+/api/ @JuaDevBR @GabrielMarques1
+/docs/CONTRATOS_API.md @JuaDevBR @samuelvictor29 @GabrielMarques1
 
-# Frontend & Design (React, UI/UX)
-/frontend/ @skrodrigo @GabrielMarques1
+# Frontend & Design (Next.js, React, UI/UX)
+/medicalflow-web/ @skrodrigo @GabrielMarques1
 
-# Infraestrutura & CI/CD
-docker-compose.yml @joaotolovi @GabrielMarques1
-.github/workflows/ @joaotolovi @GabrielMarques1
-/backend/Dockerfile @joaotolovi @GabrielMarques1
-/frontend/Dockerfile @joaotolovi @GabrielMarques1
+# Infraestrutura & CI/CD (Swarm, Docker, deploy, secrets, backup)
+/infra/ @joaotolovi @GabrielMarques1
+/stacks/ @joaotolovi @GabrielMarques1
+/docker/ @joaotolovi @GabrielMarques1
+/docker-compose.dev.yml @joaotolovi @GabrielMarques1
+/api/Dockerfile @joaotolovi @GabrielMarques1
+/medicalflow-web/Dockerfile @joaotolovi @GabrielMarques1
+/.github/workflows/ @joaotolovi @GabrielMarques1
+/.env.example @joaotolovi @GabrielMarques1
+/docs/infra/ @joaotolovi @GabrielMarques1

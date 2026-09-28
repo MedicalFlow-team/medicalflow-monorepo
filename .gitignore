@@ -18,6 +18,10 @@ node_modules/
 dev.db
 dev.db-journal
 
+# Backups (gerados pelo infra/backup — nunca no repo)
+backups/
+*.sql.gz
+
 # Build outputs
 dist/
 build/
