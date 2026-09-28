@@ -14,7 +14,7 @@
 
 ## O que o MedicalFlow usa
 
-1. **Envio de mensagens** (confirmações §8 do contrato) — BE-09 fará o cliente.
+1. **Envio de mensagens** (confirmações na seção 8 do contrato) — realizado pelo cliente WAHA do backend.
 2. **Webhook de respostas** — o painel do WAHA deve apontar o webhook para a API:
    `https://api.selbr.com/api/webhooks/waha` (após o registro DNS existir),
    com o header/query `WAHA_WEBHOOK_SECRET` validado pelo back (§8).

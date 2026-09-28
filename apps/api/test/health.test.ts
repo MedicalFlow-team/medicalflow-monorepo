@@ -6,7 +6,7 @@ const testEnv: Env = {
   port: 0,
   nodeEnv: "test",
   version: "0.1.0-test",
-  jwtSecret: "test-secret",
+  jwtSecret: "test_jwt_secret_placeholder",
   databaseUrl: "postgresql://test:test@localhost:5432/test",
   // WAHA inexistente: o probe DEVE degradar para "down" sem derrubar o /health
   corsOrigin: "http://localhost:3000",

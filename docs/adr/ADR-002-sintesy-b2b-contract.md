@@ -1,14 +1,14 @@
 # ADR-002: Contrato B2B do Sintesy
 
 - **Status:** Proposed
-- **Issue:** BE-04 / #13
-- **Fonte:** contrato de API do MedicalFlow + especificação técnica da Issue #13
+- **Origem histórica:** issue #13 (taxonomia anterior)
+- **Fonte vigente:** contrato da API do MedicalFlow + issue atual que implementar a integração
 
 ## Contexto
 
 A integração com o Sintesy fica isolada no backend. O frontend usa apenas a API do MedicalFlow e não acessa credenciais nem o contrato externo diretamente.
 
-No contrato interno, a transcrição entra por `POST /transcriptions`. A BE-17 implementa o cliente upstream do Sintesy e referencia `POST /sintesy/assistant/transcribe/`.
+No contrato interno, a transcrição entra por `POST /transcriptions`. O cliente upstream do Sintesy referencia `POST /sintesy/assistant/transcribe/`.
 
 ## Contrato mínimo proposto
 
@@ -20,7 +20,7 @@ No contrato interno, a transcrição entra por `POST /transcriptions`. A BE-17 i
 - Resposta mínima esperada: `{ transcription, durationSeconds?, requestId }`.
 - Prever códigos de erro estáveis no limite entre MedicalFlow e Sintesy.
 - Fazer retry com backoff; após esgotar as tentativas, mapear a falha externa para `502 UPSTREAM_FAILURE`.
-- Medir uso por consumidor/requisição no lado Sintesy, alinhado ao BE-21.
+- Medir uso por consumidor/requisição no lado Sintesy e persistir as métricas necessárias ao painel de consumo.
 - Prever rotação e revogação da API key.
 - Definir rate limit em acordo com o Sintesy.
 - Manter fallback `service_account` enquanto o B2B não estiver disponível.
@@ -40,7 +40,7 @@ A chamada `POST /sintesy/assistant/transcribe/` pertence ao `SintesyClient` inte
 
 ## Medição
 
-Quando disponível, a integração deve permitir registrar os dados necessários ao BE-21, incluindo consumidor/clínica, médico, atendimento, duração, modelo, status, `requestId` do Sintesy e custo estimado.
+Quando disponível, a integração deve permitir registrar consumidor/clínica, médico, atendimento, duração, modelo, status, `requestId` do Sintesy e custo estimado.
 
 ## Pontos ainda pendentes de validação
 
@@ -55,4 +55,4 @@ Quando disponível, a integração deve permitir registrar os dados necessários
 
 ## Consequências
 
-A BE-17 deve implementar o `SintesyClient` atrás desta fronteira, preservando o contrato interno do MedicalFlow. Este ADR permanece `Proposed` até a equipe revisar os pontos pendentes com o responsável pelo Sintesy.
+O `SintesyClient` deve ser implementado atrás desta fronteira, preservando o contrato interno do MedicalFlow. Este ADR permanece `Proposed` até a equipe revisar os pontos pendentes com o responsável pelo Sintesy.
