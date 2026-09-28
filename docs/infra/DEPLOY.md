@@ -26,7 +26,7 @@ push na main
 ## GHCR (pull das imagens)
 
 - Enquanto o repo/packages forem **públicos**: nenhum login necessário no VPS.
-- Se ficarem **privados**: uma vez por VPS, `docker login ghcr.io` com um PAT (escopo `read:packages`). O `--with-registry-auth` do deploy distribui a credencial aos nodes.
+- Os pacotes no GHCR são **privados por padrão** (mesmo com repo público — visibilidade do pacote é independente). O deploy.yml resolve isso sozinho: faz `docker login ghcr.io` no VPS com o `GITHUB_TOKEN` efêmero do job (escopo `packages:write`, vale só durante o run) antes do `docker stack deploy`. Nenhuma credencial persistente é necessária.
 
 ## DNS
 
