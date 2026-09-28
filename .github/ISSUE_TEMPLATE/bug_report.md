@@ -24,6 +24,12 @@ Descreva o comportamento observado. Inclua código HTTP, mensagem de erro ou evi
 
 Descreva o comportamento correto e, quando existir, informe o contrato ou critério relacionado.
 
+## Rastreabilidade
+
+- Requisitos (`RF-*`/`RNF-*`) relacionados:
+- Casos de teste (`CT-*`) existentes ou que precisam ser criados:
+- Seções ou endpoints de `docs/API_CONTRACT.md` relacionados:
+
 ## Área afetada
 
 - [ ] Backend (`apps/api`: Elysia, Prisma, PostgreSQL)

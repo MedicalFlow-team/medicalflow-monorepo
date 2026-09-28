@@ -99,7 +99,7 @@ import { Elysia, t } from 'elysia'
 
 export const authModule = new Elysia({ prefix: '/auth' })
   .post('/login', ({ body, cookie: { session } }) => {
-    if (body.username === 'admin' && body.password === 'password') {
+    if (body.username === 'admin' && body.password === 'admin_password') {
       session.value = 'valid-session'
       return { success: true }
     }
@@ -134,7 +134,7 @@ describe('Auth Module', () => {
         },
         body: JSON.stringify({
           username: 'admin',
-          password: 'password'
+          password: 'admin_password'
         })
       })
     )
@@ -153,7 +153,7 @@ describe('Auth Module', () => {
         },
         body: JSON.stringify({
           username: 'wrong',
-          password: 'wrong'
+          password: 'invalid_password'
         })
       })
     )
@@ -188,7 +188,7 @@ describe('Auth Module with Eden', () => {
   it('should login with Eden', async () => {
     const { data, error } = await api.auth.login.post({
       username: 'admin',
-      password: 'password'
+      password: 'admin_password'
     })
     
     expect(error).toBeNull()
@@ -199,7 +199,7 @@ describe('Auth Module with Eden', () => {
     // First login
     await api.auth.login.post({
       username: 'admin',
-      password: 'password'
+      password: 'admin_password'
     })
     
     // Then get profile
@@ -340,7 +340,7 @@ import { Elysia, t } from 'elysia'
 
 export const authModule = new Elysia({ prefix: '/auth' })
   .post('/login', ({ body, cookie: { session } }) => {
-    if (body.username === 'admin' && body.password === 'password') {
+    if (body.username === 'admin' && body.password === 'admin_password') {
       session.value = 'valid-session'
       return { success: true }
     }
@@ -369,7 +369,7 @@ describe('Auth Module', () => {
   it('should login successfully', async () => {
     const { data, error } = await api.auth.login.post({
       username: 'admin',
-      password: 'password'
+      password: 'admin_password'
     })
     
     expect(error).toBeNull()

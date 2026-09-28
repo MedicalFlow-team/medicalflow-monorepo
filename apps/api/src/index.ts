@@ -5,7 +5,7 @@ const env = loadEnv();
 
 const app = createApp(env).listen(env.port);
 
-// Log estruturado de boot (INF-07) — uma linha JSON, mesmo formato do request-logger
+// Log estruturado de boot — uma linha JSON, mesmo formato do request-logger
 console.log(
   JSON.stringify({
     ts: new Date().toISOString(),

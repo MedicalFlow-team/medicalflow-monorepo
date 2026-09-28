@@ -10,7 +10,7 @@ push na main
   → deploy.yml: build api+web → push GHCR (sha + latest)
   → SSH no VPS → git pull → infra/deploy.sh <sha>
       → docker stack deploy --with-registry-auth
-      → prisma migrate deploy (quando BE-02 criar as migrations)
+      → prisma migrate deploy (quando houver migrations em apps/api/prisma/migrations)
       → aguarda /api/health → falha o job se não subir
 ```
 

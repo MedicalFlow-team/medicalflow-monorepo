@@ -7,10 +7,10 @@ import { requestLogger } from "./plugins/request-logger";
  * Aplicação Elysia — montada via `createApp(env)` para manter o app
  * desacoplado do processo (testável sem rede/variáveis globais).
  *
- * Convenções do contrato (docs/CONTRATOS_API.md):
+ * Convenções do contrato (docs/API_CONTRACT.md):
  * - §1: todo erro responde o envelope { error: { code, message } }
  * - §12: GET /health → { status, version, db, waha }
- * - Rotas de negócio entram por módulo em src/modules/<dominio> (BE-03+)
+ * - Rotas de negócio entram por módulo em src/modules/<dominio>
  */
 
 const WAHA_PROBE_TIMEOUT_MS = 1500;
@@ -43,7 +43,7 @@ export function createApp(env: Env) {
       async () => ({
         status: "ok",
         version: env.version,
-        // db: conectado pelo BE-02/BE-03 (Prisma). Até lá, estado declarado.
+        // db: permanece declarado como pendente até a integração Prisma ser adicionada.
         db: "pending" as const,
         waha: await probeWaha(env),
       }),

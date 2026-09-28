@@ -1,0 +1,531 @@
+# MedicalFlow — Contrato da API
+
+**Status:** Contrato de planejamento vNext
+**Backlog:** [MedicalFlow - Delivery](https://github.com/orgs/MedicalFlow-team/projects/2)
+**Fontes:** Issues [#191](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/191)–[#199](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/199) e tarefas do board
+**Base URL:** `https://<environment>/api`
+
+Este documento é a fonte de verdade para o contrato HTTP entre a API (`apps/api`) e seus consumidores (`apps/web`, integrações). Schemas Elysia/TypeBox e a documentação OpenAPI gerada devem seguir estas especificações estritamente.
+
+---
+
+## 1. Regras Globais e Padrões Arquiteturais
+
+| Tópico | Regra |
+|---|---|
+| **Formato e Codificação** | JSON UTF-8 e nomenclatura `camelCase`. Uploads de arquivos utilizam `multipart/form-data` ou fluxo de presigned URLs privadas. |
+| **Identificadores** | Strings opacas imutáveis (UUID v4 / CUID2). |
+| **Datas e Horários** | Formato ISO 8601 em UTC (`YYYY-MM-DDTHH:mm:ss.sssZ`). Agregações de calendário utilizam o fuso horário configurado na clínica. |
+| **Paginação** | Orientada a cursor: `?cursor=<string>&limit=20` (máximo 100). Respostas paginadas retornam `{ data: [...], pageInfo: { nextCursor: string | null, hasNextPage: boolean } }`. |
+| **Escopo Tenacional (Multi-tenancy)** | Rotas relativas à organização exigem o parâmetro de caminho `/organizations/:orgSlug/...`. O servidor resolve o escopo e valida a pertinência do `Membership` ativo antes de executar a ação. |
+| **Isolamento entre Organizações** | O `organizationId` é obrigatoriamente injetado em todas as queries no servidor a partir da sessão/membership. Parâmetros passados pelo cliente jamais autorizam acesso a recursos de outro tenant. |
+| **Controle de Concorrência** | Recursos mutáveis expõem o atributo inteiro `version`. Atualizações desatualizadas retornam erro `409 VERSION_CONFLICT`. |
+| **Idempotência** | Operações de criação e mutação crítica exigem o cabeçalho HTTP `Idempotency-Key`. Reenvios com a mesma chave retornam o resultado original sem duplicar trabalho ou dados. |
+| **Privacidade e Redação** | CPF, telefones, tokens, áudios, transcrições e dados clínicos sensíveis jamais aparecem em URLs, parâmetros de consulta (query string) ou logs abertos. |
+| **Tipagem e Contrato** | Os tipos de entrada e saída são derivados estritamente dos schemas Elysia/TypeBox e OpenAPI gerados. |
+
+> [!NOTE]
+> **Pendência Arquitetural (Decisão [#192](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/192)):** O transporte exato da sessão permanece entre cookie seguro (`HttpOnly`, `Secure`, `SameSite=Lax`) ou tokens de acesso rotativos com tempo de vida curto. É terminantemente proibido o uso de JWTs sem expiração. Toda sessão possui TTL finito e pode ser revogada individualmente ou em lote pelo usuário.
+
+---
+
+## 2. Envelope Padronizado de Resposta e Erros
+
+Em caso de falha (códigos HTTP 4xx e 5xx), a API responde com a seguinte estrutura:
+
+```json
+{
+  "error": {
+    "code": "PERMISSION_DENIED",
+    "message": "Você não possui permissão para realizar esta ação.",
+    "details": {
+      "requiredPermission": "patients:read"
+    },
+    "requestId": "req_8f9a2b1c"
+  }
+}
+```
+
+### Matriz de Códigos HTTP e Códigos Estáveis
+
+| HTTP | Código Estável | Descrição / Aplicação |
+|---|---|---|
+| **400** | `VALIDATION_ERROR` | Parâmetros de requisição inválidos ou fora do schema. |
+| **400** | `INVALID_TOKEN` | Token de verificação de e-mail ou redefinição de senha inválido/expirado. |
+| **401** | `UNAUTHENTICATED` | Credenciais ausentes, inválidas ou sessão encerrada. |
+| **401** | `ACCOUNT_NOT_VERIFIED` | Tentativa de login ou uso da API antes da confirmação do e-mail. |
+| **403** | `PERMISSION_DENIED` | Usuário autenticado sem a permissão necessária no RBAC. |
+| **403** | `MEMBERSHIP_INACTIVE` | Vínculo com a organização está suspenso ou inativo. |
+| **404** | `NOT_FOUND` | Recurso não encontrado (usado também para ocultar existência de recursos de outros tenants). |
+| **409** | `VERSION_CONFLICT` | Concorrência otimista violada (o recurso foi modificado por outro usuário). |
+| **409** | `IDEMPOTENCY_CONFLICT` | A chave de idempotência está em uso por uma requisição concorrente ainda em processamento. |
+| **409** | `ALREADY_EXISTS` | Conflito de duplicidade de chave única (ex: e-mail já cadastrado, slug já utilizado). |
+| **409** | `SLOT_CONFLICT` | Horário de agendamento já reservado por outro paciente. |
+| **409** | `LAST_ADMIN_REQUIRED` | Tentativa de remover ou rebaixar o último administrador da organização. |
+| **410** | `INVITE_EXPIRED` | O convite para a equipe expirou ou foi revogado. |
+| **422** | `BUSINESS_RULE_VIOLATION` | Violação de regra de negócio (ex: tentar alterar documento clínico já emitido). |
+| **429** | `RATE_LIMITED` | Limite de requisições excedido. |
+| **500** | `INTERNAL` | Erro interno do servidor. Não exibe stack traces nem detalhes de infraestrutura em produção. |
+
+---
+
+## 3. Especificação dos Módulos da API
+
+---
+
+### Módulo 1: Autenticação & Sessões
+*(Ref: Issues [#192](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/192), [#207](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/207), [#208](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/208), [#209](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/209))*
+
+#### `POST /auth/register`
+* **Descrição:** Cria uma nova conta pessoal e dispara e-mail de verificação.
+* **Permissão:** Pública.
+* **Body:**
+  ```json
+  {
+    "fullName": "Dra. Maria Silva",
+    "email": "maria.silva@exemplo.com",
+    "password": "<senha_segura>"
+  }
+  ```
+* **Respostas:** `201 Created` (`{ "message": "Conta criada com sucesso. Verifique seu e-mail." }`), `409 ALREADY_EXISTS`, `400 VALIDATION_ERROR`.
+
+#### `POST /auth/verify-email`
+* **Descrição:** Confirma o endereço de e-mail com o token recebido.
+* **Permissão:** Pública.
+* **Body:** `{ "token": "<token_verificacao>" }`
+* **Respostas:** `200 OK` (`{ "message": "E-mail confirmado com sucesso." }`), `400 INVALID_TOKEN`.
+
+#### `POST /auth/login`
+* **Descrição:** Autentica com e-mail e senha e inicia a sessão do usuário.
+* **Permissão:** Pública.
+* **Body:** `{ "email": "maria.silva@exemplo.com", "password": "<senha_segura>" }`
+* **Respostas:** `200 OK` (`{ "user": { "id": "usr_1", "email": "...", "fullName": "..." }, "availableOrganizations": [...] }`), `401 INVALID_CREDENTIALS`, `401 ACCOUNT_NOT_VERIFIED`.
+
+#### `POST /auth/forgot-password`
+* **Descrição:** Solicita redefinição de senha. Retorna resposta indistinguível para evitar enumeração de contas.
+* **Permissão:** Pública.
+* **Body:** `{ "email": "maria.silva@exemplo.com" }`
+* **Respostas:** `200 OK` (`{ "message": "Se o e-mail estiver cadastrado, as instruções serão enviadas." }`).
+
+#### `POST /auth/reset-password`
+* **Descrição:** Redefine a senha utilizando o token e encerra todas as sessões anteriores por segurança.
+* **Permissão:** Pública.
+* **Body:** `{ "token": "<token_redefinicao>", "newPassword": "<nova_senha>" }`
+* **Respostas:** `200 OK` (`{ "message": "Senha alterada com sucesso. Todas as sessões anteriores foram encerradas." }`), `400 INVALID_TOKEN`.
+
+#### `POST /auth/logout`
+* **Descrição:** Encerra a sessão ativa do usuário.
+* **Permissão:** Autenticado.
+* **Respostas:** `200 OK` (`{ "message": "Sessão encerrada." }`).
+
+---
+
+### Módulo 2: Onboarding & Primeira Clínica
+*(Ref: Issues [#193](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/193), [#215](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/215)–[#218](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/218))*
+
+#### `GET /onboarding/progress`
+* **Descrição:** Recupera o estado atual do assistente de primeiro acesso.
+* **Permissão:** Autenticado.
+* **Respostas:** `200 OK` (`{ "currentStep": "ORGANIZATION_SETUP", "completed": false, "draftData": { ... } }`).
+
+#### `POST /onboarding/profile`
+* **Descrição:** Completa o perfil pessoal inicial durante o primeiro acesso.
+* **Permissão:** Autenticado.
+* **Body:** `{ "professionalTitle": "Médica Cardiologista", "registrationNumber": "CRM/SP 123456" }`
+* **Respostas:** `200 OK`, `400 VALIDATION_ERROR`.
+
+#### `POST /onboarding/organization`
+* **Descrição:** Cria a primeira clínica do usuário e o vincula como administrador.
+* **Permissão:** Autenticado.
+* **Cabeçalho Obrigatório:** `Idempotency-Key`
+* **Body:**
+  ```json
+  {
+    "name": "Clínica Vida & Saúde",
+    "slug": "vida-e-saude",
+    "phone": "(11) 98765-4321",
+    "address": {
+      "street": "Av. Paulista",
+      "number": "1000",
+      "city": "São Paulo",
+      "state": "SP",
+      "zipCode": "01310-100"
+    }
+  }
+  ```
+* **Respostas:** `201 Created` (`{ "organization": { "id": "org_1", "name": "...", "slug": "vida-e-saude" } }`), `409 ALREADY_EXISTS`.
+
+#### `POST /onboarding/schedule-rules`
+* **Descrição:** Configura os dias e horários padrão de atendimento da clínica durante o onboarding.
+* **Permissão:** Autenticado (Administrador).
+* **Body:**
+  ```json
+  {
+    "weeklySchedule": [
+      { "dayOfWeek": "MONDAY", "startTime": "08:00", "endTime": "18:00", "slotDurationMinutes": 30 }
+    ]
+  }
+  ```
+* **Respostas:** `200 OK`.
+
+#### `POST /onboarding/complete`
+* **Descrição:** Finaliza a jornada de onboarding e marca a conta como pronta para uso.
+* **Permissão:** Autenticado.
+* **Respostas:** `200 OK` (`{ "redirectUrl": "/app/vida-e-saude/dashboard" }`).
+
+---
+
+### Módulo 3: Organizações & Alternância de Contexto
+*(Ref: Issues [#191](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/191), [#227](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/227), [#228](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/228))*
+
+#### `GET /organizations`
+* **Descrição:** Lista todas as clínicas das quais a pessoa é membro ativo ou convidado.
+* **Permissão:** Autenticado.
+* **Respostas:** `200 OK` (`{ "data": [ { "id": "org_1", "name": "...", "slug": "vida-e-saude", "role": "ADMIN", "active": true } ] }`).
+
+#### `GET /organizations/:orgSlug`
+* **Descrição:** Obtém os dados e preferências da clínica especificada pelo slug.
+* **Permissão:** Autenticado + Pertencer à clínica (`organizations:read`).
+* **Respostas:** `200 OK`, `403 PERMISSION_DENIED`, `404 NOT_FOUND`.
+
+#### `POST /organizations/:orgSlug/switch-context`
+* **Descrição:** Define a organização como o contexto ativo da sessão do usuário.
+* **Permissão:** Autenticado + Pertencer à clínica.
+* **Respostas:** `200 OK` (`{ "activeOrganization": { "id": "org_1", "slug": "vida-e-saude" } }`), `403 MEMBERSHIP_INACTIVE`.
+
+---
+
+### Módulo 4: Equipe, Convites & RBAC Granular
+*(Ref: Issues [#194](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/194), [#314](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/314)–[#319](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/319))*
+
+#### `GET /organizations/:orgSlug/members`
+* **Descrição:** Lista os membros da equipe da clínica com seus respectivos papéis.
+* **Permissão:** `team:read`.
+* **Respostas:** `200 OK` (`{ "data": [ { "id": "mem_1", "userName": "Dra. Maria", "role": "ADMIN", "status": "ACTIVE" } ] }`).
+
+#### `POST /organizations/:orgSlug/invites`
+* **Descrição:** Envia convite por e-mail para integrar uma pessoa à equipe com um papel específico.
+* **Permissão:** `team:invite`.
+* **Cabeçalho Obrigatório:** `Idempotency-Key`
+* **Body:** `{ "email": "recepcao@exemplo.com", "roleId": "role_receptionist" }`
+* **Respostas:** `201 Created` (`{ "invite": { "id": "inv_1", "email": "...", "expiresAt": "..." } }`), `409 ALREADY_EXISTS`.
+
+#### `POST /invites/:token/accept`
+* **Descrição:** Aceita um convite de equipe enviado por e-mail e cria o vínculo de Membership na clínica.
+* **Permissão:** Autenticado.
+* **Body:** `{ "token": "inv_token_999" }`
+* **Respostas:** `200 OK` (`{ "organizationSlug": "vida-e-saude" }`), `410 INVITE_EXPIRED`.
+
+#### `PATCH /organizations/:orgSlug/members/:memberId/role`
+* **Descrição:** Altera o papel de um membro. Valida obrigatoriamente a proteção do último administrador.
+* **Permissão:** `team:manage`.
+* **Body:** `{ "roleId": "role_doctor", "version": 1 }`
+* **Respostas:** `200 OK`, `409 LAST_ADMIN_REQUIRED`, `409 VERSION_CONFLICT`.
+
+#### `DELETE /organizations/:orgSlug/members/:memberId`
+* **Descrição:** Remove um membro da clínica, desativando seu vínculo e preservando a trilha de auditoria.
+* **Permissão:** `team:manage`.
+* **Respostas:** `200 OK`, `409 LAST_ADMIN_REQUIRED`.
+
+#### `GET /organizations/:orgSlug/roles`
+* **Descrição:** Lista os papéis padrão (Administrador, Profissional, Recepcionista) e papéis personalizados da clínica.
+* **Permissão:** `roles:read`.
+* **Respostas:** `200 OK`.
+
+#### `POST /organizations/:orgSlug/roles`
+* **Descrição:** Cria um papel personalizado de acesso atribuindo permissões granulares especificadas.
+* **Permissão:** `roles:manage`.
+* **Body:** `{ "name": "Enfermeira Chefe", "permissions": ["patients:read", "patients:write", "consultations:read"] }`
+* **Respostas:** `201 Created`.
+
+---
+
+### Módulo 5: Pacientes & Prontuário
+*(Ref: Issues [#250](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/250)–[#254](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/254))*
+
+#### `GET /organizations/:orgSlug/patients`
+* **Descrição:** Consulta e filtra a lista de pacientes da clínica por nome, CPF ou telefone.
+* **Permissão:** `patients:read`.
+* **Query Params:** `?search=joao&cursor=xxx&limit=20`
+* **Respostas:** `200 OK` (`{ "data": [...], "pageInfo": { ... } }`).
+
+#### `POST /organizations/:orgSlug/patients`
+* **Descrição:** Cadastra um novo paciente. Executa verificação prévia de duplicidade por CPF.
+* **Permissão:** `patients:write`.
+* **Cabeçalho Obrigatório:** `Idempotency-Key`
+* **Body:** `{ "fullName": "João Souza", "cpf": "123.456.789-00", "birthDate": "1985-05-20", "phone": "(11) 97777-6666" }`
+* **Respostas:** `201 Created`, `409 ALREADY_EXISTS`.
+
+#### `PATCH /organizations/:orgSlug/patients/:patientId`
+* **Descrição:** Atualiza os dados cadastrais do paciente com controle de concorrência.
+* **Permissão:** `patients:write`.
+* **Body:** `{ "phone": "(11) 98888-5555", "version": 2 }`
+* **Respostas:** `200 OK`, `409 VERSION_CONFLICT`.
+
+#### `GET /organizations/:orgSlug/patients/:patientId/timeline`
+* **Descrição:** Retorna a linha do tempo cronológica com consultas, documentos emitidos e anexos do paciente.
+* **Permissão:** `patients:read_history`.
+* **Respostas:** `200 OK` (`{ "events": [ { "type": "CONSULTATION", "date": "...", "title": "Anamnese Cardiologia" } ] }`).
+
+#### `POST /organizations/:orgSlug/patients/:patientId/attachments`
+* **Descrição:** Upload de arquivo/exame privado para o prontuário do paciente.
+* **Permissão:** `patients:write`.
+* **Body:** `multipart/form-data` (`file`, `category`, `description`).
+* **Respostas:** `201 Created` (`{ "attachmentId": "att_123", "fileName": "exame_sangue.pdf" }`), `413 FILE_TOO_LARGE`.
+
+---
+
+### Módulo 6: Agendamentos & Recepção
+*(Ref: Issues [#237](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/237)–[#241](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/241))*
+
+#### `GET /organizations/:orgSlug/appointments`
+* **Descrição:** Lista os agendamentos da clínica filtrados por intervalo de datas, profissional ou status.
+* **Permissão:** `appointments:read`.
+* **Query Params:** `?startDate=2026-09-01&endDate=2026-09-30&doctorId=doc_1`
+* **Respostas:** `200 OK`.
+
+#### `POST /organizations/:orgSlug/appointments`
+* **Descrição:** Reserva um horário na agenda para um paciente. Valida disponibilidade para prevenir overlapping.
+* **Permissão:** `appointments:write`.
+* **Cabeçalho Obrigatório:** `Idempotency-Key`
+* **Body:** `{ "patientId": "pat_1", "doctorId": "doc_1", "scheduledAt": "2026-10-05T14:00:00Z", "notes": "Consulta de rotina" }`
+* **Respostas:** `201 Created`, `409 SLOT_CONFLICT`.
+
+#### `POST /organizations/:orgSlug/appointments/:appointmentId/cancel`
+* **Descrição:** Cancela um agendamento. Exige justificativa motivada obrigatória.
+* **Permissão:** `appointments:write`.
+* **Body:** `{ "cancellationReason": "Paciente informou imprevisto de trabalho", "version": 1 }`
+* **Respostas:** `200 OK` (`{ "status": "CANCELLED" }`), `422 BUSINESS_RULE_VIOLATION`.
+
+#### `GET /organizations/:orgSlug/reception/queue`
+* **Descrição:** Lista os pacientes na recepção aguardando atendimento no dia.
+* **Permissão:** `reception:read`.
+* **Respostas:** `200 OK` (`{ "queue": [ { "appointmentId": "app_1", "patientName": "...", "status": "WAITING" } ] }`).
+
+#### `POST /organizations/:orgSlug/appointments/:appointmentId/reception-status`
+* **Descrição:** Atualiza o fluxo da recepção (`ARRIVED`, `IN_SERVICE`, `COMPLETED`, `ABSENT`).
+* **Permissão:** `reception:write`.
+* **Body:** `{ "status": "ARRIVED", "version": 1 }`
+* **Respostas:** `200 OK`.
+
+---
+
+### Módulo 7: Consultas Clínicas, Áudio & Anamnese
+*(Ref: Issues [#195](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/195), [#262](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/262)–[#267](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/267))*
+
+#### `POST /organizations/:orgSlug/consultations`
+* **Descrição:** Inicia uma nova consulta clínica vinculada a um agendamento prévio e paciente.
+* **Permissão:** `consultations:write`.
+* **Body:** `{ "appointmentId": "app_100", "patientId": "pat_1" }`
+* **Respostas:** `201 Created` (`{ "consultationId": "con_55", "status": "IN_PROGRESS" }`).
+
+#### `POST /organizations/:orgSlug/consultations/:consultationId/audio`
+* **Descrição:** Envia o arquivo de áudio gravado da consulta após obtenção explícita do consentimento do paciente.
+* **Permissão:** `consultations:write`.
+* **Body:** `multipart/form-data` (`audioFile`, `consentConfirmed=true`).
+* **Respostas:** `200 OK` (`{ "audioId": "aud_77", "status": "UPLOADED" }`), `422 BUSINESS_RULE_VIOLATION`.
+
+#### `POST /organizations/:orgSlug/consultations/:consultationId/transcribe`
+* **Descrição:** Dispara o processamento da transcrição e geração automática da minuta de anamnese por IA.
+* **Permissão:** `consultations:write`.
+* **Cabeçalho Obrigatório:** `Idempotency-Key`
+* **Respostas:** `202 Accepted` (`{ "jobId": "job_tx_88", "status": "PROCESSING" }`).
+
+#### `PATCH /organizations/:orgSlug/consultations/:consultationId/draft`
+* **Descrição:** Salva edições no rascunho da anamnese médica com controle de versão.
+* **Permissão:** `consultations:write`.
+* **Body:** `{ "chiefComplaint": "Dor de cabeça persistente", "clinicalNotes": "...", "version": 3 }`
+* **Respostas:** `200 OK`, `409 VERSION_CONFLICT`.
+
+#### `POST /organizations/:orgSlug/consultations/:consultationId/approve`
+* **Descrição:** Conclui e aprova a versão final da anamnese com registro formal de autoria médica.
+* **Permissão:** `consultations:approve`.
+* **Body:** `{ "version": 4 }`
+* **Respostas:** `200 OK` (`{ "status": "APPROVED", "signedBy": "CRM/SP 123456", "approvedAt": "..." }`).
+
+---
+
+### Módulo 8: Documentos Clínicos, Versionamento & Anulação
+*(Ref: Issues [#195](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/195), [#273](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/273)–[#278](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/278))*
+
+#### `POST /organizations/:orgSlug/documents`
+* **Descrição:** Cria rascunho de receita, atestado, pedido de exame ou relatório médico.
+* **Permissão:** `documents:write`.
+* **Body:** `{ "patientId": "pat_1", "type": "PRESCRIPTION", "title": "Receita Simples", "content": "..." }`
+* **Respostas:** `201 Created` (`{ "documentId": "doc_99", "status": "DRAFT", "version": 1 }`).
+
+#### `PATCH /organizations/:orgSlug/documents/:documentId`
+* **Descrição:** Edita o conteúdo de um documento **enquanto ele for RASCUNHO** (`DRAFT`).
+* **Permissão:** `documents:write`.
+* **Body:** `{ "content": "Novo texto...", "version": 1 }`
+* **Respostas:** `200 OK`, `422 BUSINESS_RULE_VIOLATION` (se o documento já foi assinado/emitido).
+
+#### `POST /organizations/:orgSlug/documents/:documentId/issue`
+* **Descrição:** Emite o documento com snapshot imutável dos dados médicos e assinatura.
+* **Permissão:** `documents:issue`.
+* **Body:** `{ "version": 2 }`
+* **Respostas:** `200 OK` (`{ "status": "ISSUED", "issuedAt": "...", "snapshotHash": "sha256_..." }`).
+
+#### `GET /organizations/:orgSlug/documents/:documentId/pdf`
+* **Descrição:** Baixa ou visualiza o PDF oficial gerado a partir do snapshot imutável do documento emitido.
+* **Permissão:** `documents:read`.
+* **Respostas:** `200 OK` (`Content-Type: application/pdf`).
+
+#### `POST /organizations/:orgSlug/documents/:documentId/void`
+* **Descrição:** Anula formalmente um documento emitido. Exige justificativa motivada e mantém histórico de versões.
+* **Permissão:** `documents:void`.
+* **Body:** `{ "reason": "Erro na dosagem do medicamento prescrevido", "version": 3 }`
+* **Respostas:** `200 OK` (`{ "status": "VOIDED", "voidedAt": "...", "voidReason": "..." }`).
+
+#### `GET /organizations/:orgSlug/documents/:documentId/versions`
+* **Descrição:** Retorna a trilha de histórico de todas as alterações e snapshots do documento.
+* **Permissão:** `documents:read`.
+* **Respostas:** `200 OK` (`{ "versions": [ { "version": 1, "status": "DRAFT" }, { "version": 2, "status": "ISSUED" } ] }`).
+
+---
+
+### Módulo 9: Modelos de Documentos
+*(Ref: Issues [#287](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/287)–[#290](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/290))*
+
+#### `GET /organizations/:orgSlug/document-templates`
+* **Descrição:** Lista os modelos de receitas e atestados configurados na clínica.
+* **Permissão:** `templates:read`.
+* **Respostas:** `200 OK`.
+
+#### `POST /organizations/:orgSlug/document-templates`
+* **Descrição:** Cria um modelo de documento com campos dinâmicos (ex: `{paciente_nome}`).
+* **Permissão:** `templates:write`.
+* **Body:** `{ "title": "Atestado 3 Dias", "type": "CERTIFICATE", "bodyTemplate": "Atesto para os devidos fins que {paciente_nome}..." }`
+* **Respostas:** `201 Created`.
+
+#### `POST /organizations/:orgSlug/document-templates/:templateId/archive`
+* **Descrição:** Arquiva um modelo sem afetar ou alterar os documentos emitidos no passado.
+* **Permissão:** `templates:write`.
+* **Respostas:** `200 OK` (`{ "archived": true }`).
+
+---
+
+### Módulo 10: Comunicações & Integração WhatsApp (WAHA)
+*(Ref: Issues [#196](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/196), [#295](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/295)–[#298](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/298))*
+
+#### `GET /organizations/:orgSlug/communications/whatsapp/status`
+* **Descrição:** Consulta o status da sessão do WhatsApp (conectado, desconectado, QR code pendente).
+* **Permissão:** `communications:read`.
+* **Respostas:** `200 OK` (`{ "status": "CONNECTED", "phoneNumber": "5511999998888" }`).
+
+#### `GET /organizations/:orgSlug/communications/messages`
+* **Descrição:** Lista o histórico paginado de mensagens de confirmação e lembrete enviadas.
+* **Permissão:** `communications:read`.
+* **Respostas:** `200 OK`.
+
+#### `POST /organizations/:orgSlug/communications/messages/:messageId/resend`
+* **Descrição:** Solicita reenvio de mensagem com falha, utilizando proteção contra duplicação de disparos.
+* **Permissão:** `communications:write`.
+* **Cabeçalho Obrigatório:** `Idempotency-Key`
+* **Respostas:** `200 OK` (`{ "status": "QUEUED" }`).
+
+---
+
+### Módulo 11: Painel & Indicadores da Clínica
+*(Ref: Issues [#197](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/197), [#229](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/229), [#230](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/230))*
+
+#### `GET /organizations/:orgSlug/dashboard/metrics`
+* **Descrição:** Retorna os indicadores operacionais da clínica (consultas no mês, faltas, taxa de confirmação).
+* **Permissão:** `dashboard:read`.
+* **Query Params:** `?period=THIS_MONTH`
+* **Respostas:** `200 OK` (`{ "totalConsultations": 142, "attendanceRate": 0.94 }`).
+
+#### `GET /organizations/:orgSlug/dashboard/usage`
+* **Descrição:** Consulta as métricas de consumo da clínica (minutos de transcrição por IA utilizados).
+* **Permissão:** `dashboard:read`.
+* **Respostas:** `200 OK` (`{ "transcriptionMinutesUsed": 320, "monthlyQuota": 1000 }`).
+
+---
+
+### Módulo 12: Configurações da Clínica & Horários
+*(Ref: Issues [#303](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/303)–[#306](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/306))*
+
+#### `GET /organizations/:orgSlug/settings`
+* **Descrição:** Consulta as configurações institucionais, dados cadastrais e logotipo da clínica.
+* **Permissão:** `settings:read`.
+* **Respostas:** `200 OK`.
+
+#### `PATCH /organizations/:orgSlug/settings`
+* **Descrição:** Atualiza os dados cadastrais da clínica.
+* **Permissão:** `settings:write`.
+* **Body:** `{ "phone": "(11) 98888-0000", "version": 2 }`
+* **Respostas:** `200 OK`.
+
+#### `PUT /organizations/:orgSlug/settings/schedule-rules`
+* **Descrição:** Define os horários de funcionamento recorrentes e exceções/bloqueios na agenda.
+* **Permissão:** `settings:write`.
+* **Body:** `{ "rules": [...], "blockedDates": ["2026-12-25"] }`
+* **Respostas:** `200 OK`.
+
+---
+
+### Módulo 13: Auditoria & Logs de Segurança
+*(Ref: Issues [#327](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/327), [#328](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/328))*
+
+#### `GET /organizations/:orgSlug/audit-logs`
+* **Descrição:** Consulta os registros de auditoria da clínica (quem acessou, alterou ou excluiu dados).
+* **Permissão:** `audit:read`.
+* **Query Params:** `?startDate=2026-09-01&action=DOCUMENT_VOIDED`
+* **Respostas:** `200 OK` (`{ "data": [ { "id": "log_1", "actorName": "Dra. Maria", "action": "DOCUMENT_VOIDED", "timestamp": "..." } ] }`).
+
+---
+
+### Módulo 14: Conta Pessoal & Gerenciamento de Sessões
+*(Ref: Issues [#331](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/331)–[#335](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/335))*
+
+#### `GET /me/profile`
+* **Descrição:** Consulta os dados da conta pessoal do usuário logado.
+* **Permissão:** Autenticado.
+* **Respostas:** `200 OK` (`{ "id": "usr_1", "fullName": "Dra. Maria Silva", "email": "maria@exemplo.com" }`).
+
+#### `PATCH /me/profile`
+* **Descrição:** Atualiza o nome completo ou foto de perfil pessoal.
+* **Permissão:** Autenticado.
+* **Body:** `{ "fullName": "Dra. Maria Silva Santos" }`
+* **Respostas:** `200 OK`.
+
+#### `POST /me/change-password`
+* **Descrição:** Altera a senha do usuário solicitando a senha atual como confirmação de segurança.
+* **Permissão:** Autenticado.
+* **Body:** `{ "currentPassword": "<senha_atual>", "newPassword": "<nova_senha>" }`
+* **Respostas:** `200 OK`.
+
+#### `GET /me/sessions`
+* **Descrição:** Lista todas as sessões ativas do usuário com IP, navegador e última atividade.
+* **Permissão:** Autenticado.
+* **Respostas:** `200 OK` (`{ "sessions": [ { "id": "sess_current", "isCurrent": true, "ipAddress": "201.20.1.5", "userAgent": "Chrome/MacOS" } ] }`).
+
+#### `DELETE /me/sessions/:sessionId`
+* **Descrição:** Revoga uma sessão específica.
+* **Permissão:** Autenticado.
+* **Respostas:** `200 OK`.
+
+#### `DELETE /me/sessions/other`
+* **Descrição:** Revoga todas as outras sessões ativas, exceto a atual.
+* **Permissão:** Autenticado.
+* **Respostas:** `200 OK` (`{ "revokedCount": 2 }`).
+
+---
+
+## 4. Modelo de Dados Relacional & Prisma Schema
+
+A definição completa e o schema Prisma oficial para o banco PostgreSQL são mantidos na issue de consolidação de dados:
+
+👉 **[Issue #199 — Consolidar o modelo de dados relacional e schema do Prisma](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/199)**
+
+### Principais Entidades e Vínculos:
+* **`User` / `Account`**: Usuário e credenciais da conta pessoal.
+* **`Session`**: Sessões ativas de login com data de expiração e IP/User-Agent.
+* **`Organization`**: Clínicas do sistema com `slug` único e fuso horário.
+* **`Membership`**: Vínculo entre `User` e `Organization` com `roleId` e status.
+* **`Role` & `Permission`**: Papéis e permissões granulares por clínica.
+* **`Patient`**: Cadastros de pacientes isolados por `organizationId`.
+* **`Appointment`**: Agendamentos ligados a `Patient`, `User` (profissional) e `Organization`.
+* **`Consultation`**: Atendimento clínico ligado a `Appointment` e `Patient`.
+* **`Document` & `DocumentVersion`**: Documentos médicos com histórico de versões e snapshots imutáveis.
+* **`AuditLog`**: Trilha imutável de eventos de auditoria da organização.

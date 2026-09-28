@@ -14,7 +14,7 @@ O sistema manipula dados clínicos. Privacidade, isolamento por organização, a
 Antes de implementar, confira:
 
 1. issue e comentários técnicos atuais;
-2. `docs/CONTRATOS_API.md` e ADRs vigentes;
+2. `docs/API_CONTRACT.md` e ADRs vigentes;
 3. `AGENTS.md`;
 4. skill `$elysiajs` e documentação oficial atual quando houver código Elysia;
 5. padrões já presentes em `apps/api`.
@@ -93,7 +93,7 @@ Comece cada feature com `index.ts`, `model.ts` e `service.ts`. Adicione arquivos
 
 ## Contratos e erros
 
-- Preserve o envelope de erro definido em `docs/CONTRATOS_API.md`.
+- Preserve o envelope de erro definido em `docs/API_CONTRACT.md`.
 - Mudança de endpoint, payload, status HTTP ou schema exige atualização coordenada do contrato e dos consumidores afetados.
 - Não exponha stack trace, segredo ou dado clínico desnecessário.
 - Não crie campos, permissões ou comportamentos fora da issue e do contrato vigente.

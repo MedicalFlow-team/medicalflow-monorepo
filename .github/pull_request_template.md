@@ -34,7 +34,8 @@ Closes #
 ## Contratos, dados e segurança
 
 - [ ] Não altera contrato, schema ou migration.
-- [ ] Alterações de contrato foram atualizadas em `docs/CONTRATOS_API.md` e nos consumidores afetados.
+- [ ] Alterações de contrato foram atualizadas em `docs/API_CONTRACT.md` e nos consumidores afetados.
+- [ ] A issue e a evidência de validação citam os requisitos/casos aplicáveis de `docs/TEST_PLAN_AND_TRACEABILITY.md`.
 - [ ] Alterações no Prisma incluem migration revisada.
 - [ ] Permissões e isolamento por organização foram validados quando aplicáveis.
 - [ ] O PR não contém segredos, credenciais, dados clínicos ou dados pessoais desnecessários.

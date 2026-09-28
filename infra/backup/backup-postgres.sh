@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ============================================================
-# MedicalFlow — backup diário do Postgres (INF-06).
+# MedicalFlow — backup diário do Postgres.
 # Crontab: 0 3 * * *  (instalado no VPS — docs/infra/BACKUP.md)
 #
 # pg_dump dentro do container → /root/medflow/backups/ (gzip)

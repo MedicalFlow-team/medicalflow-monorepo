@@ -37,4 +37,4 @@ bun run build
 
 `build` gera `apps/api/dist` e `apps/web/.next`. Os Dockerfiles de cada aplicação continuam com contextos separados para manter apenas suas dependências no build. O código de servidor não é importado pela web.
 
-Consulte [CONTRATOS_API.md](docs/CONTRATOS_API.md) para o contrato HTTP e [DEPLOY.md](docs/infra/DEPLOY.md) para produção. O trabalho de preparação do monorepo é acompanhado na [issue #200](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/200).
+Consulte [API_CONTRACT.md](docs/API_CONTRACT.md) para o contrato HTTP, [TEST_PLAN_AND_TRACEABILITY.md](docs/TEST_PLAN_AND_TRACEABILITY.md) para a estratégia de testes e [DEPLOY.md](docs/infra/DEPLOY.md) para produção. O trabalho de preparação do monorepo é acompanhado na [issue #200](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/200).

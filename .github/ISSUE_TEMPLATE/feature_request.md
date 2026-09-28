@@ -31,6 +31,12 @@ Informe papéis autorizados, isolamento por clínica, dados pessoais ou clínico
 
 Liste decisões, contratos, issues ou serviços necessários antes desta entrega.
 
+## Rastreabilidade
+
+- Requisitos (`RF-*`/`RNF-*`) aplicáveis:
+- Casos de teste (`CT-*`) aplicáveis:
+- Seções ou endpoints de `docs/API_CONTRACT.md` afetados:
+
 ## Critérios de aceite
 
 - [ ] O resultado pode ser demonstrado de forma reproduzível.

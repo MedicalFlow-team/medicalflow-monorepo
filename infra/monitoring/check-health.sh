@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ============================================================
-# MedicalFlow — checagem operacional (INF-07).
+# MedicalFlow — checagem operacional.
 # Crontab: */5 * * * *  (instalado no VPS — docs/infra/MONITORING.md)
 #
 # Verifica (executando dentro do container da api — independe de DNS):

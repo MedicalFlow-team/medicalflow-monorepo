@@ -1,11 +1,11 @@
 # ADR-003: Renderizador de PDF
 
 - **Status:** Proposed
-- **Issue:** BE-04 / #13
+- **Origem histórica:** issue #13 (taxonomia anterior)
 
 ## Contexto
 
-O requisito da BE-14 define BlockNote JSON → HTML/CSS → PDF com Chromium headless e fidelidade WYSIWYG. O documento deve manter formato A4.
+O requisito RF-C6/RNF-11 define BlockNote JSON → HTML/CSS → PDF com Chromium headless e fidelidade WYSIWYG. O documento deve manter formato A4.
 
 ## Alternativas
 
@@ -18,4 +18,4 @@ Manter o renderizador desacoplado do restante do backend e avaliar Chromium no B
 
 ## Decisão pendente
 
-A decisão final depende dos resultados da BE-01 e da validação de Chromium/PDF no container pela INF-02. Este ADR não escolhe definitivamente entre as alternativas.
+A decisão final depende de um spike documentado e da validação de Chromium/PDF no container. Este ADR não escolhe definitivamente entre as alternativas.
