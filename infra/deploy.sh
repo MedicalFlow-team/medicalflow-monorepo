@@ -63,7 +63,19 @@ for i in $(seq 1 60); do
   if [ -n "$API_CID" ] && docker exec "$API_CID" bun -e \
     'fetch("http://127.0.0.1:3000/api/health").then(r=>r.ok?process.exit(0):process.exit(1)).catch(()=>process.exit(1))' \
     2>/dev/null; then
-    echo "==> OK após ${i} tentativa(s):"
+    # --- Gate anti-rollback silencioso ---
+    # O update_config com rollback reverte a task pra imagem anterior quando o
+    # pull falha (ex.: registry privado sem credencial) e o health acima passa no
+    # container VELHO — deploy "verde" com versão antiga rodando. Verificamos que
+    # a task mais recente está na imagem esperada ($TAG) antes de declarar OK.
+    RUNNING_TAG="$(docker inspect -f '{{.Config.Image}}' "$API_CID" | sed 's/.*://')"
+    if [ "$RUNNING_TAG" != "$TAG" ]; then
+      echo "FALHA: health OK mas a imagem rodando é '$RUNNING_TAG' (esperada: '$TAG')." >&2
+      echo "       O rollout foi revertido — provável falha de pull. Veja:" >&2
+      echo "       docker service ps ${STACK}_api --no-trunc" >&2
+      exit 1
+    fi
+    echo "==> OK após ${i} tentativa(s) (imagem :$TAG confirmada em execução):"
     docker exec "$API_CID" bun -e \
       'fetch("http://127.0.0.1:3000/api/health").then(r=>r.json()).then(j=>console.log(JSON.stringify(j)))'
     exit 0
