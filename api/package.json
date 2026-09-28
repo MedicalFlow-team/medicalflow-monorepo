@@ -1,0 +1,22 @@
+{
+  "name": "medflow-api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun --hot src/index.ts",
+    "start": "bun src/index.ts",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check"
+  },
+  "dependencies": {
+    "@elysiajs/cors": "^1.3.1",
+    "elysia": "^1.3.1"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.4.2",
+    "@types/bun": "^1.3.0",
+    "typescript": "^5.9.0"
+  }
+}
