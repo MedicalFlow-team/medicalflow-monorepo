@@ -1,0 +1,51 @@
+# ============================================================
+# MedicalFlow — ambiente de desenvolvimento local
+# Uso: docker compose -f docker-compose.dev.yml up -d
+#   - Postgres 16 (extensões via docker/postgres/initdb)
+#   - API com hot-reload em http://localhost:3001
+# O front roda nativo (bun dev → http://localhost:3000), fora do compose:
+#   mais rápido e com HMR limpo. Web/app remoto usam o WAHA de prod
+#   (ou nada — /health reporta waha:down, o que é aceitável em dev).
+# ============================================================
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: medflow
+      POSTGRES_USER: medflow
+      POSTGRES_PASSWORD: medflow # só dev — nunca reutilizar em produção
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./docker/postgres/initdb:/docker-entrypoint-initdb.d:ro
+      - medflow_dev_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U medflow -d medflow"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    image: oven/bun:1.4
+    working_dir: /app
+    command: bun --hot src/index.ts
+    ports:
+      - "3001:3000"
+    volumes:
+      - ./api:/app
+    environment:
+      NODE_ENV: development
+      APP_VERSION: 0.1.0-dev
+      JWT_SECRET: dev-secret-nao-usar-em-producao
+      DATABASE_URL: postgresql://medflow:medflow@postgres:5432/medflow
+      CORS_ORIGIN: http://localhost:3000
+      WAHA_BASE_URL: http://host.docker.internal:3002 # opcional: WAHA local
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  medflow_dev_pgdata:

@@ -1,57 +1,90 @@
-name: CI Pipeline
+name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
 
 jobs:
-  backend-checks:
-    name: Backend Validation
+  api:
+    name: API (lint + typecheck + testes)
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: backend
+        working-directory: api
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: oven-sh/setup-bun@v2
         with:
-          node-version: 20
-          cache: 'npm'
-          cache-dependency-path: backend/package.json
+          bun-version: latest
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Instalar dependências
+        run: bun install --frozen-lockfile
 
-      - name: Validate Prisma schema
-        run: npx prisma validate
+      - name: Lint (Biome)
+        run: bun run lint
 
-      - name: TypeScript typecheck
-        run: npm run typecheck
+      - name: Type-check (tsc)
+        run: bun run typecheck
 
-  frontend-checks:
-    name: Frontend Validation
+      - name: Testes
+        run: bun test
+
+  web:
+    name: Web (lint + build)
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: frontend
+        working-directory: medicalflow-web
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: oven-sh/setup-bun@v2
         with:
-          node-version: 20
-          cache: 'npm'
-          cache-dependency-path: frontend/package.json
+          bun-version: latest
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Instalar dependências
+        run: bun install --frozen-lockfile
 
-      - name: TypeScript typecheck and build
-        run: npm run build
+      - name: Lint (Biome)
+        run: bun run lint
+
+      # next build já roda o type-check do TS (sem ignoreBuildErrors)
+      - name: Build (Next)
+        run: bun run build
+
+  docker:
+    name: Docker (imagens constroem)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build imagem api
+        uses: docker/build-push-action@v6
+        with:
+          context: ./api
+          push: false
+
+      - name: Build imagem web
+        uses: docker/build-push-action@v6
+        with:
+          context: ./medicalflow-web
+          push: false
+
+  gitleaks:
+    name: Segredos (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Binário OSS direto (docker) — gitleaks-action@v2 passou a exigir licença
+      # paga para orgs; a ferramenta em si é Apache-2.0.
+      - name: Rodar gitleaks
+        run: |
+          docker run --rm -v "$PWD:/src" zricethezav/gitleaks:v8.24.3 \
+            detect --source /src --redact --exit-code 1

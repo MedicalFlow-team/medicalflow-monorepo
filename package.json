@@ -1,0 +1,16 @@
+{
+  "name": "medicalflow-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Orquestrador de comandos do monorepo — cada pacote (api, medicalflow-web) mantém o próprio lockfile e build independente",
+  "scripts": {
+    "dev:api": "bun run --cwd api dev",
+    "dev:web": "bun run --cwd medicalflow-web dev",
+    "lint": "bun run --cwd api lint && bun run --cwd medicalflow-web lint",
+    "typecheck": "bun run --cwd api typecheck",
+    "test": "bun run --cwd api test",
+    "build:web": "bun run --cwd medicalflow-web build",
+    "db:dev": "docker compose -f docker-compose.dev.yml up -d postgres",
+    "db:dev:down": "docker compose -f docker-compose.dev.yml down"
+  }
+}

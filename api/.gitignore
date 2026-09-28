@@ -1,0 +1,13 @@
+# Dependências
+node_modules/
+
+# Ambiente
+.env
+.env.*
+!.env.example
+
+# Bun
+.bun/
+
+# Build
+dist/
