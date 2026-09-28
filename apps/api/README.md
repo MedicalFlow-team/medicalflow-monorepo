@@ -1,13 +1,14 @@
 # medflow-api
 
-API do MedicalFlow — **ElysiaJS + Bun + TypeScript**. Contrato de rotas: [`docs/CONTRATOS_API.md`](../docs/CONTRATOS_API.md) (fonte única).
+API do MedicalFlow — **ElysiaJS + Bun + TypeScript**. Contrato de rotas: [`docs/CONTRATOS_API.md`](../../docs/CONTRATOS_API.md) (fonte única).
 
 ## Rodar (dev)
 
 ```bash
-cp ../.env.example ../.env   # na raiz do repo — preencha o mínimo local
-bun install
-bun dev                      # http://localhost:3000/api/health
+cp ../../.env.example .env   # ajuste JWT_SECRET e DATABASE_URL para o Postgres local
+cd ../..
+bun install --frozen-lockfile
+bun run dev:api              # http://localhost:3001/api/health
 ```
 
 O Postgres local sobe via Docker na raiz do repo: `docker compose -f docker-compose.dev.yml up -d`.
@@ -15,9 +16,9 @@ O Postgres local sobe via Docker na raiz do repo: `docker compose -f docker-comp
 ## Testes / verificação
 
 ```bash
-bun test          # testes (bun:test)
-bun run typecheck # tsc --noEmit (strict)
-bun run lint      # biome check
+bun run --cwd apps/api test      # testes (bun:test)
+bun run --cwd apps/api typecheck # tsc --noEmit (strict)
+bun run --cwd apps/api lint      # biome check
 ```
 
 ## Estrutura

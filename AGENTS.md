@@ -7,6 +7,9 @@
 - Mantenha tipagem TypeScript forte.
 - Prefira padrões nativos do ElysiaJS; não adapte automaticamente padrões de Express.
 - Não invente APIs do ElysiaJS.
+- Para qualquer trabalho de backend, use a skill `$backend-engineer` instalada em `.agents/skills/backend-engineer`.
+- Cada módulo de domínio em `apps/api/src/modules/<dominio>/` começa com `index.ts`, `model.ts` e `service.ts`.
+- Coloque extensões do Elysia em `apps/api/src/plugins/` e capacidades compartilhadas ou integrações externas em `apps/api/src/services/`.
 
 ## ElysiaJS
 
@@ -19,5 +22,5 @@
 
 ## Escopo das alterações
 
-- Se a tarefa for exclusivamente de backend, não altere o frontend em `medicalflow-web`.
+- Se a tarefa for exclusivamente de backend, não altere o frontend em `apps/web`.
 - Antes de alterações grandes, explique brevemente o que será criado.

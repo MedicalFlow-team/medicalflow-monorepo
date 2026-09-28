@@ -8,7 +8,7 @@
 |---|---|
 | `.env.example` (repo) | Nome de todas as variáveis + valores fake/explicação |
 | `/root/medflow/.env` (VPS) | Valores reais de produção, lido pela stack (`env_file`) |
-| `api/.env` (dev local) | Valores de dev (postgres local etc.) — gitignored |
+| `apps/api/.env` (dev local) | Valores de dev (postgres local etc.) — gitignored |
 | GitHub Secrets | `MEDFLOW_VPS_HOST`, `MEDFLOW_VPS_SSH_KEY` (só o pipeline usa) |
 
 ## Gerar valores fortes

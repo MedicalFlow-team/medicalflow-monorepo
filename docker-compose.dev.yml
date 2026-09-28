@@ -28,12 +28,12 @@ services:
 
   api:
     image: oven/bun:1.4
-    working_dir: /app
+    working_dir: /app/apps/api
     command: bun --hot src/index.ts
     ports:
       - "3001:3000"
     volumes:
-      - ./api:/app
+      - ./:/app
     environment:
       NODE_ENV: development
       APP_VERSION: 0.1.0-dev

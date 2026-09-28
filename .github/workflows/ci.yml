@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: api
+        working-directory: apps/api
     steps:
       - uses: actions/checkout@v4
 
@@ -36,7 +36,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: medicalflow-web
+        working-directory: apps/web
     steps:
       - uses: actions/checkout@v4
 
@@ -65,13 +65,13 @@ jobs:
       - name: Build imagem api
         uses: docker/build-push-action@v6
         with:
-          context: ./api
+          context: ./apps/api
           push: false
 
       - name: Build imagem web
         uses: docker/build-push-action@v6
         with:
-          context: ./medicalflow-web
+          context: ./apps/web
           push: false
 
   gitleaks:

@@ -2,7 +2,7 @@
 
 ## O que existe
 
-- **Logs estruturados** (`api/src/plugins/request-logger.ts`): uma linha JSON por request
+- **Logs estruturados** (`apps/api/src/plugins/request-logger.ts`): uma linha JSON por request
   (`{ts, level, msg, method, path, status, ms}`). `docker service logs medflow_api -f`.
 - **`/api/health`** (§12 do contrato): status da API + versão + probe do WAHA.
 - **`infra/monitoring/check-health.sh`** (cron `*/5 * * * *` no VPS):

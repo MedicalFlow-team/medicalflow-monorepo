@@ -13,7 +13,7 @@
 ## 1. Escopo e Governança do Plano de Testes
 
 ### 1.1 Objetivo e Alinhamento com as Tarefas de QA
-Este documento estabelece a governança de qualidade, os casos de teste formais e a matriz de rastreabilidade bidirecional do projeto MedicalFlow. O plano extingue numerações genéricas e adota a taxonomia oficial de Requisitos Funcionais por Épico (`RF-A`, `RF-B`, `RF-C`, `RF-D`, `RF-E`) definida em `docs/TASK_BREAKDOWN.md`, cobrindo 100% das tarefas atribuídas à área de **QA & Security** (`QA-01` a `QA-10` / Épico 7):
+Este documento registra a baseline histórica de QA e a antiga taxonomia (`QA-01` a `QA-10`). As issues e seus números citados abaixo foram substituídos; o backlog vigente está no [MedicalFlow - Delivery](https://github.com/orgs/MedicalFlow-team/projects/2). Use os cards atuais como fonte para executar e rastrear testes.
 
 * **[QA-01] (#52):** Plano de testes cobrindo todos os RFs Must/Should e matriz de rastreabilidade no repo.
 * **[QA-02] (#53):** E2E de RBAC (Médico × Recepcionista) e registro de tentativas bloqueadas em log.

@@ -48,8 +48,8 @@ for i in $(seq 1 30); do
 done
 if [ -z "${PG_CID:-}" ]; then echo "FALHA: postgres não subiu" >&2; exit 1; fi
 
-# --- Migrations (Prisma) — ativa quando o BE-02 criar api/prisma/migrations ---
-if compgen -G "api/prisma/migrations/*" > /dev/null; then
+# --- Migrations (Prisma) — ativa quando o BE-02 criar apps/api/prisma/migrations ---
+if compgen -G "apps/api/prisma/migrations/*" > /dev/null; then
   DB_URL="$(grep -E '^DATABASE_URL=' "$ENV_FILE" | cut -d= -f2-)"
   echo "==> prisma migrate deploy"
   docker run --rm --network "${STACK}_medflow_net" \

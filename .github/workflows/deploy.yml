@@ -19,8 +19,8 @@ jobs:
     strategy:
       matrix:
         include:
-          - { name: api, context: ./api }
-          - { name: web, context: ./medicalflow-web }
+          - { name: api, context: ./apps/api }
+          - { name: web, context: ./apps/web }
     steps:
       - uses: actions/checkout@v4
 
