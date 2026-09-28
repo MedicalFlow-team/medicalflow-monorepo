@@ -16,7 +16,7 @@
 
 1. **Envio de mensagens** (confirmações §8 do contrato) — BE-09 fará o cliente.
 2. **Webhook de respostas** — o painel do WAHA deve apontar o webhook para a API:
-   `https://api.medflow.selbr.com/api/webhooks/waha` (após DNS existir),
+   `https://api.selbr.com/api/webhooks/waha` (após o registro DNS existir),
    com o header/query `WAHA_WEBHOOK_SECRET` validado pelo back (§8).
 3. **Alerta de sessão** — `infra/monitoring/check-health.sh` polla `GET /api/sessions`
    de dentro da rede e alerta se status ≠ `WORKING` (QR pendente, desconectado).
