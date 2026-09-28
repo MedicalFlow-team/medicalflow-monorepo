@@ -20,6 +20,17 @@ POSTGRES_USER="$(grep -E '^POSTGRES_USER=' "$ENV_FILE" | cut -d= -f2-)"
 cd "$REPO_DIR"
 export MEDFLOW_TAG="$TAG"
 
+# --- Pré-pull síncrono das imagens ---
+# Tarefas do swarm puxam de forma assíncrona: se o pull falhar depois que o
+# GITHUB_TOKEN do workflow expirar, a task falha, o update_config reverte e o
+# deploy mente "verde" (foi o caso real do run 36372580830). Puxando aqui:
+# - falha cedo e alto com o motivo exato (denied / network);
+# - as tasks do swarm resolvem a imagem já presente no node, sem depender
+#   do registry durante o rollout.
+echo "==> pré-pull das imagens (tag $TAG)"
+docker pull "ghcr.io/medicalflow-team/medicalflow-monorepo-api:$TAG"
+docker pull "ghcr.io/medicalflow-team/medicalflow-monorepo-web:$TAG"
+
 echo "==> docker stack deploy ($STACK, tag $TAG)"
 docker stack deploy --with-registry-auth -c stacks/medflow-stack.yml "$STACK"
 
@@ -60,28 +71,39 @@ NEWEST_CID() {
 }
 for i in $(seq 1 60); do
   API_CID="$(NEWEST_CID "${STACK}_api")"
-  if [ -n "$API_CID" ] && docker exec "$API_CID" bun -e \
-    'fetch("http://127.0.0.1:3000/api/health").then(r=>r.ok?process.exit(0):process.exit(1)).catch(()=>process.exit(1))' \
-    2>/dev/null; then
-    # --- Gate anti-rollback silencioso ---
-    # O update_config com rollback reverte a task pra imagem anterior quando o
-    # pull falha (ex.: registry privado sem credencial) e o health acima passa no
-    # container VELHO — deploy "verde" com versão antiga rodando. Verificamos que
-    # a task mais recente está na imagem esperada ($TAG) antes de declarar OK.
-    RUNNING_TAG="$(docker inspect -f '{{.Config.Image}}' "$API_CID" | sed 's/.*://')"
-    if [ "$RUNNING_TAG" != "$TAG" ]; then
-      echo "FALHA: health OK mas a imagem rodando é '$RUNNING_TAG' (esperada: '$TAG')." >&2
-      echo "       O rollout foi revertido — provável falha de pull. Veja:" >&2
-      echo "       docker service ps ${STACK}_api --no-trunc" >&2
-      exit 1
+  if [ -n "$API_CID" ]; then
+    RUNNING_TAG="$(docker inspect -f '{{.Config.Image}}' "$API_CID" 2>/dev/null | sed 's/.*://')" || RUNNING_TAG=""
+    if docker exec "$API_CID" bun -e \
+      'fetch("http://127.0.0.1:3000/api/health").then(r=>r.ok?process.exit(0):process.exit(1)).catch(()=>process.exit(1))' \
+      2>/dev/null; then
+      if [ "$RUNNING_TAG" = "$TAG" ]; then
+        echo "==> OK após ${i} tentativa(s) (imagem :$TAG confirmada em execução):"
+        docker exec "$API_CID" bun -e \
+          'fetch("http://127.0.0.1:3000/api/health").then(r=>r.json()).then(j=>console.log(JSON.stringify(j)))'
+        exit 0
+      fi
+      # Saudável mas ainda na imagem anterior: com update_config start-first a
+      # task VELHA responde enquanto a nova ainda puxa — esperamos a tag certa
+      # em vez de falhar na primeira resposta (run 36372580830: falhou em 1,6s,
+      # antes de o pull da nova terminar).
+      echo "   ...aguardando :$TAG (task atual ainda na :$RUNNING_TAG)"
     fi
-    echo "==> OK após ${i} tentativa(s) (imagem :$TAG confirmada em execução):"
-    docker exec "$API_CID" bun -e \
-      'fetch("http://127.0.0.1:3000/api/health").then(r=>r.json()).then(j=>console.log(JSON.stringify(j)))'
-    exit 0
   fi
   sleep 5
 done
 
-echo "FALHA: $STACK/api não ficou saudável em 300s — veja: docker service logs ${STACK}_api" >&2
+# Timeout — diagnostica qual dos dois casos reais:
+API_CID="$(NEWEST_CID "${STACK}_api")"
+RUNNING_TAG=""
+if [ -n "$API_CID" ]; then
+  RUNNING_TAG="$(docker inspect -f '{{.Config.Image}}' "$API_CID" 2>/dev/null | sed 's/.*://')" || RUNNING_TAG=""
+fi
+if [ "$RUNNING_TAG" != "$TAG" ]; then
+  echo "FALHA: 300s e a imagem rodando continua '$RUNNING_TAG' (esperada '$TAG')." >&2
+  echo "       Rollout não progrediu — pull falhou ou foi revertido. Veja:" >&2
+  echo "       docker service ps ${STACK}_api --no-trunc" >&2
+else
+  echo "FALHA: imagem :$TAG está rodando mas /api/health não ficou OK em 300s." >&2
+  echo "       Veja: docker service logs ${STACK}_api" >&2
+fi
 exit 1
