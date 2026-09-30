@@ -1,17 +1,28 @@
 import cors from "@elysiajs/cors";
 import { Elysia, t } from "elysia";
 import type { Env } from "./config/env";
+import type { PrismaClient } from "./generated/prisma/client";
+import { ApiError } from "./lib/api-error";
+import { authModule } from "./modules/auth";
+import type { AuthDeps } from "./modules/auth/service";
+import { onboardingModule } from "./modules/onboarding";
+import type { OnboardingDeps } from "./modules/onboarding/service";
 import { requestLogger } from "./plugins/request-logger";
+import type { Mailer } from "./services/mailer";
 
 /**
- * Aplicação Elysia — montada via `createApp(env)` para manter o app
- * desacoplado do processo (testável sem rede/variáveis globais).
+ * Aplicação Elysia — montada via `createApp(env, deps)` para manter o app
+ * desacoplado do processo (testável com outro banco/mailer, sem estado global).
  *
  * Convenções do contrato (docs/API_CONTRACT.md):
  * - §1: todo erro responde o envelope { error: { code, message } }
  * - §12: GET /health → { status, version, db, waha }
  * - Rotas de negócio entram por módulo em src/modules/<dominio>
  */
+export interface AppDeps {
+  prisma: PrismaClient;
+  mailer: Mailer;
+}
 
 const WAHA_PROBE_TIMEOUT_MS = 1500;
 
@@ -29,7 +40,34 @@ async function probeWaha(env: Env): Promise<"ok" | "down"> {
   }
 }
 
-export function createApp(env: Env) {
+async function probeDb(prisma: PrismaClient): Promise<"ok" | "down"> {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    return "ok";
+  } catch {
+    return "down";
+  }
+}
+
+export function createApp(env: Env, deps: AppDeps) {
+  const authDeps: AuthDeps = {
+    prisma: deps.prisma,
+    mailer: deps.mailer,
+    config: {
+      jwtSecret: env.jwtSecret,
+      // TTL finito (#192 proíbe sessão sem expiração); MVP: 12h de sessão de trabalho.
+      sessionTtlSeconds: 12 * 3600,
+      emailVerificationTtlHours: 24,
+      passwordResetTtlMinutes: 30,
+      verificationResendPerHour: 3,
+      webAppUrl: env.webAppUrl,
+    },
+  };
+  const onboardingDeps: OnboardingDeps = {
+    prisma: deps.prisma,
+    jwtSecret: env.jwtSecret,
+  };
+
   const app = new Elysia({ prefix: "/api" })
     .use(requestLogger)
     .use(
@@ -43,8 +81,7 @@ export function createApp(env: Env) {
       async () => ({
         status: "ok",
         version: env.version,
-        // db: permanece declarado como pendente até a integração Prisma ser adicionada.
-        db: "pending" as const,
+        db: await probeDb(deps.prisma),
         waha: await probeWaha(env),
       }),
       {
@@ -57,6 +94,14 @@ export function createApp(env: Env) {
       },
     )
     .onError(({ code, error, status }) => {
+      // Erros de domínio (ApiError) → envelope §2, num ponto único de tradução.
+      // Registrado ANTES dos módulos: eventos do Elysia valem para rotas
+      // registradas depois deste hook.
+      if (error instanceof ApiError) {
+        return status(error.httpStatus, {
+          error: { code: error.code, message: error.message },
+        });
+      }
       // §1 do contrato — envelope { error: { code, message } }, stack nunca vaza
       switch (code) {
         case "NOT_FOUND":
@@ -80,7 +125,9 @@ export function createApp(env: Env) {
             },
           });
       }
-    });
+    })
+    .use(authModule(authDeps))
+    .use(onboardingModule(onboardingDeps));
 
   return app;
 }

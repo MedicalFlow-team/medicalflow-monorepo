@@ -15,6 +15,8 @@ export interface Env {
   corsOrigin: string;
   wahaBaseUrl: string;
   wahaApiKey: string | null;
+  /** Base pública do front (usada nos links de e-mail). */
+  webAppUrl: string;
 }
 
 function required(name: string): string {
@@ -41,5 +43,6 @@ export function loadEnv(): Env {
     corsOrigin: optional("CORS_ORIGIN", "http://localhost:3000"),
     wahaBaseUrl: optional("WAHA_BASE_URL", "http://localhost:3002"),
     wahaApiKey: process.env.WAHA_API_KEY ?? null,
+    webAppUrl: optional("APP_WEB_URL", "http://localhost:3000"),
   };
 }

@@ -1,0 +1,270 @@
+import { hash, verify as verifyHash } from "argon2";
+import type { Prisma, PrismaClient } from "../../generated/prisma/client";
+import { normalizeEmail } from "../../lib/slug";
+import { generateToken, hashToken } from "../../lib/tokens";
+import type { Mailer } from "../../services/mailer";
+import { signSessionToken } from "../../services/session-token";
+import {
+  AccountNotVerified,
+  InvalidCredentials,
+  InvalidToken,
+  RateLimited,
+} from "./errors";
+import type {
+  ForgotPasswordBody,
+  LoginBody,
+  LoginResponse,
+  RegisterBody,
+  ResetPasswordBody,
+} from "./model";
+
+/**
+ * Regras de negócio de autenticação (#207/#208/#209, decisões #192).
+ *
+ * Independente de Context/HTTP: recebe dependências por injeção (prisma,
+ * mailer, config), o que mantém o módulo testável e desacoplado.
+ */
+export interface AuthConfig {
+  jwtSecret: string;
+  sessionTtlSeconds: number;
+  emailVerificationTtlHours: number;
+  passwordResetTtlMinutes: number;
+  verificationResendPerHour: number;
+  webAppUrl: string;
+}
+
+export interface AuthDeps {
+  prisma: PrismaClient;
+  mailer: Mailer;
+  config: AuthConfig;
+}
+
+export const SESSION_REVOKED_ON_RESET = "reset-password";
+
+const GENERIC_REGISTER_MESSAGE =
+  "Conta criada com sucesso. Verifique seu e-mail para continuar.";
+const GENERIC_RESET_MESSAGE =
+  "Se o e-mail estiver cadastrado, as instruções serão enviadas.";
+
+export class AuthService {
+  constructor(private readonly deps: AuthDeps) {}
+
+  /** #207 — cadastro público; resposta nunca revela e-mail existente. */
+  async register(body: RegisterBody): Promise<{ message: string }> {
+    const email = normalizeEmail(body.email);
+
+    const existing = await this.deps.prisma.user.findUnique({
+      where: { email },
+    });
+    if (existing) {
+      // Mesma forma/latência de resposta do caminho de sucesso (anti-enumeração).
+      await this.deps.mailer.send({
+        to: email,
+        subject: "MedicalFlow — confirmação de cadastro",
+        text: this.verificationText(
+          await this.mintToken(existing.id, "EMAIL_VERIFICATION"),
+        ),
+      });
+      return { message: GENERIC_REGISTER_MESSAGE };
+    }
+
+    const passwordHash = await hash(body.password);
+    const user = await this.deps.prisma.user.create({
+      data: {
+        email,
+        fullName: body.fullName.trim(),
+        passwordHash,
+      },
+    });
+
+    const token = await this.mintToken(user.id, "EMAIL_VERIFICATION");
+    await this.deps.mailer.send({
+      to: email,
+      subject: "MedicalFlow — confirmação de cadastro",
+      text: this.verificationText(token),
+    });
+
+    return { message: GENERIC_REGISTER_MESSAGE };
+  }
+
+  /** #207 — confirmação de e-mail com token de uso único (hash no banco). */
+  async verifyEmail(tokenValue: string): Promise<{ message: string }> {
+    const record = await this.consumeToken(tokenValue, "EMAIL_VERIFICATION");
+    await this.deps.prisma.user.update({
+      where: { id: record.userId },
+      data: { emailVerified: true },
+    });
+    return { message: "E-mail confirmado com sucesso." };
+  }
+
+  /** #208 — login; falhas indistinguíveis; pendente recebe estado claro. */
+  async login(body: LoginBody): Promise<LoginResponse> {
+    const email = normalizeEmail(body.email);
+    const user = await this.deps.prisma.user.findUnique({
+      where: { email },
+      include: {
+        memberships: {
+          where: { status: "ACTIVE" },
+          include: { organization: true },
+        },
+        onboarding: true,
+      },
+    });
+
+    if (!user || !(await verifyHash(user.passwordHash, body.password))) {
+      throw InvalidCredentials();
+    }
+    if (!user.emailVerified) {
+      throw AccountNotVerified();
+    }
+
+    const expiresAt = new Date(
+      Date.now() + this.deps.config.sessionTtlSeconds * 1000,
+    );
+    const session = await this.deps.prisma.session.create({
+      data: { userId: user.id, expiresAt },
+    });
+    const token = signSessionToken(
+      { sid: session.id, sub: user.id },
+      this.deps.config.jwtSecret,
+      this.deps.config.sessionTtlSeconds,
+    );
+
+    return {
+      token,
+      user: { id: user.id, email: user.email, fullName: user.fullName },
+      availableOrganizations: user.memberships.map((m) => ({
+        id: m.organization.id,
+        name: m.organization.name,
+        slug: m.organization.slug,
+        role: m.role,
+        isOwner: m.organization.ownerId === user.id,
+      })),
+      onboardingCompleted: user.onboarding?.completed ?? false,
+    };
+  }
+
+  /** #209 — solicitação de reset; resposta idêntica exista ou não o e-mail. */
+  async forgotPassword(body: ForgotPasswordBody): Promise<{ message: string }> {
+    const email = normalizeEmail(body.email);
+    const user = await this.deps.prisma.user.findUnique({ where: { email } });
+
+    if (user) {
+      const token = await this.mintToken(user.id, "PASSWORD_RESET");
+      await this.deps.mailer.send({
+        to: email,
+        subject: "MedicalFlow — redefinição de senha",
+        text: this.resetText(token),
+      });
+    }
+    return { message: GENERIC_RESET_MESSAGE };
+  }
+
+  /**
+   * #209 — redefine a senha e encerra todas as sessões anteriores.
+   * Transação: consumo do token + troca de senha + revogação atômicos.
+   */
+  async resetPassword(body: ResetPasswordBody): Promise<{ message: string }> {
+    const tokenHash = hashToken(body.token);
+    const result = await this.deps.prisma.$transaction(
+      async (tx: Prisma.TransactionClient) => {
+        const record = await tx.verificationToken.findUnique({
+          where: { tokenHash },
+        });
+        if (
+          !record ||
+          record.type !== "PASSWORD_RESET" ||
+          record.usedAt ||
+          record.expiresAt < new Date()
+        ) {
+          return null;
+        }
+        await tx.verificationToken.update({
+          where: { id: record.id },
+          data: { usedAt: new Date() },
+        });
+        await tx.user.update({
+          where: { id: record.userId },
+          data: { passwordHash: await hash(body.newPassword) },
+        });
+        await tx.session.updateMany({
+          where: { userId: record.userId, revokedAt: null },
+          data: { revokedAt: new Date() },
+        });
+        return true;
+      },
+    );
+
+    if (!result) throw InvalidToken();
+    return {
+      message:
+        "Senha alterada com sucesso. Todas as sessões anteriores foram encerradas.",
+    };
+  }
+
+  /**
+   * Emite token de uso único, guardando só o hash. Reenvio de verificação
+   * tem limite por janela de 1h (#207: "reenvio limitado").
+   */
+  async mintToken(
+    userId: string,
+    type: "EMAIL_VERIFICATION" | "PASSWORD_RESET",
+  ): Promise<string> {
+    if (type === "EMAIL_VERIFICATION") {
+      const windowStart = new Date(Date.now() - 60 * 60 * 1000);
+      const recent = await this.deps.prisma.verificationToken.count({
+        where: { userId, type, createdAt: { gt: windowStart } },
+      });
+      if (recent >= this.deps.config.verificationResendPerHour) {
+        throw RateLimited();
+      }
+    }
+
+    const token = generateToken();
+    const ttl =
+      type === "EMAIL_VERIFICATION"
+        ? this.deps.config.emailVerificationTtlHours * 3600 * 1000
+        : this.deps.config.passwordResetTtlMinutes * 60 * 1000;
+
+    await this.deps.prisma.verificationToken.create({
+      data: {
+        userId,
+        type,
+        tokenHash: hashToken(token),
+        expiresAt: new Date(Date.now() + ttl),
+      },
+    });
+    return token;
+  }
+
+  /** Consome um token de uso único: válido → marca usado; caso contrário erro. */
+  private async consumeToken(
+    tokenValue: string,
+    type: "EMAIL_VERIFICATION" | "PASSWORD_RESET",
+  ) {
+    const record = await this.deps.prisma.verificationToken.findUnique({
+      where: { tokenHash: hashToken(tokenValue) },
+    });
+    if (
+      !record ||
+      record.type !== type ||
+      record.usedAt ||
+      record.expiresAt < new Date()
+    ) {
+      throw InvalidToken();
+    }
+    await this.deps.prisma.verificationToken.update({
+      where: { id: record.id },
+      data: { usedAt: new Date() },
+    });
+    return record;
+  }
+
+  private verificationText(token: string): string {
+    return `Confirme seu e-mail no MedicalFlow:\n${this.deps.config.webAppUrl}/verify-email?token=${token}\n\nO link é de uso único e expira em ${this.deps.config.emailVerificationTtlHours}h.`;
+  }
+
+  private resetText(token: string): string {
+    return `Redefina sua senha no MedicalFlow:\n${this.deps.config.webAppUrl}/reset-password?token=${token}\n\nO link é de uso único e expira em ${this.deps.config.passwordResetTtlMinutes}min.`;
+  }
+}

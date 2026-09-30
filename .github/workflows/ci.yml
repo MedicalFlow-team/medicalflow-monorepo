@@ -9,9 +9,6 @@ jobs:
   api:
     name: API (lint + typecheck + testes)
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: apps/api
     steps:
       - uses: actions/checkout@v4
 
@@ -19,17 +16,26 @@ jobs:
         with:
           bun-version: latest
 
+      # Workspaces Bun 1.4: um único lockfile na raiz (apps/api/bun.lock não existe mais).
       - name: Instalar dependências
         run: bun install --frozen-lockfile
 
+      # src/generated é gitignored — o client precisa nascer antes do typecheck.
+      - name: Gerar Prisma Client
+        working-directory: apps/api
+        run: bunx prisma generate
+
       - name: Lint (Biome)
+        working-directory: apps/api
         run: bun run lint
 
       - name: Type-check (tsc)
+        working-directory: apps/api
         run: bun run typecheck
 
       - name: Testes
-        run: bun test
+        working-directory: apps/api
+        run: bun run test
 
   web:
     name: Web (lint + build)
