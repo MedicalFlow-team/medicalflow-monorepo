@@ -1,28 +1,36 @@
-# --- deps (runtime) ---
-FROM oven/bun:1.4-slim AS deps
-WORKDIR /app
-COPY package.json bun.lock ./
-RUN bun install --frozen-lockfile --production
-
-# --- build: gera o Prisma Client a partir do schema ---
-# src/generated é gitignored, então o client nasce aqui.
+# --- build: deps do workspace api (devDeps incluídos p/ prisma CLI) + generate ---
+# Contexto de build = RAIZ do repo (bun.lock único do workspace vive lá).
 FROM oven/bun:1.4-slim AS build
 WORKDIR /app
 COPY package.json bun.lock ./
-RUN bun install --frozen-lockfile
-COPY prisma ./prisma
-COPY prisma.config.ts ./
-RUN bunx prisma generate
+COPY apps/api/package.json apps/api/
+RUN bun install --frozen-lockfile --filter medflow-api
+COPY apps/api/prisma ./apps/api/prisma
+COPY apps/api/prisma.config.ts ./apps/api/
+# src/generated é gitignored: o Prisma Client nasce aqui (Bun roda TS nativo).
+RUN cd apps/api && bunx prisma generate
+
+# --- deps: somente produção do workspace api ---
+FROM oven/bun:1.4-slim AS deps
+WORKDIR /app
+COPY package.json bun.lock ./
+COPY apps/api/package.json apps/api/
+RUN bun install --frozen-lockfile --production --filter medflow-api
+# alguns pacotes (pg, @prisma/adapter-pg) ficam em apps/api/node_modules:
+# garante que o path exista para o COPY do estágio runtime.
+RUN mkdir -p apps/api/node_modules
 
 # --- runtime ---
-# Bun executa TypeScript nativamente: sem etapa de build do bundle.
+# Bun executa TypeScript nativamente: sem bundle. Layout espelha o monorepo
+# para a resolução de node_modules (raiz + workspace) funcionar igual ao dev.
 FROM oven/bun:1.4-slim AS runtime
-WORKDIR /app
+WORKDIR /app/apps/api
 ENV NODE_ENV=production
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=build /app/src/generated ./src/generated
-COPY package.json ./
-COPY src ./src
+COPY --from=deps /app/node_modules /app/node_modules
+COPY --from=deps /app/apps/api/node_modules ./node_modules
+COPY --from=build /app/apps/api/src/generated ./src/generated
+COPY apps/api/package.json ./
+COPY apps/api/src ./src
 USER bun
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
