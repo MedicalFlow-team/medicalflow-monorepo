@@ -99,7 +99,9 @@ Em caso de falha (códigos HTTP 4xx e 5xx), a API responde com a seguinte estrut
 * **Descrição:** Autentica com e-mail e senha e inicia a sessão do usuário.
 * **Permissão:** Pública.
 * **Body:** `{ "email": "maria.silva@exemplo.com", "password": "<senha_segura>" }`
-* **Respostas:** `200 OK` (`{ "user": { "id": "usr_1", "email": "...", "fullName": "..." }, "availableOrganizations": [...] }`), `401 INVALID_CREDENTIALS`, `401 ACCOUNT_NOT_VERIFIED`.
+* **Respostas:** `200 OK` (`{ "user": { "id": "usr_1", "email": "...", "fullName": "..." }, "availableOrganizations": [ { "id", "name", "slug", "role", "isOwner" } ], "token": "...", "onboardingCompleted": false }`), `401 INVALID_CREDENTIALS`, `401 ACCOUNT_NOT_VERIFIED`.
+
+> `isOwner` = `true` quando a clínica foi criada pelo próprio usuário (ele é o pagador da assinatura); membros convidados recebem `isOwner: false` e não pagam.
 
 #### `POST /auth/forgot-password`
 * **Descrição:** Solicita redefinição de senha. Retorna resposta indistinguível para evitar enumeração de contas.
@@ -135,7 +137,7 @@ Em caso de falha (códigos HTTP 4xx e 5xx), a API responde com a seguinte estrut
 * **Respostas:** `200 OK`, `400 VALIDATION_ERROR`.
 
 #### `POST /onboarding/organization`
-* **Descrição:** Cria a primeira clínica do usuário e o vincula como administrador.
+* **Descrição:** Cria a primeira clínica do usuário e o vincula como administrador. Cria também a assinatura da clínica (R$ 89/mês, status `PENDING_PAYMENT` até o fluxo de cobrança ativar). Clínica, vínculo e assinatura nascem na mesma transação — falha em qualquer parte não deixa clínica órfã.
 * **Permissão:** Autenticado.
 * **Cabeçalho Obrigatório:** `Idempotency-Key`
 * **Body:**
@@ -153,7 +155,8 @@ Em caso de falha (códigos HTTP 4xx e 5xx), a API responde com a seguinte estrut
     }
   }
   ```
-* **Respostas:** `201 Created` (`{ "organization": { "id": "org_1", "name": "...", "slug": "vida-e-saude" } }`), `409 ALREADY_EXISTS`.
+  `slug` é opcional: ausente, é derivado do `name` (normalizado). `phone`/`address` entram com as issues de dados institucionais (#303).
+* **Respostas:** `201 Created` (`{ "organization": { "id": "org_1", "name": "...", "slug": "vida-e-saude", "role": "ADMIN", "isOwner": true } }`), `409 ALREADY_EXISTS`.
 
 #### `POST /onboarding/schedule-rules`
 * **Descrição:** Configura os dias e horários padrão de atendimento da clínica durante o onboarding.
@@ -519,10 +522,13 @@ A definição completa e o schema Prisma oficial para o banco PostgreSQL são ma
 👉 **[Issue #199 — Consolidar o modelo de dados relacional e schema do Prisma](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/199)**
 
 ### Principais Entidades e Vínculos:
-* **`User` / `Account`**: Usuário e credenciais da conta pessoal.
-* **`Session`**: Sessões ativas de login com data de expiração e IP/User-Agent.
-* **`Organization`**: Clínicas do sistema com `slug` único e fuso horário.
-* **`Membership`**: Vínculo entre `User` e `Organization` com `roleId` e status.
+* **`User` / `Account`**: Usuário e credenciais da conta pessoal. Nenhum papel global: toda permissão nasce de um `Membership` em uma clínica.
+* **`Session`**: Sessões ativas de login com data de expiração e IP/User-Agent. Autenticação via `Authorization: Bearer <JWT>` cujo payload carrega o ID da `Session` — revogação imediata no banco.
+* **`VerificationToken`**: Tokens de uso único (verificação de e-mail, reset de senha) armazenados **apenas como SHA-256**, com TTL e `usedAt`.
+* **`Organization`**: Clínicas do sistema com `slug` único e `ownerId` (o criador — pagador da assinatura).
+* **`Subscription`**: Assinatura por clínica: R$ 89/mês, status `PENDING_PAYMENT`/`ACTIVE`/`PAST_DUE`/`CANCELED`. Somente o dono paga; membros convidados não pagam.
+* **`Membership`**: Vínculo entre `User` e `Organization` com `role` (ADMIN/PROFESSIONAL/RECEPTIONIST) e status.
+* **`OnboardingProgress`**: Estado do assistente de primeiro acesso, persistido por conta.
 * **`Role` & `Permission`**: Papéis e permissões granulares por clínica.
 * **`Patient`**: Cadastros de pacientes isolados por `organizationId`.
 * **`Appointment`**: Agendamentos ligados a `Patient`, `User` (profissional) e `Organization`.

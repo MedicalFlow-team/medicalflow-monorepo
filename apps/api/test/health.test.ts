@@ -1,20 +1,28 @@
 import { describe, expect, test } from "bun:test";
 import { createApp } from "../src/app";
 import type { Env } from "../src/config/env";
+import type { PrismaClient } from "../src/generated/prisma/client";
 
 const testEnv: Env = {
   port: 0,
   nodeEnv: "test",
   version: "0.1.0-test",
   jwtSecret: "test_jwt_secret_placeholder",
-  databaseUrl: "postgresql://test:test@localhost:5432/test",
+  databaseUrl: "postgresql://unused",
   // WAHA inexistente: o probe DEVE degradar para "down" sem derrubar o /health
   corsOrigin: "http://localhost:3000",
   wahaBaseUrl: "http://127.0.0.1:1",
   wahaApiKey: null,
+  webAppUrl: "http://localhost:3000",
 };
 
-const app = createApp(testEnv);
+// Stub do Prisma: health com banco inacessível deve degradar para "down".
+const prismaStub = {
+  $queryRaw: async () => Promise.reject(new Error("db down")),
+} as unknown as PrismaClient;
+const mailerStub = { send: async () => {} };
+
+const app = createApp(testEnv, { prisma: prismaStub, mailer: mailerStub });
 
 describe("GET /api/health", () => {
   test("responde o formato do contrato §12", async () => {
@@ -29,7 +37,7 @@ describe("GET /api/health", () => {
     };
     expect(body.status).toBe("ok");
     expect(body.version).toBe("0.1.0-test");
-    expect(body.db).toBe("pending");
+    expect(body.db).toBe("down");
     expect(["ok", "down"]).toContain(body.waha);
   });
 
@@ -52,5 +60,14 @@ describe("Envelope de erro (contrato §1)", () => {
     };
     expect(body.error.code).toBe("NOT_FOUND");
     expect(typeof body.error.message).toBe("string");
+  });
+
+  test("rota autenticada sem token → 401 UNAUTHENTICATED", async () => {
+    const res = await app.handle(
+      new Request("http://localhost/api/onboarding/progress"),
+    );
+    expect(res.status).toBe(401);
+    const body = (await res.json()) as { error: { code: string } };
+    expect(body.error.code).toBe("UNAUTHENTICATED");
   });
 });

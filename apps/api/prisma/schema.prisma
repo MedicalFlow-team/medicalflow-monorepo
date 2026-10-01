@@ -1,0 +1,151 @@
+// MedicalFlow — schema Prisma (issue #199, escopo inicial: identidade + organizações)
+//
+// Convenções (docs/API_CONTRACT.md §1):
+// - IDs: strings opacas (UUID v4 gerado no banco);
+// - Datas: Timestamp(3) UTC;
+// - Isolamento: toda tabela de domínio clínico carrega organizationId.
+//
+// Escopo DESTE PR (base de auth + onboarding):
+//   User, Session, VerificationToken, PasswordResetToken,
+//   Organization, Membership, Role.
+// Modelos clínicos (Patient, Appointment, ...) entram nas issues seguintes.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum MembershipRole {
+  ADMIN
+  PROFESSIONAL
+  RECEPTIONIST
+}
+
+enum MembershipStatus {
+  ACTIVE
+  SUSPENDED
+  INVITED
+}
+
+enum TokenType {
+  EMAIL_VERIFICATION
+  PASSWORD_RESET
+}
+
+model User {
+  id            String   @id @default(uuid()) @db.Uuid
+  email         String   @unique
+  fullName      String
+  passwordHash  String
+  emailVerified Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  sessions           Session[]
+  tokens             VerificationToken[]
+  memberships        Membership[]
+  onboarding         OnboardingProgress?
+  ownedOrganizations Organization[]      @relation("OrganizationOwner")
+
+  @@index([email])
+}
+
+model Session {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+  userAgent String?
+  ipAddress String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// Tokens de uso único (verificação de e-mail, reset de senha).
+// O token em si NUNCA é armazenado: guardamos apenas o SHA-256.
+model VerificationToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  type      TokenType
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type])
+}
+
+model Organization {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  slug      String   @unique
+  ownerId   String   @db.Uuid
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  owner        User          @relation("OrganizationOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  memberships  Membership[]
+  subscription Subscription?
+}
+
+model Membership {
+  id             String           @id @default(uuid()) @db.Uuid
+  userId         String           @db.Uuid
+  organizationId String           @db.Uuid
+  role           MembershipRole
+  status         MembershipStatus @default(ACTIVE)
+  createdAt      DateTime         @default(now())
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId])
+  @@index([organizationId])
+}
+
+// Progresso do onboarding guiado (issue #215) — sobrevive a recarregar a página.
+model OnboardingProgress {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @unique @db.Uuid
+  currentStep String   @default("ORGANIZATION_SETUP")
+  completed   Boolean  @default(false)
+  draftData   Json     @default("{}")
+  version     Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Assinatura da clínica (decisão de produto): cada clínica criada exige
+// assinatura de R$ 89/mês paga pelo dono; convidados não pagam.
+// Cobrança/gateway é task futura — aqui registramos preço e estado.
+enum SubscriptionStatus {
+  PENDING_PAYMENT
+  ACTIVE
+  PAST_DUE
+  CANCELED
+}
+
+model Subscription {
+  id             String             @id @default(uuid()) @db.Uuid
+  organizationId String             @unique @db.Uuid
+  status         SubscriptionStatus @default(PENDING_PAYMENT)
+  priceCents     Int                @default(8900)
+  currency       String             @default("BRL")
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+}
