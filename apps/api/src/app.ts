@@ -7,6 +7,7 @@ import { authModule } from "./modules/auth";
 import type { AuthDeps } from "./modules/auth/service";
 import { onboardingModule } from "./modules/onboarding";
 import type { OnboardingDeps } from "./modules/onboarding/service";
+import { organizationsModule } from "./modules/organizations";
 import { requestLogger } from "./plugins/request-logger";
 import type { Mailer } from "./services/mailer";
 
@@ -127,7 +128,10 @@ export function createApp(env: Env, deps: AppDeps) {
       }
     })
     .use(authModule(authDeps))
-    .use(onboardingModule(onboardingDeps));
+    .use(onboardingModule(onboardingDeps))
+    .use(
+      organizationsModule({ prisma: deps.prisma, jwtSecret: env.jwtSecret }),
+    );
 
   return app;
 }
