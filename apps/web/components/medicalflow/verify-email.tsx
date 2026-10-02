@@ -2,11 +2,15 @@
 
 import Link from "next/link";
 import type { FormEvent } from "react";
-import { useEffect, useState } from "react";
+import { startTransition, useEffect, useState } from "react";
+import {
+  resendVerificationAction,
+  verifyEmailAction,
+} from "@/app/(auth)/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { submitAuth } from "@/lib/auth";
+import { unwrapActionResult } from "@/lib/auth";
 
 const COOLDOWN_SECONDS = 60;
 
@@ -33,28 +37,30 @@ export function VerifyEmail({
     return () => window.clearInterval(timer);
   }, [retryAt]);
 
-  async function confirm() {
+  function confirm() {
     if (!token || pending) return;
     setPending(true);
     setError("");
-    try {
-      await submitAuth("verify-email", { token });
-      setVerified(true);
-      setMessage("E-mail confirmado. Entre na sua conta para continuar.");
-    } catch (cause) {
-      setError(
-        cause instanceof Error && cause.name === "INVALID_TOKEN"
-          ? "Este link é inválido, expirou ou já foi usado. Solicite outro abaixo."
-          : cause instanceof Error
-            ? cause.message
-            : "Não foi possível confirmar o e-mail.",
-      );
-    } finally {
-      setPending(false);
-    }
+    startTransition(async () => {
+      try {
+        unwrapActionResult(await verifyEmailAction({ token }));
+        setVerified(true);
+        setMessage("E-mail confirmado. Entre na sua conta para continuar.");
+      } catch (cause) {
+        setError(
+          cause instanceof Error && cause.name === "INVALID_TOKEN"
+            ? "Este link é inválido, expirou ou já foi usado. Solicite outro abaixo."
+            : cause instanceof Error
+              ? cause.message
+              : "Não foi possível confirmar o e-mail.",
+        );
+      } finally {
+        setPending(false);
+      }
+    });
   }
 
-  async function resend(event: FormEvent<HTMLFormElement>) {
+  function resend(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (pending || Date.now() < retryAt) return;
     const email = String(
@@ -63,22 +69,24 @@ export function VerifyEmail({
     setPending(true);
     setError("");
     setMessage("");
-    try {
-      await submitAuth("resend-verification", { email });
-      setMessage(
-        "Se a conta estiver pendente, um novo link será enviado para o e-mail informado.",
-      );
-      const nextRetry = Date.now() + COOLDOWN_SECONDS * 1000;
-      setRetryAt(nextRetry);
-    } catch (cause) {
-      setError(
-        cause instanceof Error
-          ? cause.message
-          : "Não foi possível solicitar outro link.",
-      );
-    } finally {
-      setPending(false);
-    }
+    startTransition(async () => {
+      try {
+        unwrapActionResult(await resendVerificationAction({ email }));
+        setMessage(
+          "Se a conta estiver pendente, um novo link será enviado para o e-mail informado.",
+        );
+        const nextRetry = Date.now() + COOLDOWN_SECONDS * 1000;
+        setRetryAt(nextRetry);
+      } catch (cause) {
+        setError(
+          cause instanceof Error
+            ? cause.message
+            : "Não foi possível solicitar outro link.",
+        );
+      } finally {
+        setPending(false);
+      }
+    });
   }
 
   return (

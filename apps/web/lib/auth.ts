@@ -12,9 +12,15 @@ export type LoginResult = {
   onboardingCompleted: boolean;
 };
 
-export type ApiFailure = {
-  error?: { code?: string; message?: string };
+export type LoginInput = { email: string; password: string };
+export type RegisterInput = LoginInput & {
+  fullName: string;
+  acceptedTerms: true;
 };
+export type ResetPasswordInput = { token: string; newPassword: string };
+export type ActionResult<T> =
+  | { ok: true; data: T }
+  | { ok: false; error: { code: string; message: string } };
 
 export function safeReturnPath(value: string | null): string | null {
   if (!value || !value.startsWith("/") || value.startsWith("//")) return null;
@@ -49,24 +55,11 @@ export function destinationAfterLogin(
   return "/select-organization";
 }
 
-export async function submitAuth<T>(
-  action: string,
-  body: Record<string, string>,
-): Promise<T> {
-  const response = await fetch(`/api/auth/${action}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-    cache: "no-store",
-  });
-  const result: unknown = await response.json();
-  if (!response.ok) {
-    const failure = result as ApiFailure;
-    const error = new Error(
-      failure.error?.message ?? "Não foi possível concluir a solicitação.",
-    );
-    error.name = failure.error?.code ?? "REQUEST_FAILED";
+export function unwrapActionResult<T>(result: ActionResult<T>): T {
+  if (!result.ok) {
+    const error = new Error(result.error.message);
+    error.name = result.error.code;
     throw error;
   }
-  return result as T;
+  return result.data;
 }

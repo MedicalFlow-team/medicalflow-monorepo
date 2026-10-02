@@ -3,16 +3,18 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { FormEvent } from "react";
-import { useState } from "react";
+import { startTransition, useState } from "react";
+import {
+  forgotPasswordAction,
+  loginAction,
+  registerAction,
+  resetPasswordAction,
+} from "@/app/(auth)/actions";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  destinationAfterLogin,
-  type LoginResult,
-  submitAuth,
-} from "@/lib/auth";
+import { destinationAfterLogin, unwrapActionResult } from "@/lib/auth";
 
 type AuthMode = "login" | "register" | "forgot-password" | "reset-password";
 
@@ -44,7 +46,7 @@ export function AuthForm({
   const buttonClass =
     "h-[46px] w-full cursor-pointer rounded-lg text-base font-normal";
 
-  async function onSubmit(event: FormEvent<HTMLFormElement>) {
+  function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (pending) return;
     const data = new FormData(event.currentTarget);
@@ -68,55 +70,64 @@ export function AuthForm({
     }
 
     setPending(true);
-    try {
-      if (mode === "login") {
-        const result = await submitAuth<LoginResult>("login", {
-          email,
-          password,
-        });
-        router.replace(destinationAfterLogin(result, returnTo ?? null));
-        router.refresh();
-      } else if (mode === "register") {
-        await submitAuth("register", {
-          fullName: String(data.get("fullName") ?? "").trim(),
-          email,
-          password,
-        });
-        router.push(`/verify-email?email=${encodeURIComponent(email)}`);
-      } else if (mode === "forgot-password") {
-        await submitAuth("forgot-password", { email });
-        setMessage(
-          "Se o e-mail estiver cadastrado, você receberá um link para redefinir a senha.",
-        );
-      } else {
-        await submitAuth("reset-password", {
-          token: token ?? "",
-          newPassword: password,
-        });
-        setMessage(
-          "Senha redefinida. Suas sessões anteriores foram encerradas.",
-        );
+    startTransition(async () => {
+      try {
+        if (mode === "login") {
+          const result = unwrapActionResult(
+            await loginAction({
+              email,
+              password,
+            }),
+          );
+          router.replace(destinationAfterLogin(result, returnTo ?? null));
+          router.refresh();
+        } else if (mode === "register") {
+          unwrapActionResult(
+            await registerAction({
+              fullName: String(data.get("fullName") ?? "").trim(),
+              email,
+              password,
+              acceptedTerms: true,
+            }),
+          );
+          router.push(`/verify-email?email=${encodeURIComponent(email)}`);
+        } else if (mode === "forgot-password") {
+          unwrapActionResult(await forgotPasswordAction({ email }));
+          setMessage(
+            "Se o e-mail estiver cadastrado, você receberá um link para redefinir a senha.",
+          );
+        } else {
+          unwrapActionResult(
+            await resetPasswordAction({
+              token: token ?? "",
+              newPassword: password,
+            }),
+          );
+          setMessage(
+            "Senha redefinida. Suas sessões anteriores foram encerradas.",
+          );
+        }
+      } catch (cause) {
+        if (cause instanceof Error && cause.name === "ACCOUNT_NOT_VERIFIED") {
+          router.push(`/verify-email?email=${encodeURIComponent(email)}`);
+        } else if (cause instanceof Error && cause.name === "INVALID_TOKEN") {
+          setError("Este link é inválido ou expirou. Solicite um novo link.");
+        } else if (
+          cause instanceof Error &&
+          cause.name === "INVALID_CREDENTIALS"
+        ) {
+          setError("E-mail ou senha inválidos.");
+        } else {
+          setError(
+            cause instanceof Error
+              ? cause.message
+              : "Não foi possível concluir a solicitação.",
+          );
+        }
+      } finally {
+        setPending(false);
       }
-    } catch (cause) {
-      if (cause instanceof Error && cause.name === "ACCOUNT_NOT_VERIFIED") {
-        router.push(`/verify-email?email=${encodeURIComponent(email)}`);
-      } else if (cause instanceof Error && cause.name === "INVALID_TOKEN") {
-        setError("Este link é inválido ou expirou. Solicite um novo link.");
-      } else if (
-        cause instanceof Error &&
-        cause.name === "INVALID_CREDENTIALS"
-      ) {
-        setError("E-mail ou senha inválidos.");
-      } else {
-        setError(
-          cause instanceof Error
-            ? cause.message
-            : "Não foi possível concluir a solicitação.",
-        );
-      }
-    } finally {
-      setPending(false);
-    }
+    });
   }
 
   return (
