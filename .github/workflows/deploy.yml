@@ -19,8 +19,9 @@ jobs:
     strategy:
       matrix:
         include:
-          - { name: api, context: ./apps/api }
-          - { name: web, context: ./apps/web }
+          # api: contexto raiz — o bun.lock único do workspace vive na raiz
+          - { name: api, context: ., file: apps/api/Dockerfile }
+          - { name: web, context: ./apps/web, file: apps/web/Dockerfile }
     steps:
       - uses: actions/checkout@v4
 
@@ -37,6 +38,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: ${{ matrix.context }}
+          file: ${{ matrix.file }}
           push: true
           tags: |
             ghcr.io/medicalflow-team/medicalflow-monorepo-${{ matrix.name }}:${{ github.sha }}

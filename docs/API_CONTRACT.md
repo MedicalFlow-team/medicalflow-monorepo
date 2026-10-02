@@ -64,7 +64,7 @@ Em caso de falha (códigos HTTP 4xx e 5xx), a API responde com a seguinte estrut
 | **401** | `UNAUTHENTICATED` | Credenciais ausentes, inválidas ou sessão encerrada. |
 | **401** | `ACCOUNT_NOT_VERIFIED` | Tentativa de login ou uso da API antes da confirmação do e-mail. |
 | **403** | `PERMISSION_DENIED` | Usuário autenticado sem a permissão necessária no RBAC. |
-| **403** | `MEMBERSHIP_INACTIVE` | Vínculo com a organização está suspenso ou inativo. |
+| **403** | `MEMBERSHIP_INACTIVE` | Vínculo com a organização está suspenso ou ainda não foi ativado (`INVITED`). |
 | **404** | `NOT_FOUND` | Recurso não encontrado (usado também para ocultar existência de recursos de outros tenants). |
 | **409** | `VERSION_CONFLICT` | Concorrência otimista violada (o recurso foi modificado por outro usuário). |
 | **409** | `IDEMPOTENCY_CONFLICT` | A chave de idempotência está em uso por uma requisição concorrente ainda em processamento. |
@@ -108,7 +108,9 @@ Em caso de falha (códigos HTTP 4xx e 5xx), a API responde com a seguinte estrut
 * **Descrição:** Autentica com e-mail e senha e inicia a sessão do usuário.
 * **Permissão:** Pública.
 * **Body:** `{ "email": "maria.silva@exemplo.com", "password": "<senha_segura>" }`
-* **Respostas:** `200 OK` (`{ "user": { "id": "usr_1", "email": "...", "fullName": "..." }, "availableOrganizations": [...] }`), `401 INVALID_CREDENTIALS`, `401 ACCOUNT_NOT_VERIFIED`.
+* **Respostas:** `200 OK` (`{ "user": { "id": "usr_1", "email": "...", "fullName": "..." }, "availableOrganizations": [ { "id", "name", "slug", "role", "isOwner" } ], "token": "...", "onboardingCompleted": false }`), `401 INVALID_CREDENTIALS`, `401 ACCOUNT_NOT_VERIFIED`.
+
+> `isOwner` = `true` quando a clínica foi criada pelo próprio usuário (ele é o pagador da assinatura); membros convidados recebem `isOwner: false` e não pagam.
 
 #### `POST /auth/forgot-password`
 * **Descrição:** Solicita redefinição de senha. Retorna resposta indistinguível para evitar enumeração de contas.
@@ -144,7 +146,7 @@ Em caso de falha (códigos HTTP 4xx e 5xx), a API responde com a seguinte estrut
 * **Respostas:** `200 OK`, `400 VALIDATION_ERROR`.
 
 #### `POST /onboarding/organization`
-* **Descrição:** Cria a primeira clínica do usuário e o vincula como administrador.
+* **Descrição:** Cria a primeira clínica do usuário e o vincula como administrador. Cria também a assinatura da clínica (R$ 89/mês, status `PENDING_PAYMENT` até o fluxo de cobrança ativar). Clínica, vínculo e assinatura nascem na mesma transação — falha em qualquer parte não deixa clínica órfã.
 * **Permissão:** Autenticado.
 * **Cabeçalho Obrigatório:** `Idempotency-Key`
 * **Body:**
@@ -162,7 +164,8 @@ Em caso de falha (códigos HTTP 4xx e 5xx), a API responde com a seguinte estrut
     }
   }
   ```
-* **Respostas:** `201 Created` (`{ "organization": { "id": "org_1", "name": "...", "slug": "vida-e-saude" } }`), `409 ALREADY_EXISTS`.
+  `slug` é opcional: ausente, é derivado do `name` (normalizado). `phone`/`address` entram com as issues de dados institucionais (#303).
+* **Respostas:** `201 Created` (`{ "organization": { "id": "org_1", "name": "...", "slug": "vida-e-saude", "role": "ADMIN", "isOwner": true } }`), `409 ALREADY_EXISTS`.
 
 #### `POST /onboarding/schedule-rules`
 * **Descrição:** Configura os dias e horários padrão de atendimento da clínica durante o onboarding.
@@ -191,7 +194,7 @@ Em caso de falha (códigos HTTP 4xx e 5xx), a API responde com a seguinte estrut
 > A issue #191 cita um arquivo `PRODUCT_SCOPE.md`, mas esse arquivo não existe no estado atual nem no histórico disponível do repositório. Até que uma fonte substituta seja indicada, a lista de módulos e rotas desta seção é o inventário canônico para validar a cobertura multi-tenant.
 
 #### `GET /organizations`
-* **Descrição:** Lista somente as clínicas nas quais a pessoa possui `Membership` ativo. Convites pendentes pertencem ao fluxo de `Invite` e não autorizam acesso.
+* **Descrição:** Lista somente as clínicas nas quais a pessoa possui `Membership` ativo. Vínculos suspensos ou ainda `INVITED` não autorizam acesso e não aparecem na seleção.
 * **Permissão:** Autenticado.
 * **Respostas:** `200 OK` (`{ "data": [ { "id": "org_1", "name": "...", "slug": "vida-e-saude", "role": "ADMIN" } ] }`), `401 UNAUTHENTICATED`.
 
@@ -216,16 +219,16 @@ O fluxo obrigatório é:
 2. Validar e normalizar `params.orgSlug` para letras minúsculas antes da consulta. Um slug sintaticamente inválido é tratado como não encontrado.
 3. Buscar `Organization` pelo `slug` globalmente único. Se não existir, retornar `404 NOT_FOUND`.
 4. Buscar `Membership` pela chave composta (`userId`, `organizationId`). Se não existir, retornar `404 NOT_FOUND` para não revelar a existência da clínica a terceiros.
-5. Se o vínculo existir, mas estiver `SUSPENDED` ou `INACTIVE`, retornar `403 MEMBERSHIP_INACTIVE`.
+5. Se o vínculo existir, mas estiver `SUSPENDED` ou `INVITED`, retornar `403 MEMBERSHIP_INACTIVE`.
 6. Validar a permissão exigida pela rota. Ausência de permissão retorna `403 PERMISSION_DENIED`.
-7. Disponibilizar para o handler, com tipos explícitos, no mínimo `organizationId`, `membershipId`, `roleId` e as permissões efetivas.
+7. Disponibilizar para o handler, com tipos explícitos, no mínimo `organizationId`, `membershipId`, `role` e as permissões efetivas.
 8. Executar services e queries sempre com o `organizationId` resolvido. O handler não pode substituí-lo por valores de `body`, `query`, cabeçalhos ou identificadores de recursos.
 
 | Situação | HTTP | Código estável | Regra de exposição |
 |---|---:|---|---|
 | Sessão válida, organização existente, vínculo ativo e permissão suficiente | `200` | — | A operação pode usar o contexto injetado. |
 | Sessão ausente ou inválida | `401` | `UNAUTHENTICATED` | Nenhuma resolução organizacional é realizada. |
-| Vínculo conhecido, porém suspenso ou inativo | `403` | `MEMBERSHIP_INACTIVE` | Informa o estado apenas à pessoa que possui o vínculo. |
+| Vínculo conhecido, porém suspenso ou ainda convidado | `403` | `MEMBERSHIP_INACTIVE` | Informa o estado apenas à pessoa que possui o vínculo. |
 | Vínculo ativo, mas sem a permissão exigida | `403` | `PERMISSION_DENIED` | Não executa a consulta de domínio protegida. |
 | Slug inexistente ou organização sem vínculo com a pessoa | `404` | `NOT_FOUND` | Os dois casos são indistinguíveis para evitar enumeração de clínicas. |
 
@@ -247,7 +250,7 @@ O fluxo obrigatório é:
 | Pessoa autenticada sem clínica | `GET /organizations` retorna `200` com `data: []`; a interface permanece em `/select-organization`. |
 | Slug inexistente | A rota organizacional retorna `404 NOT_FOUND`. |
 | Slug de uma clínica de terceiro | A rota retorna o mesmo `404 NOT_FOUND`, sem confirmar que a clínica existe. |
-| Vínculo suspenso ou inativo | A rota retorna `403 MEMBERSHIP_INACTIVE` e não injeta `organizationId`. |
+| Vínculo suspenso ou ainda `INVITED` | A rota retorna `403 MEMBERSHIP_INACTIVE` e não injeta `organizationId`. |
 | Tentativa de enviar outro `organizationId` no payload | O valor não participa da autorização e não altera o tenant resolvido pela URL; payload incompatível com o schema é rejeitado. |
 | ID de recurso pertencente a outra clínica | A consulta filtrada pelo `organizationId` ativo não encontra o recurso e retorna `404 NOT_FOUND`. |
 
@@ -577,10 +580,13 @@ A definição completa e o schema Prisma oficial para o banco PostgreSQL são ma
 👉 **[Issue #199 — Consolidar o modelo de dados relacional e schema do Prisma](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/199)**
 
 ### Principais Entidades e Vínculos:
-* **`User` / `Account`**: Usuário global e credenciais da conta pessoal.
-* **`Session`**: Sessões ativas de login com data de expiração e IP/User-Agent.
-* **`Organization`**: Clínicas do sistema com `slug` único e fuso horário.
-* **`Membership`**: Vínculo entre `User` e `Organization` com `roleId` e status.
+* **`User` / `Account`**: Usuário global e credenciais da conta pessoal. Nenhum papel global: toda permissão nasce de um `Membership` em uma clínica.
+* **`Session`**: Sessões ativas de login com data de expiração e IP/User-Agent. Autenticação via `Authorization: Bearer <JWT>` cujo payload carrega o ID da `Session` — revogação imediata no banco.
+* **`VerificationToken`**: Tokens de uso único (verificação de e-mail, reset de senha) armazenados **apenas como SHA-256**, com TTL e `usedAt`.
+* **`Organization`**: Clínicas do sistema com `slug` único, `ownerId` (o criador — pagador da assinatura) e fuso horário.
+* **`Subscription`**: Assinatura por clínica: R$ 89/mês, status `PENDING_PAYMENT`/`ACTIVE`/`PAST_DUE`/`CANCELED`. Somente o dono paga; membros convidados não pagam.
+* **`Membership`**: Vínculo entre `User` e `Organization` com `role` (ADMIN/PROFESSIONAL/RECEPTIONIST) e status.
+* **`OnboardingProgress`**: Estado do assistente de primeiro acesso, persistido por conta.
 * **`Role` & `Permission`**: Papéis e permissões granulares por clínica.
 * **`Patient`**: Cadastros de pacientes isolados por `organizationId`.
 * **`Appointment`**: Agendamentos ligados a `Patient`, `User` (profissional) e `Organization`.
@@ -599,20 +605,21 @@ O relacionamento que permite a uma pessoa acessar várias clínicas é `User` 1-
 | `Organization` | `id` | Chave primária interna, opaca e imutável. É o valor usado nas chaves estrangeiras e no isolamento das queries. |
 | `Organization` | `name` | Nome de exibição da clínica; sua alteração não muda automaticamente o slug. |
 | `Organization` | `slug` | Identificador público, globalmente único e adequado para URL. Não é usado como chave estrangeira. |
+| `Organization` | `ownerId` | Chave estrangeira obrigatória para o `User` responsável pela clínica e pela assinatura. Não substitui o `Membership` do proprietário. |
 | `Organization` | `timezone` | Fuso IANA usado para calendário e apresentação; timestamps persistidos continuam em UTC. |
 | `Membership` | `id` | Chave primária opaca e imutável do vínculo. |
 | `Membership` | `userId` | Chave estrangeira obrigatória para `User(id)`. |
 | `Membership` | `organizationId` | Chave estrangeira obrigatória para `Organization(id)`. |
-| `Membership` | `roleId` | Chave estrangeira para o papel da pessoa dentro dessa organização. |
-| `Membership` | `status` | Estado do vínculo: `ACTIVE`, `SUSPENDED` ou `INACTIVE`. Somente `ACTIVE` autoriza acesso. |
+| `Membership` | `role` | Papel da pessoa nessa organização: `ADMIN`, `PROFESSIONAL` ou `RECEPTIONIST`. |
+| `Membership` | `status` | Estado do vínculo: `ACTIVE`, `SUSPENDED` ou `INVITED`. Somente `ACTIVE` autoriza acesso. |
 
 Regras e restrições:
 
 * A combinação (`userId`, `organizationId`) é única: uma pessoa possui no máximo um `Membership` por organização.
-* `User` não contém `organizationId`, `roleId` ou permissões globais de clínica. A mesma pessoa pode ter papéis diferentes em organizações diferentes.
-* Credenciais e provedores de autenticação pertencem a `Account`; sessão pertence a `Session`; convite ainda não aceito pertence a `Invite`. Nenhum deles substitui um `Membership` ativo.
+* `User` não contém `organizationId`, `role` ou permissões globais de clínica. A mesma pessoa pode ter papéis diferentes em organizações diferentes.
+* Credenciais pertencem à conta pessoal; sessão pertence a `Session`; um vínculo `INVITED` ainda não autoriza acesso. Nenhum deles substitui um `Membership` ativo.
 * Dados clínicos e operacionais referenciam `Organization(id)`, nunca `Organization(slug)`.
-* Remover, suspender ou inativar um vínculo revoga o acesso organizacional sem encerrar as sessões globais da pessoa em outras clínicas.
+* Remover ou suspender um vínculo revoga o acesso organizacional sem encerrar as sessões globais da pessoa em outras clínicas; `INVITED` não concede acesso até a ativação.
 
 #### Política de `orgSlug`
 
