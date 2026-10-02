@@ -38,7 +38,7 @@ jobs:
         run: bun run test
 
   web:
-    name: Web (lint + build)
+    name: Web (lint + testes + build)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -55,6 +55,9 @@ jobs:
 
       - name: Lint (Biome)
         run: bun run lint
+
+      - name: Testes
+        run: bun run test
 
       # next build já roda o type-check do TS (sem ignoreBuildErrors)
       - name: Build (Next)

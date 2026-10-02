@@ -1,0 +1,65 @@
+export type OrganizationSummary = {
+  id: string;
+  name: string;
+  slug: string;
+  role: "ADMIN" | "PROFESSIONAL" | "RECEPTIONIST";
+  isOwner: boolean;
+};
+
+export type LoginResult = {
+  user: { id: string; email: string; fullName: string };
+  availableOrganizations: OrganizationSummary[];
+  onboardingCompleted: boolean;
+};
+
+export type LoginInput = { email: string; password: string };
+export type RegisterInput = LoginInput & {
+  fullName: string;
+  acceptedTerms: true;
+};
+export type ResetPasswordInput = { token: string; newPassword: string };
+export type ActionResult<T> =
+  | { ok: true; data: T }
+  | { ok: false; error: { code: string; message: string } };
+
+export function safeReturnPath(value: string | null): string | null {
+  if (!value || !value.startsWith("/") || value.startsWith("//")) return null;
+  if (value.includes("\\")) return null;
+  try {
+    const url = new URL(value, "https://medicalflow.local");
+    if (url.origin !== "https://medicalflow.local") return null;
+    if (
+      url.pathname === "/app" ||
+      url.pathname.startsWith("/app/") ||
+      url.pathname.startsWith("/onboarding/") ||
+      url.pathname === "/select-organization"
+    ) {
+      return `${url.pathname}${url.search}${url.hash}`;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+export function destinationAfterLogin(
+  result: LoginResult,
+  returnTo: string | null,
+): string {
+  const safeReturnTo = safeReturnPath(returnTo);
+  if (safeReturnTo) return safeReturnTo;
+  if (!result.onboardingCompleted) return "/onboarding/profile";
+  if (result.availableOrganizations.length === 1) {
+    return `/app/${encodeURIComponent(result.availableOrganizations[0].slug)}/dashboard`;
+  }
+  return "/select-organization";
+}
+
+export function unwrapActionResult<T>(result: ActionResult<T>): T {
+  if (!result.ok) {
+    const error = new Error(result.error.message);
+    error.name = result.error.code;
+    throw error;
+  }
+  return result.data;
+}

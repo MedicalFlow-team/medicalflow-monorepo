@@ -25,6 +25,14 @@ export function authModule(deps: AuthDeps) {
         body: m.verifyEmailBody,
         response: { 200: m.messageResponse },
       })
+      .post(
+        "/resend-verification",
+        ({ body }) => service.resendVerification(body.email),
+        {
+          body: m.resendVerificationBody,
+          response: { 200: m.messageResponse },
+        },
+      )
       .post("/login", ({ body }) => service.login(body), {
         body: m.loginBody,
         response: { 200: m.loginResponse },

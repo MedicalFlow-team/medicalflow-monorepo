@@ -15,6 +15,10 @@ export const verifyEmailBody = t.Object({
   token: t.String({ minLength: 1, maxLength: 200 }),
 });
 
+export const resendVerificationBody = t.Object({
+  email: t.String({ format: "email", maxLength: 254 }),
+});
+
 export const loginBody = t.Object({
   email: t.String({ format: "email", maxLength: 254 }),
   password: t.String({ minLength: 1, maxLength: 72 }),

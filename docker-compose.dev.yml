@@ -12,16 +12,16 @@ services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: medflow
-      POSTGRES_USER: medflow
-      POSTGRES_PASSWORD: medflow # só dev — nunca reutilizar em produção
+      POSTGRES_DB: ${POSTGRES_DB:?Defina POSTGRES_DB no .env}
+      POSTGRES_USER: ${POSTGRES_USER:?Defina POSTGRES_USER no .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD no .env}
     ports:
       - "5432:5432"
     volumes:
       - ./docker/postgres/initdb:/docker-entrypoint-initdb.d:ro
       - medflow_dev_pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U medflow -d medflow"]
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -37,10 +37,13 @@ services:
     environment:
       NODE_ENV: development
       APP_VERSION: 0.1.0-dev
-      JWT_SECRET: dev-secret-nao-usar-em-producao
-      DATABASE_URL: postgresql://medflow:medflow@postgres:5432/medflow
-      CORS_ORIGIN: http://localhost:3000
-      WAHA_BASE_URL: http://host.docker.internal:3002 # opcional: WAHA local
+      PORT: 3000
+      JWT_SECRET: ${JWT_SECRET:?Defina JWT_SECRET no .env}
+      DATABASE_URL: ${DOCKER_DATABASE_URL:?Defina DOCKER_DATABASE_URL no .env}
+      CORS_ORIGIN: ${CORS_ORIGIN:?Defina CORS_ORIGIN no .env}
+      APP_WEB_URL: ${APP_WEB_URL:?Defina APP_WEB_URL no .env}
+      WAHA_BASE_URL: ${DOCKER_WAHA_BASE_URL:?Defina DOCKER_WAHA_BASE_URL no .env}
+      WAHA_API_KEY: ${WAHA_API_KEY:-}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:

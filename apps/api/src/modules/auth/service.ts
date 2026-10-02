@@ -1,5 +1,6 @@
 import { hash, verify as verifyHash } from "argon2";
 import type { Prisma, PrismaClient } from "../../generated/prisma/client";
+import { ApiError } from "../../lib/api-error";
 import { normalizeEmail } from "../../lib/slug";
 import { generateToken, hashToken } from "../../lib/tokens";
 import type { Mailer } from "../../services/mailer";
@@ -57,14 +58,20 @@ export class AuthService {
       where: { email },
     });
     if (existing) {
-      // Mesma forma/latência de resposta do caminho de sucesso (anti-enumeração).
-      await this.deps.mailer.send({
-        to: email,
-        subject: "MedicalFlow — confirmação de cadastro",
-        text: this.verificationText(
-          await this.mintToken(existing.id, "EMAIL_VERIFICATION"),
-        ),
-      });
+      if (!existing.emailVerified) {
+        try {
+          const token = await this.mintToken(existing.id, "EMAIL_VERIFICATION");
+          await this.deps.mailer.send({
+            to: email,
+            subject: "MedicalFlow — confirmação de cadastro",
+            text: this.verificationText(token),
+          });
+        } catch (error) {
+          if (!(error instanceof ApiError && error.code === "RATE_LIMITED")) {
+            throw error;
+          }
+        }
+      }
       return { message: GENERIC_REGISTER_MESSAGE };
     }
 
@@ -95,6 +102,30 @@ export class AuthService {
       data: { emailVerified: true },
     });
     return { message: "E-mail confirmado com sucesso." };
+  }
+
+  /** #207 — reenvio com resposta neutra para e-mail inexistente ou já verificado. */
+  async resendVerification(emailValue: string): Promise<{ message: string }> {
+    const email = normalizeEmail(emailValue);
+    const user = await this.deps.prisma.user.findUnique({ where: { email } });
+    if (user && !user.emailVerified) {
+      try {
+        const token = await this.mintToken(user.id, "EMAIL_VERIFICATION");
+        await this.deps.mailer.send({
+          to: email,
+          subject: "MedicalFlow — confirmação de cadastro",
+          text: this.verificationText(token),
+        });
+      } catch (error) {
+        // O limite por conta não pode revelar se o endereço existe.
+        if (!(error instanceof ApiError && error.code === "RATE_LIMITED")) {
+          throw error;
+        }
+      }
+    }
+    return {
+      message: "Se a conta estiver pendente, um novo link será enviado.",
+    };
   }
 
   /** #208 — login; falhas indistinguíveis; pendente recebe estado claro. */

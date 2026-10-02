@@ -62,7 +62,7 @@ services:
       labels:
         - traefik.enable=true
         - traefik.docker.network=traefik-public
-        - traefik.http.routers.medflow-api.rule=Host(`api.selbr.com`)
+        - traefik.http.routers.medflow-api.rule=Host(`${API_HOST:?Defina API_HOST no .env}`)
         - traefik.http.routers.medflow-api.entrypoints=websecure
         - traefik.http.routers.medflow-api.tls=true
         - traefik.http.routers.medflow-api.tls.certresolver=letsencrypt
@@ -80,6 +80,8 @@ services:
 
   web:
     image: ghcr.io/medicalflow-team/medicalflow-monorepo-web:${MEDFLOW_TAG:?MEDFLOW_TAG e obrigatorio (infra/deploy.sh exporta)}
+    environment:
+      API_INTERNAL_URL: ${API_INTERNAL_URL:?Defina API_INTERNAL_URL no .env}
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000/"]
       interval: 30s
@@ -94,7 +96,7 @@ services:
       labels:
         - traefik.enable=true
         - traefik.docker.network=traefik-public
-        - traefik.http.routers.medflow-web.rule=(Host(`selbr.com`) || Host(`www.selbr.com`))
+        - traefik.http.routers.medflow-web.rule=(Host(`${WEB_HOST:?Defina WEB_HOST no .env}`) || Host(`${WEB_ALT_HOST:?Defina WEB_ALT_HOST no .env}`))
         - traefik.http.routers.medflow-web.entrypoints=websecure
         - traefik.http.routers.medflow-web.tls=true
         - traefik.http.routers.medflow-web.tls.certresolver=letsencrypt

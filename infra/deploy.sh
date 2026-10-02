@@ -20,6 +20,17 @@ POSTGRES_USER="$(grep -E '^POSTGRES_USER=' "$ENV_FILE" | cut -d= -f2-)"
 cd "$REPO_DIR"
 export MEDFLOW_TAG="$TAG"
 
+# docker stack deploy não carrega .env para interpolação como o Compose.
+# Exporta somente os endereços públicos/internos necessários, sem executar o arquivo.
+for key in API_INTERNAL_URL API_HOST WEB_HOST WEB_ALT_HOST; do
+  value="$(grep -E "^${key}=" "$ENV_FILE" | cut -d= -f2- || true)"
+  if [ -z "$value" ]; then
+    echo "FALHA: configure $key em $ENV_FILE" >&2
+    exit 1
+  fi
+  export "$key=$value"
+done
+
 # --- Pré-pull síncrono das imagens ---
 # Tarefas do swarm puxam de forma assíncrona: se o pull falhar depois que o
 # GITHUB_TOKEN do workflow expirar, a task falha, o update_config reverte e o
