@@ -1,0 +1,19 @@
+{
+  "name": "medicalflow-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Workspace Bun para as aplicações MedicalFlow",
+  "workspaces": ["apps/*"],
+  "scripts": {
+    "dev": "bun run --parallel dev:api dev:web",
+    "dev:api": "PORT=3001 bun run --cwd apps/api dev",
+    "dev:web": "bun run --cwd apps/web dev",
+    "lint": "bun run --sequential --workspaces lint",
+    "typecheck": "bun run --sequential --workspaces typecheck",
+    "test": "bun run --cwd apps/api test",
+    "build": "bun run --sequential --workspaces build",
+    "build:web": "bun run --cwd apps/web build",
+    "db:dev": "docker compose -f docker-compose.dev.yml up -d postgres",
+    "db:dev:down": "docker compose -f docker-compose.dev.yml down"
+  }
+}

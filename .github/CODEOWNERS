@@ -3,14 +3,24 @@
 # Geral
 * @GabrielMarques1
 
-# Backend (Elysia, Prisma, SQLite)
-/backend/ @JuaDevBR @GabrielMarques1
+# Backend (Elysia, Bun, Prisma)
+/apps/api/ @JuaDevBR @samuelvictor29 @GabrielMarques1
+/.agents/skills/backend-engineer/ @JuaDevBR @samuelvictor29 @GabrielMarques1
+/.agents/skills/elysia/ @JuaDevBR @samuelvictor29 @GabrielMarques1
+/docs/CONTRATOS_API.md @JuaDevBR @samuelvictor29 @GabrielMarques1
 
-# Frontend & Design (React, UI/UX)
-/frontend/ @skrodrigo @GabrielMarques1
+# Frontend & Design (Next.js, React, UI/UX)
+/apps/web/ @skrodrigo @GabrielMarques1
 
-# Infraestrutura & CI/CD
-docker-compose.yml @joaotolovi @GabrielMarques1
-.github/workflows/ @joaotolovi @GabrielMarques1
-/backend/Dockerfile @joaotolovi @GabrielMarques1
-/frontend/Dockerfile @joaotolovi @GabrielMarques1
+# Infraestrutura & CI/CD (Swarm, Docker, deploy, secrets, backup)
+/infra/ @joaotolovi @GabrielMarques1
+/stacks/ @joaotolovi @GabrielMarques1
+/docker/ @joaotolovi @GabrielMarques1
+/docker-compose.dev.yml @joaotolovi @GabrielMarques1
+/apps/api/Dockerfile @joaotolovi @GabrielMarques1
+/apps/web/Dockerfile @joaotolovi @GabrielMarques1
+/.github/workflows/ @joaotolovi @GabrielMarques1
+/.github/CODEOWNERS @GabrielMarques1
+/.github/ISSUE_TEMPLATE/ @GabrielMarques1
+/.env.example @joaotolovi @GabrielMarques1
+/docs/infra/ @joaotolovi @GabrielMarques1

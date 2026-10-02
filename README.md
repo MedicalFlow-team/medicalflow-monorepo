@@ -1,96 +1,40 @@
 # MedicalFlow
 
-Sistema hospitalar integrado para gestao de fluxo de atendimento, triagem e prontuario eletronico.
+Monorepo do MedicalFlow com API Elysia/Bun em `apps/api` e frontend Next.js em `apps/web`.
 
----
-
-## Estrutura da Equipe e Responsabilidades
-
-| Responsavel | Papel | Escopo Tecnico |
-| :--- | :--- | :--- |
-| Rodrigo | Frontend & Design | Arquitetura de interface, design system e componentes React |
-| Ruan | Backend Engineer | APIs REST Elysia, regras de negocio e integracoes |
-| Samuel | Backend Engineer | Modelagem Prisma, otimizacao de dados e queries SQLite |
-| Joao | Infra & DevOps | Containerizacao Docker, orquestracao e observabilidade |
-| Gabriel | QA & Security | Testes automatizados, code review e esteira de seguranca |
-
----
-
-## Stack Tecnologica
-
-- **Frontend**: React, Vite, TypeScript
-- **Backend**: Elysia, Prisma ORM, SQLite
-- **Infraestrutura**: Docker, Docker Compose, GitHub Actions
-- **Qualidade**: Vitest, ESLint, TypeScript Strict Mode
-
----
-
-## Arquitetura do Monorepo
+## Estrutura
 
 ```text
-MedicalFlow/
-├── .github/
-│   ├── ISSUE_TEMPLATE/
-│   │   ├── bug_report.md
-│   │   └── feature_request.md
-│   ├── workflows/
-│   │   └── ci.yml
-│   ├── CODEOWNERS
-│   └── pull_request_template.md
-├── backend/
-│   ├── prisma/
-│   │   └── schema.prisma
-│   ├── src/
-│   │   └── index.ts
-│   ├── Dockerfile
-│   ├── package.json
-│   └── tsconfig.json
-├── frontend/
-│   ├── src/
-│   │   ├── App.tsx
-│   │   ├── main.tsx
-│   │   └── index.css
-│   ├── Dockerfile
-│   ├── index.html
-│   ├── package.json
-│   ├── tsconfig.json
-│   └── vite.config.ts
-├── docker-compose.yml
-├── CONTRIBUTING.md
-└── README.md
+apps/
+  api/   API, testes e Dockerfile
+  web/   interface Next.js e Dockerfile
+docker/  inicialização do Postgres local
+infra/   deploy e monitoramento
+stacks/  stack de produção
+docs/    contratos, decisões e operação
 ```
 
----
+## Desenvolvimento local
 
-## Execucao do Ambiente
-
-### Requisitos
-- Bun ou Node.js (>= 18)
-- Docker e Docker Compose (ambiente containerizado)
-
-### Backend (Elysia + Prisma + SQLite)
+Requer Bun e Docker. Instale as dependências do workspace na raiz:
 
 ```bash
-cd backend
-npm install
-npx prisma generate
-npx prisma db push
-npm run dev
+bun install --frozen-lockfile
+bun run db:dev
+bun run dev
 ```
-Servidor ativo em: `http://localhost:3001`
-Documentacao Swagger: `http://localhost:3001/swagger`
 
-### Frontend (React + Vite)
+Antes de iniciar, crie `apps/api/.env` com `JWT_SECRET` e `DATABASE_URL` apontando para o Postgres local; veja [SECRETS.md](docs/infra/SECRETS.md). `bun run dev` inicia API em `http://localhost:3001/api/health` e web em `http://localhost:3000`. Também é possível executá-las separadamente com `bun run dev:api` e `bun run dev:web`.
+
+## Validação
 
 ```bash
-cd frontend
-npm install
-npm run dev
+bun run lint
+bun run typecheck
+bun run test
+bun run build
 ```
-Aplicacao web ativa em: `http://localhost:5173`
 
-### Execucao Unificada via Docker
+`build` gera `apps/api/dist` e `apps/web/.next`. Os Dockerfiles de cada aplicação continuam com contextos separados para manter apenas suas dependências no build. O código de servidor não é importado pela web.
 
-```bash
-docker compose up --build
-```
+Consulte [API_CONTRACT.md](docs/API_CONTRACT.md) para o contrato HTTP, [TEST_PLAN_AND_TRACEABILITY.md](docs/TEST_PLAN_AND_TRACEABILITY.md) para a estratégia de testes e [DEPLOY.md](docs/infra/DEPLOY.md) para produção. O trabalho de preparação do monorepo é acompanhado na [issue #200](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/200).

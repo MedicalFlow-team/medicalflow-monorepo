@@ -1,0 +1,7 @@
+interface:
+  display_name: "ElysiaJS"
+  short_description: "Build type-safe backends with ElysiaJS and Bun"
+  default_prompt: "Use the ElysiaJS skill and its references to implement this backend task."
+
+policy:
+  allow_implicit_invocation: true
