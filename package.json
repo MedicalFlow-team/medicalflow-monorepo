@@ -6,7 +6,7 @@
   "workspaces": ["apps/*"],
   "scripts": {
     "dev": "bun run --parallel dev:api dev:web",
-    "dev:api": "PORT=3001 bun run --cwd apps/api dev",
+    "dev:api": "bun run --cwd apps/api dev",
     "dev:web": "bun run --cwd apps/web dev",
     "lint": "bun run --sequential --workspaces lint",
     "typecheck": "bun run --sequential --workspaces typecheck",

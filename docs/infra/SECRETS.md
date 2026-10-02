@@ -9,9 +9,30 @@
 | `.env.example` (repo) | Nome de todas as variáveis + valores fake/explicação |
 | `/root/medflow/.env` (VPS) | Valores reais de produção, lido pela stack (`env_file`) |
 | `apps/api/.env` (dev local) | Valores de dev (postgres local etc.) — gitignored |
+| `.env` (raiz, dev local) | Credenciais do Postgres e variáveis do Compose — gitignored |
+| `apps/web/.env` (dev local) | `API_INTERNAL_URL`, acessível apenas no servidor Next.js — gitignored |
 | GitHub Secrets | `MEDFLOW_VPS_HOST`, `MEDFLOW_VPS_SSH_KEY` (só o pipeline usa) |
 
 ## Gerar valores fortes
+
+Copie os `.env.example` para `.env` em cada diretório. O exemplo da raiz
+descreve produção; para desenvolvimento ajuste `NODE_ENV`, portas e URLs
+para sua máquina. Mantenha a senha de `POSTGRES_PASSWORD`, `DATABASE_URL`
+e `DOCKER_DATABASE_URL` consistente; use senha codificada para URL nas duas
+strings de conexão. `DATABASE_URL` local aponta para localhost e
+`DOCKER_DATABASE_URL` aponta para postgres. Se já existe um volume do
+Postgres, configure a senha que esse banco já utiliza.
+
+API exige `JWT_SECRET`, `DATABASE_URL`, `CORS_ORIGIN`, `WAHA_BASE_URL` e
+`APP_WEB_URL`. O frontend exige `API_INTERNAL_URL`; nenhuma dessas variáveis
+deve receber o prefixo `NEXT_PUBLIC_`.
+
+Antes do próximo deploy, configure também `API_INTERNAL_URL`, `API_HOST`,
+`WEB_HOST` e `WEB_ALT_HOST` em `/root/medflow/.env`, sem aspas. O script de
+deploy exporta esses quatro valores para a interpolação da stack. Os hosts
+são domínios sem protocolo; `APP_WEB_URL` é a URL pública completa usada nos
+links de confirmação e recuperação. `SMTP_URL` e `MAIL_FROM` documentam a
+futura integração SMTP; o mailer atual ainda escreve links no console.
 
 ```bash
 openssl rand -hex 32   # JWT_SECRET, WAHA_WEBHOOK_SECRET

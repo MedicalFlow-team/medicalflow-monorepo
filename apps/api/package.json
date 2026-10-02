@@ -8,8 +8,8 @@
     "start": "bun src/index.ts",
     "build": "bun build src/index.ts --target bun --outdir dist",
     "test": "bun test",
-    "typecheck": "tsc --noEmit",
-    "lint": "biome check",
+    "typecheck": "bun node_modules/typescript/bin/tsc --noEmit",
+    "lint": "bun node_modules/@biomejs/biome/bin/biome check",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy"

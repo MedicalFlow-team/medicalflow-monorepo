@@ -3,7 +3,7 @@
  *
  * Regras:
  * - Variável obrigatória NUNCA tem default: erro de boot com nome claro.
- * - Defaults existem só para desenvolvimento local; produção define tudo
+ * - URLs e segredos vêm do ambiente; produção define tudo
  *   via /root/medflow/.env (ver docs/infra/SECRETS.md).
  */
 export interface Env {
@@ -40,9 +40,9 @@ export function loadEnv(): Env {
     version: optional("APP_VERSION", "0.1.0"),
     jwtSecret: required("JWT_SECRET"),
     databaseUrl: required("DATABASE_URL"),
-    corsOrigin: optional("CORS_ORIGIN", "http://localhost:3000"),
-    wahaBaseUrl: optional("WAHA_BASE_URL", "http://localhost:3002"),
+    corsOrigin: required("CORS_ORIGIN"),
+    wahaBaseUrl: required("WAHA_BASE_URL"),
     wahaApiKey: process.env.WAHA_API_KEY ?? null,
-    webAppUrl: optional("APP_WEB_URL", "http://localhost:3000"),
+    webAppUrl: required("APP_WEB_URL"),
   };
 }
