@@ -17,7 +17,7 @@ Este documento é a fonte de verdade para o contrato HTTP entre a API (`apps/api
 | **Identificadores** | Strings opacas imutáveis (UUID v4 / CUID2). |
 | **Datas e Horários** | Formato ISO 8601 em UTC (`YYYY-MM-DDTHH:mm:ss.sssZ`). Agregações de calendário utilizam o fuso horário configurado na clínica. |
 | **Paginação** | Orientada a cursor: `?cursor=<string>&limit=20` (máximo 100). Respostas paginadas retornam `{ data: [...], pageInfo: { nextCursor: string | null, hasNextPage: boolean } }`. |
-| **Escopo Tenacional (Multi-tenancy)** | Rotas relativas à organização exigem o parâmetro de caminho `/organizations/:orgSlug/...`. O servidor resolve o escopo e valida a pertinência do `Membership` ativo antes de executar a ação. |
+| **Escopo Organizacional (Multi-tenancy)** | Rotas relativas à organização exigem o parâmetro de caminho `/organizations/:orgSlug/...`. O servidor resolve o escopo e valida a pertinência do `Membership` ativo antes de executar a ação. |
 | **Isolamento entre Organizações** | O `organizationId` é obrigatoriamente injetado em todas as queries no servidor a partir da sessão/membership. Parâmetros passados pelo cliente jamais autorizam acesso a recursos de outro tenant. |
 | **Controle de Concorrência** | Recursos mutáveis expõem o atributo inteiro `version`. Atualizações desatualizadas retornam erro `409 VERSION_CONFLICT`. |
 | **Idempotência** | Operações de criação e mutação crítica exigem o cabeçalho HTTP `Idempotency-Key`. Reenvios com a mesma chave retornam o resultado original sem duplicar trabalho ou dados. |
@@ -26,6 +26,15 @@ Este documento é a fonte de verdade para o contrato HTTP entre a API (`apps/api
 
 > [!NOTE]
 > **Pendência Arquitetural (Decisão [#192](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/192)):** O transporte exato da sessão permanece entre cookie seguro (`HttpOnly`, `Secure`, `SameSite=Lax`) ou tokens de acesso rotativos com tempo de vida curto. É terminantemente proibido o uso de JWTs sem expiração. Toda sessão possui TTL finito e pode ser revogada individualmente ou em lote pelo usuário.
+
+### Contexto Organizacional Ativo
+
+* A sessão autentica a pessoa globalmente e não concede, por si só, acesso a nenhuma organização.
+* A URL é a fonte canônica do contexto ativo no frontend e na API: `/app/:orgSlug/...` no Next.js e `/organizations/:orgSlug/...` no Elysia.
+* `orgSlug` é um identificador público de roteamento, não um segredo nem uma credencial. O backend nunca o aceita como prova de autorização.
+* Rotas organizacionais não aceitam `organizationId` nem um slug alternativo no payload para selecionar o tenant. Cabeçalhos como `X-Org-Slug` e claims de organização no token não substituem o parâmetro de caminho nem a validação do vínculo.
+* Para cada requisição organizacional, o backend autentica a sessão, resolve o slug, valida o `Membership` e somente então disponibiliza o `organizationId` tipado para a rota.
+* Toda consulta ou mutação de dados clínicos, cadastrais, financeiros, operacionais e de auditoria inclui o `organizationId` resolvido pelo servidor. IDs recebidos do cliente são apenas identificadores de recursos dentro desse escopo.
 
 ---
 
@@ -55,7 +64,7 @@ Em caso de falha (códigos HTTP 4xx e 5xx), a API responde com a seguinte estrut
 | **401** | `UNAUTHENTICATED` | Credenciais ausentes, inválidas ou sessão encerrada. |
 | **401** | `ACCOUNT_NOT_VERIFIED` | Tentativa de login ou uso da API antes da confirmação do e-mail. |
 | **403** | `PERMISSION_DENIED` | Usuário autenticado sem a permissão necessária no RBAC. |
-| **403** | `MEMBERSHIP_INACTIVE` | Vínculo com a organização está suspenso ou inativo. |
+| **403** | `MEMBERSHIP_INACTIVE` | Vínculo com a organização está suspenso ou ainda não foi ativado (`INVITED`). |
 | **404** | `NOT_FOUND` | Recurso não encontrado (usado também para ocultar existência de recursos de outros tenants). |
 | **409** | `VERSION_CONFLICT` | Concorrência otimista violada (o recurso foi modificado por outro usuário). |
 | **409** | `IDEMPOTENCY_CONFLICT` | A chave de idempotência está em uso por uma requisição concorrente ainda em processamento. |
@@ -181,20 +190,69 @@ Em caso de falha (códigos HTTP 4xx e 5xx), a API responde com a seguinte estrut
 ### Módulo 3: Organizações & Alternância de Contexto
 *(Ref: Issues [#191](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/191), [#227](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/227), [#228](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/228))*
 
+> [!NOTE]
+> A issue #191 cita um arquivo `PRODUCT_SCOPE.md`, mas esse arquivo não existe no estado atual nem no histórico disponível do repositório. Até que uma fonte substituta seja indicada, a lista de módulos e rotas desta seção é o inventário canônico para validar a cobertura multi-tenant.
+
 #### `GET /organizations`
-* **Descrição:** Lista todas as clínicas das quais a pessoa é membro ativo ou convidado.
+* **Descrição:** Lista somente as clínicas nas quais a pessoa possui `Membership` ativo. Vínculos suspensos ou ainda `INVITED` não autorizam acesso e não aparecem na seleção.
 * **Permissão:** Autenticado.
-* **Respostas:** `200 OK` (`{ "data": [ { "id": "org_1", "name": "...", "slug": "vida-e-saude", "role": "ADMIN", "active": true } ] }`).
+* **Respostas:** `200 OK` (`{ "data": [ { "id": "org_1", "name": "...", "slug": "vida-e-saude", "role": "ADMIN" } ] }`), `401 UNAUTHENTICATED`.
 
 #### `GET /organizations/:orgSlug`
 * **Descrição:** Obtém os dados e preferências da clínica especificada pelo slug.
 * **Permissão:** Autenticado + Pertencer à clínica (`organizations:read`).
-* **Respostas:** `200 OK`, `403 PERMISSION_DENIED`, `404 NOT_FOUND`.
+* **Respostas:** `200 OK`, `401 UNAUTHENTICATED`, `403 MEMBERSHIP_INACTIVE`, `403 PERMISSION_DENIED`, `404 NOT_FOUND`.
 
 #### `POST /organizations/:orgSlug/switch-context`
-* **Descrição:** Define a organização como o contexto ativo da sessão do usuário.
+* **Descrição:** Valida a seleção feita no frontend e pode registrar a última clínica escolhida como preferência de navegação. A URL continua sendo a fonte canônica do contexto e a preferência nunca autoriza acesso.
 * **Permissão:** Autenticado + Pertencer à clínica.
-* **Respostas:** `200 OK` (`{ "activeOrganization": { "id": "org_1", "slug": "vida-e-saude" } }`), `403 MEMBERSHIP_INACTIVE`.
+* **Entrada:** Sem `organizationId` ou slug no corpo; a organização é indicada exclusivamente por `:orgSlug`.
+* **Respostas:** `200 OK` (`{ "activeOrganization": { "id": "org_1", "slug": "vida-e-saude" } }`), `401 UNAUTHENTICATED`, `403 MEMBERSHIP_INACTIVE`, `404 NOT_FOUND`.
+
+#### Resolução e autorização do contexto no Elysia
+
+As rotas organizacionais usam um plugin reutilizável, registrado antes dos módulos protegidos. Na versão 1.x do Elysia adotada pelo projeto, a resolução por requisição ocorre após a validação de `params`, por meio de `resolve` ou de uma macro que o encapsule, preservando a inferência de tipos.
+
+O fluxo obrigatório é:
+
+1. Validar a sessão global e obter o `userId`. Sessão ausente, expirada, revogada ou inválida encerra o fluxo com `401 UNAUTHENTICATED`.
+2. Validar e normalizar `params.orgSlug` para letras minúsculas antes da consulta. Um slug sintaticamente inválido é tratado como não encontrado.
+3. Buscar `Organization` pelo `slug` globalmente único. Se não existir, retornar `404 NOT_FOUND`.
+4. Buscar `Membership` pela chave composta (`userId`, `organizationId`). Se não existir, retornar `404 NOT_FOUND` para não revelar a existência da clínica a terceiros.
+5. Se o vínculo existir, mas estiver `SUSPENDED` ou `INVITED`, retornar `403 MEMBERSHIP_INACTIVE`.
+6. Validar a permissão exigida pela rota. Ausência de permissão retorna `403 PERMISSION_DENIED`.
+7. Disponibilizar para o handler, com tipos explícitos, no mínimo `organizationId`, `membershipId`, `role` e as permissões efetivas.
+8. Executar services e queries sempre com o `organizationId` resolvido. O handler não pode substituí-lo por valores de `body`, `query`, cabeçalhos ou identificadores de recursos.
+
+| Situação | HTTP | Código estável | Regra de exposição |
+|---|---:|---|---|
+| Sessão válida, organização existente, vínculo ativo e permissão suficiente | `200` | — | A operação pode usar o contexto injetado. |
+| Sessão ausente ou inválida | `401` | `UNAUTHENTICATED` | Nenhuma resolução organizacional é realizada. |
+| Vínculo conhecido, porém suspenso ou ainda convidado | `403` | `MEMBERSHIP_INACTIVE` | Informa o estado apenas à pessoa que possui o vínculo. |
+| Vínculo ativo, mas sem a permissão exigida | `403` | `PERMISSION_DENIED` | Não executa a consulta de domínio protegida. |
+| Slug inexistente ou organização sem vínculo com a pessoa | `404` | `NOT_FOUND` | Os dois casos são indistinguíveis para evitar enumeração de clínicas. |
+
+#### Troca de clínica entre Next.js e Elysia
+
+1. O Next.js carrega `GET /organizations` na tela `/select-organization` e apresenta apenas vínculos ativos.
+2. Ao selecionar uma clínica, o frontend chama `POST /organizations/:orgSlug/switch-context` sem enviar `organizationId`.
+3. Após `200 OK`, o frontend invalida dados e caches associados ao tenant anterior e navega para `/app/:orgSlug/...`.
+4. A sessão global permanece ativa; ela não é recriada nem passa a carregar autorização permanente para a clínica escolhida.
+5. Cada chamada subsequente usa o mesmo `orgSlug` na rota da API e o Elysia repete a validação do vínculo. As permissões efetivas são sempre as do `Membership` daquela organização.
+6. Respostas `403` ou `404` durante a seleção ou navegação fazem o frontend limpar o estado organizacional em memória, redirecionar para `/select-organization` e apresentar uma mensagem de acesso indisponível sem revelar dados da clínica.
+
+#### Casos conceituais de validação
+
+| Caso | Resultado esperado |
+|---|---|
+| Pessoa com uma clínica e vínculo ativo | A listagem retorna uma organização; a seleção e as rotas dessa clínica respondem normalmente. |
+| Pessoa com várias clínicas e vínculos ativos | A listagem retorna todas; cada troca revalida o vínculo e substitui permissões e caches do contexto anterior. |
+| Pessoa autenticada sem clínica | `GET /organizations` retorna `200` com `data: []`; a interface permanece em `/select-organization`. |
+| Slug inexistente | A rota organizacional retorna `404 NOT_FOUND`. |
+| Slug de uma clínica de terceiro | A rota retorna o mesmo `404 NOT_FOUND`, sem confirmar que a clínica existe. |
+| Vínculo suspenso ou ainda `INVITED` | A rota retorna `403 MEMBERSHIP_INACTIVE` e não injeta `organizationId`. |
+| Tentativa de enviar outro `organizationId` no payload | O valor não participa da autorização e não altera o tenant resolvido pela URL; payload incompatível com o schema é rejeitado. |
+| ID de recurso pertencente a outra clínica | A consulta filtrada pelo `organizationId` ativo não encontra o recurso e retorna `404 NOT_FOUND`. |
 
 ---
 
@@ -522,10 +580,10 @@ A definição completa e o schema Prisma oficial para o banco PostgreSQL são ma
 👉 **[Issue #199 — Consolidar o modelo de dados relacional e schema do Prisma](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/199)**
 
 ### Principais Entidades e Vínculos:
-* **`User` / `Account`**: Usuário e credenciais da conta pessoal. Nenhum papel global: toda permissão nasce de um `Membership` em uma clínica.
+* **`User` / `Account`**: Usuário global e credenciais da conta pessoal. Nenhum papel global: toda permissão nasce de um `Membership` em uma clínica.
 * **`Session`**: Sessões ativas de login com data de expiração e IP/User-Agent. Autenticação via `Authorization: Bearer <JWT>` cujo payload carrega o ID da `Session` — revogação imediata no banco.
 * **`VerificationToken`**: Tokens de uso único (verificação de e-mail, reset de senha) armazenados **apenas como SHA-256**, com TTL e `usedAt`.
-* **`Organization`**: Clínicas do sistema com `slug` único e `ownerId` (o criador — pagador da assinatura).
+* **`Organization`**: Clínicas do sistema com `slug` único, `ownerId` (o criador — pagador da assinatura) e fuso horário.
 * **`Subscription`**: Assinatura por clínica: R$ 89/mês, status `PENDING_PAYMENT`/`ACTIVE`/`PAST_DUE`/`CANCELED`. Somente o dono paga; membros convidados não pagam.
 * **`Membership`**: Vínculo entre `User` e `Organization` com `role` (ADMIN/PROFESSIONAL/RECEPTIONIST) e status.
 * **`OnboardingProgress`**: Estado do assistente de primeiro acesso, persistido por conta.
@@ -535,3 +593,37 @@ A definição completa e o schema Prisma oficial para o banco PostgreSQL são ma
 * **`Consultation`**: Atendimento clínico ligado a `Appointment` e `Patient`.
 * **`Document` & `DocumentVersion`**: Documentos médicos com histórico de versões e snapshots imutáveis.
 * **`AuditLog`**: Trilha imutável de eventos de auditoria da organização.
+
+#### `User`, `Organization` e `Membership`
+
+O relacionamento que permite a uma pessoa acessar várias clínicas é `User` 1-N `Membership` N-1 `Organization`. A identidade é global; papel, estado e permissões pertencem ao vínculo organizacional.
+
+| Entidade | Campo | Regra contratual |
+|---|---|---|
+| `User` | `id` | Chave primária opaca e imutável (UUID v4 ou CUID2). Nunca é reutilizada. |
+| `User` | `email` | Identificador global de login, normalizado e único conforme o contrato de autenticação. |
+| `Organization` | `id` | Chave primária interna, opaca e imutável. É o valor usado nas chaves estrangeiras e no isolamento das queries. |
+| `Organization` | `name` | Nome de exibição da clínica; sua alteração não muda automaticamente o slug. |
+| `Organization` | `slug` | Identificador público, globalmente único e adequado para URL. Não é usado como chave estrangeira. |
+| `Organization` | `ownerId` | Chave estrangeira obrigatória para o `User` responsável pela clínica e pela assinatura. Não substitui o `Membership` do proprietário. |
+| `Organization` | `timezone` | Fuso IANA usado para calendário e apresentação; timestamps persistidos continuam em UTC. |
+| `Membership` | `id` | Chave primária opaca e imutável do vínculo. |
+| `Membership` | `userId` | Chave estrangeira obrigatória para `User(id)`. |
+| `Membership` | `organizationId` | Chave estrangeira obrigatória para `Organization(id)`. |
+| `Membership` | `role` | Papel da pessoa nessa organização: `ADMIN`, `PROFESSIONAL` ou `RECEPTIONIST`. |
+| `Membership` | `status` | Estado do vínculo: `ACTIVE`, `SUSPENDED` ou `INVITED`. Somente `ACTIVE` autoriza acesso. |
+
+Regras e restrições:
+
+* A combinação (`userId`, `organizationId`) é única: uma pessoa possui no máximo um `Membership` por organização.
+* `User` não contém `organizationId`, `role` ou permissões globais de clínica. A mesma pessoa pode ter papéis diferentes em organizações diferentes.
+* Credenciais pertencem à conta pessoal; sessão pertence a `Session`; um vínculo `INVITED` ainda não autoriza acesso. Nenhum deles substitui um `Membership` ativo.
+* Dados clínicos e operacionais referenciam `Organization(id)`, nunca `Organization(slug)`.
+* Remover ou suspender um vínculo revoga o acesso organizacional sem encerrar as sessões globais da pessoa em outras clínicas; `INVITED` não concede acesso até a ativação.
+
+#### Política de `orgSlug`
+
+* O slug é derivado do nome na criação, convertido para minúsculas, sem acentos e limitado a letras ASCII, números e hífens, no formato `^[a-z0-9]+(?:-[a-z0-9]+)*$`.
+* A unicidade é global. Em colisões, o backend acrescenta um sufixo numérico (`clinica-2`, `clinica-3`, ...), confirmado por constraint única no banco para também cobrir concorrência.
+* Alterar o nome da clínica não altera o slug automaticamente. Uma futura alteração explícita de slug deverá tratar redirecionamentos e links existentes em contrato próprio.
+* Conhecer um slug não concede acesso. O backend sempre o converte em `Organization.id` e valida o `Membership` antes de fornecer `organizationId` à rota.
