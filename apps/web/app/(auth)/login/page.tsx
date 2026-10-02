@@ -3,7 +3,12 @@ import { AuthForm } from "@/components/medicalflow/auth-form";
 
 export const metadata: Metadata = { title: "Entrar | MedicalFlow" };
 
-export default function Page() {
+export default async function Page({
+  searchParams,
+}: {
+  searchParams: Promise<{ returnTo?: string }>;
+}) {
+  const { returnTo } = await searchParams;
   return (
     <section aria-labelledby="auth-title">
       <h1
@@ -12,7 +17,7 @@ export default function Page() {
       >
         Entrar
       </h1>
-      <AuthForm mode="login" />
+      <AuthForm mode="login" returnTo={returnTo} />
     </section>
   );
 }

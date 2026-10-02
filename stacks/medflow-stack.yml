@@ -80,6 +80,8 @@ services:
 
   web:
     image: ghcr.io/medicalflow-team/medicalflow-monorepo-web:${MEDFLOW_TAG:?MEDFLOW_TAG e obrigatorio (infra/deploy.sh exporta)}
+    environment:
+      API_INTERNAL_URL: http://medflow_api:3000/api
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000/"]
       interval: 30s

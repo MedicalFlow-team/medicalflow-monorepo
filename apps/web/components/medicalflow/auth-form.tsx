@@ -1,11 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { toast } from "sonner";
+import { useRouter } from "next/navigation";
+import type { FormEvent } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  destinationAfterLogin,
+  type LoginResult,
+  submitAuth,
+} from "@/lib/auth";
 
 type AuthMode = "login" | "register" | "forgot-password" | "reset-password";
 
@@ -16,7 +23,20 @@ const submitLabels: Record<AuthMode, string> = {
   "reset-password": "Alterar",
 };
 
-export function AuthForm({ mode }: { mode: AuthMode }) {
+export function AuthForm({
+  mode,
+  token,
+  returnTo,
+}: {
+  mode: AuthMode;
+  token?: string;
+  returnTo?: string | null;
+}) {
+  const router = useRouter();
+  const [pending, setPending] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
   const isReset = mode === "reset-password";
   const isRegister = mode === "register";
   const showPassword = mode !== "forgot-password";
@@ -24,29 +44,99 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
   const buttonClass =
     "h-[46px] w-full cursor-pointer rounded-lg text-base font-normal";
 
-  return (
-    <form
-      className="space-y-[11px]"
-      onSubmit={(event) => {
-        event.preventDefault();
-        const data = new FormData(event.currentTarget);
-        if (isReset && data.get("password") !== data.get("confirmation")) {
-          toast.error("As senhas precisam ser iguais.");
-          return;
-        }
-        if (
-          isReset &&
-          !new URLSearchParams(window.location.search).get("token")
-        ) {
-          toast.error("Link inválido. Solicite um novo link de recuperação.");
-          return;
-        }
-        // Connect the authentication API here; never simulate a successful session.
-        toast.error(
-          "Não foi possível concluir a solicitação. Tente novamente mais tarde.",
+  async function onSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (pending) return;
+    const data = new FormData(event.currentTarget);
+    const email = String(data.get("email") ?? "").trim();
+    const password = String(data.get("password") ?? "");
+    const confirmation = String(data.get("confirmation") ?? "");
+    setError("");
+    setMessage("");
+
+    if ((isReset || isRegister) && password !== confirmation) {
+      setError("As senhas precisam ser iguais.");
+      return;
+    }
+    if (isReset && !token) {
+      setError("Link inválido. Solicite um novo link de recuperação.");
+      return;
+    }
+    if (isRegister && !acceptedTerms) {
+      setError("É necessário aceitar os termos para criar a conta.");
+      return;
+    }
+
+    setPending(true);
+    try {
+      if (mode === "login") {
+        const result = await submitAuth<LoginResult>("login", {
+          email,
+          password,
+        });
+        router.replace(destinationAfterLogin(result, returnTo ?? null));
+        router.refresh();
+      } else if (mode === "register") {
+        await submitAuth("register", {
+          fullName: String(data.get("fullName") ?? "").trim(),
+          email,
+          password,
+        });
+        router.push(`/verify-email?email=${encodeURIComponent(email)}`);
+      } else if (mode === "forgot-password") {
+        await submitAuth("forgot-password", { email });
+        setMessage(
+          "Se o e-mail estiver cadastrado, você receberá um link para redefinir a senha.",
         );
-      }}
-    >
+      } else {
+        await submitAuth("reset-password", {
+          token: token ?? "",
+          newPassword: password,
+        });
+        setMessage(
+          "Senha redefinida. Suas sessões anteriores foram encerradas.",
+        );
+      }
+    } catch (cause) {
+      if (cause instanceof Error && cause.name === "ACCOUNT_NOT_VERIFIED") {
+        router.push(`/verify-email?email=${encodeURIComponent(email)}`);
+      } else if (cause instanceof Error && cause.name === "INVALID_TOKEN") {
+        setError("Este link é inválido ou expirou. Solicite um novo link.");
+      } else if (
+        cause instanceof Error &&
+        cause.name === "INVALID_CREDENTIALS"
+      ) {
+        setError("E-mail ou senha inválidos.");
+      } else {
+        setError(
+          cause instanceof Error
+            ? cause.message
+            : "Não foi possível concluir a solicitação.",
+        );
+      }
+    } finally {
+      setPending(false);
+    }
+  }
+
+  return (
+    <form className="space-y-[11px]" onSubmit={onSubmit}>
+      {isRegister && (
+        <div className="space-y-[3px]">
+          <Label htmlFor="fullName" className="text-base font-normal leading-5">
+            Nome completo
+          </Label>
+          <Input
+            id="fullName"
+            name="fullName"
+            autoComplete="name"
+            minLength={3}
+            maxLength={120}
+            className={inputClass}
+            required
+          />
+        </div>
+      )}
       {!isReset && (
         <div className="space-y-[3px]">
           <Label htmlFor="email" className="text-base font-normal leading-5">
@@ -57,6 +147,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
             name="email"
             type="email"
             autoComplete="username"
+            maxLength={254}
             className={inputClass}
             required
           />
@@ -75,12 +166,13 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
               mode === "login" ? "current-password" : "new-password"
             }
             minLength={mode === "login" ? undefined : 8}
+            maxLength={72}
             className={inputClass}
             required
           />
         </div>
       )}
-      {isReset && (
+      {(isReset || isRegister) && (
         <div className="space-y-[11px]">
           <Label
             htmlFor="confirmation"
@@ -94,6 +186,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
             type="password"
             autoComplete="new-password"
             minLength={8}
+            maxLength={72}
             className={inputClass}
             required
           />
@@ -115,6 +208,8 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
             id="terms"
             name="terms"
             required
+            checked={acceptedTerms}
+            onCheckedChange={(checked) => setAcceptedTerms(checked === true)}
             className="size-5 rounded border-0 bg-[#D9D9D9] data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
           />
           <Label
@@ -127,8 +222,30 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
           </Label>
         </div>
       )}
-      <Button type="submit" className={buttonClass}>
-        {submitLabels[mode]}
+      {(isRegister || isReset) && (
+        <p className="text-xs text-muted-foreground">
+          A senha deve ter entre 8 e 72 caracteres.
+        </p>
+      )}
+      {error && (
+        <p role="alert" className="text-sm text-destructive">
+          {error}
+        </p>
+      )}
+      {message && (
+        <output className="block text-sm text-foreground">{message}</output>
+      )}
+      {isReset && message && (
+        <Link href="/login" className="block text-center text-sm underline">
+          Entrar com a nova senha
+        </Link>
+      )}
+      <Button
+        type="submit"
+        className={buttonClass}
+        disabled={pending || (isReset && !!message)}
+      >
+        {pending ? "Aguarde..." : submitLabels[mode]}
       </Button>
       {mode === "login" && (
         <p className="pt-1 text-center text-sm text-muted-foreground">

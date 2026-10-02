@@ -96,13 +96,19 @@ Em caso de falha (códigos HTTP 4xx e 5xx), a API responde com a seguinte estrut
     "password": "<senha_segura>"
   }
   ```
-* **Respostas:** `201 Created` (`{ "message": "Conta criada com sucesso. Verifique seu e-mail." }`), `409 ALREADY_EXISTS`, `400 VALIDATION_ERROR`.
+* **Respostas:** `201 Created` (`{ "message": "Conta criada com sucesso. Verifique seu e-mail para continuar." }`), `400 VALIDATION_ERROR`. E-mails já cadastrados recebem a mesma resposta; contas já verificadas não recebem outro link.
 
 #### `POST /auth/verify-email`
 * **Descrição:** Confirma o endereço de e-mail com o token recebido.
 * **Permissão:** Pública.
 * **Body:** `{ "token": "<token_verificacao>" }`
 * **Respostas:** `200 OK` (`{ "message": "E-mail confirmado com sucesso." }`), `400 INVALID_TOKEN`.
+
+#### `POST /auth/resend-verification`
+* **Descrição:** Solicita outro link de confirmação para uma conta ainda pendente. A resposta é igual para e-mail inexistente, já confirmado ou temporariamente limitado, para não revelar o estado da conta.
+* **Permissão:** Pública.
+* **Body:** `{ "email": "maria.silva@exemplo.com" }`
+* **Respostas:** `200 OK` (`{ "message": "Se a conta estiver pendente, um novo link será enviado." }`), `400 VALIDATION_ERROR`.
 
 #### `POST /auth/login`
 * **Descrição:** Autentica com e-mail e senha e inicia a sessão do usuário.
