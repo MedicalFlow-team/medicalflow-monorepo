@@ -14,6 +14,9 @@ const testEnv: Env = {
   wahaBaseUrl: "http://127.0.0.1:1",
   wahaApiKey: null,
   webAppUrl: "http://localhost:3000",
+  sesRegion: null,
+  mailProvider: "disabled",
+  mailFrom: null,
 };
 
 // Stub do Prisma: health com banco inacessível deve degradar para "down".

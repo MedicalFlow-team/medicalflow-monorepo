@@ -17,6 +17,9 @@ export interface Env {
   wahaApiKey: string | null;
   /** Base pública do front (usada nos links de e-mail). */
   webAppUrl: string;
+  mailProvider: "disabled" | "console" | "ses";
+  sesRegion: string | null;
+  mailFrom: string | null;
 }
 
 function required(name: string): string {
@@ -34,9 +37,38 @@ function optional(name: string, fallback: string): string {
 }
 
 export function loadEnv(): Env {
+  const nodeEnv = optional("NODE_ENV", "development");
+  const sesRegion = process.env.AWS_REGION?.trim() || null;
+  const mailFrom = process.env.MAIL_FROM?.trim() || null;
+  const mailProvider = optional(
+    "MAIL_PROVIDER",
+    nodeEnv === "production" ? "disabled" : "console",
+  );
+  if (
+    mailProvider !== "disabled" &&
+    mailProvider !== "console" &&
+    mailProvider !== "ses"
+  ) {
+    throw new Error("[boot] MAIL_PROVIDER deve ser disabled, console ou ses.");
+  }
+  if (nodeEnv === "production" && mailProvider === "console") {
+    throw new Error(
+      "[boot] MAIL_PROVIDER=console não é permitido em produção.",
+    );
+  }
+  if (nodeEnv !== "production" && mailProvider === "ses") {
+    throw new Error(
+      "[boot] MAIL_PROVIDER=ses exige NODE_ENV=production; dev e testes não enviam e-mails externos.",
+    );
+  }
+  if (mailProvider === "ses" && (!sesRegion || !mailFrom)) {
+    throw new Error(
+      "[boot] AWS_REGION e MAIL_FROM são obrigatórios para MAIL_PROVIDER=ses.",
+    );
+  }
   return {
     port: Number(optional("PORT", "3000")),
-    nodeEnv: optional("NODE_ENV", "development"),
+    nodeEnv,
     version: optional("APP_VERSION", "0.1.0"),
     jwtSecret: required("JWT_SECRET"),
     databaseUrl: required("DATABASE_URL"),
@@ -44,5 +76,8 @@ export function loadEnv(): Env {
     wahaBaseUrl: required("WAHA_BASE_URL"),
     wahaApiKey: process.env.WAHA_API_KEY ?? null,
     webAppUrl: required("APP_WEB_URL"),
+    mailProvider,
+    sesRegion,
+    mailFrom,
   };
 }
