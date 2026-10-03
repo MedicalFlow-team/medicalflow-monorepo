@@ -31,8 +31,20 @@ Antes do próximo deploy, configure também `API_INTERNAL_URL`, `API_HOST`,
 `WEB_HOST` e `WEB_ALT_HOST` em `/root/medflow/.env`, sem aspas. O script de
 deploy exporta esses quatro valores para a interpolação da stack. Os hosts
 são domínios sem protocolo; `APP_WEB_URL` é a URL pública completa usada nos
-links de confirmação e recuperação. `SMTP_URL` e `MAIL_FROM` documentam a
-futura integração SMTP; o mailer atual ainda escreve links no console.
+links de confirmação e recuperação. Enquanto o e-mail não estiver pronto,
+use `MAIL_PROVIDER=disabled` em produção (também é o padrão): a API inicia,
+mas confirmação, recuperação e convites não são entregues. As respostas HTTP
+continuam neutras; nenhum link ou token é registrado no console de produção.
+Para ativar o envio, configure `MAIL_PROVIDER=ses`, `AWS_REGION` e `MAIL_FROM`.
+A API falha no boot se SES estiver ativo sem região ou remetente.
+O remetente precisa estar verificado
+no Amazon SES nessa região; a API usa a cadeia padrão de credenciais do SDK
+(preferencialmente IAM role, ou credenciais por ambiente). Em desenvolvimento
+e testes, `MAIL_PROVIDER=console` registra links somente localmente e não envia
+mensagens externas; `ses` é recusado nesses ambientes e `console` é recusado
+em produção. Antes de ativar SES,
+verifique domínio e registros SPF, DKIM e DMARC no SES e habilite o envio fora
+do sandbox para destinatários não verificados.
 
 ```bash
 openssl rand -hex 32   # JWT_SECRET, WAHA_WEBHOOK_SECRET
