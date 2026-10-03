@@ -61,7 +61,7 @@ export class AuthService {
       if (!existing.emailVerified) {
         try {
           const token = await this.mintToken(existing.id, "EMAIL_VERIFICATION");
-          await this.deps.mailer.send({
+          await this.deliver({
             to: email,
             subject: "MedicalFlow — confirmação de cadastro",
             text: this.verificationText(token),
@@ -85,7 +85,7 @@ export class AuthService {
     });
 
     const token = await this.mintToken(user.id, "EMAIL_VERIFICATION");
-    await this.deps.mailer.send({
+    await this.deliver({
       to: email,
       subject: "MedicalFlow — confirmação de cadastro",
       text: this.verificationText(token),
@@ -96,10 +96,26 @@ export class AuthService {
 
   /** #207 — confirmação de e-mail com token de uso único (hash no banco). */
   async verifyEmail(tokenValue: string): Promise<{ message: string }> {
-    const record = await this.consumeToken(tokenValue, "EMAIL_VERIFICATION");
-    await this.deps.prisma.user.update({
-      where: { id: record.userId },
-      data: { emailVerified: true },
+    await this.deps.prisma.$transaction(async (tx) => {
+      const record = await tx.verificationToken.findUnique({
+        where: { tokenHash: hashToken(tokenValue) },
+      });
+      if (!record || record.type !== "EMAIL_VERIFICATION") {
+        throw InvalidToken();
+      }
+      const consumed = await tx.verificationToken.updateMany({
+        where: {
+          id: record.id,
+          usedAt: null,
+          expiresAt: { gt: new Date() },
+        },
+        data: { usedAt: new Date() },
+      });
+      if (consumed.count !== 1) throw InvalidToken();
+      await tx.user.update({
+        where: { id: record.userId },
+        data: { emailVerified: true },
+      });
     });
     return { message: "E-mail confirmado com sucesso." };
   }
@@ -111,7 +127,7 @@ export class AuthService {
     if (user && !user.emailVerified) {
       try {
         const token = await this.mintToken(user.id, "EMAIL_VERIFICATION");
-        await this.deps.mailer.send({
+        await this.deliver({
           to: email,
           subject: "MedicalFlow — confirmação de cadastro",
           text: this.verificationText(token),
@@ -182,7 +198,7 @@ export class AuthService {
 
     if (user) {
       const token = await this.mintToken(user.id, "PASSWORD_RESET");
-      await this.deps.mailer.send({
+      await this.deliver({
         to: email,
         subject: "MedicalFlow — redefinição de senha",
         text: this.resetText(token),
@@ -202,18 +218,18 @@ export class AuthService {
         const record = await tx.verificationToken.findUnique({
           where: { tokenHash },
         });
-        if (
-          !record ||
-          record.type !== "PASSWORD_RESET" ||
-          record.usedAt ||
-          record.expiresAt < new Date()
-        ) {
+        if (!record || record.type !== "PASSWORD_RESET") {
           return null;
         }
-        await tx.verificationToken.update({
-          where: { id: record.id },
+        const consumed = await tx.verificationToken.updateMany({
+          where: {
+            id: record.id,
+            usedAt: null,
+            expiresAt: { gt: new Date() },
+          },
           data: { usedAt: new Date() },
         });
+        if (consumed.count !== 1) return null;
         await tx.user.update({
           where: { id: record.userId },
           data: { passwordHash: await hash(body.newPassword) },
@@ -268,27 +284,17 @@ export class AuthService {
     return token;
   }
 
-  /** Consome um token de uso único: válido → marca usado; caso contrário erro. */
-  private async consumeToken(
-    tokenValue: string,
-    type: "EMAIL_VERIFICATION" | "PASSWORD_RESET",
-  ) {
-    const record = await this.deps.prisma.verificationToken.findUnique({
-      where: { tokenHash: hashToken(tokenValue) },
-    });
-    if (
-      !record ||
-      record.type !== type ||
-      record.usedAt ||
-      record.expiresAt < new Date()
-    ) {
-      throw InvalidToken();
+  private async deliver(message: {
+    to: string;
+    subject: string;
+    text: string;
+  }): Promise<void> {
+    try {
+      await this.deps.mailer.send(message);
+    } catch {
+      // A falha do provedor não deve revelar se o e-mail pertence a uma conta.
+      console.error("[auth] falha ao entregar e-mail de autenticação");
     }
-    await this.deps.prisma.verificationToken.update({
-      where: { id: record.id },
-      data: { usedAt: new Date() },
-    });
-    return record;
   }
 
   private verificationText(token: string): string {

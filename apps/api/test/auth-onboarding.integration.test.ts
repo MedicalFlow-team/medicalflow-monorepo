@@ -35,6 +35,9 @@ const testEnv: Env = {
   wahaBaseUrl: "http://127.0.0.1:1",
   wahaApiKey: null,
   webAppUrl: "http://localhost:3000",
+  sesRegion: null,
+  mailProvider: "disabled",
+  mailFrom: null,
 };
 
 // Probe do banco em top-level: define skipIf ANTES do registro das suites.
@@ -147,7 +150,23 @@ describe.skipIf(!dbUp)("Integração: auth + onboarding (Postgres real)", () => 
       expect(garbage.status).toBe(400);
     });
 
-    test("reenvio de verificação é limitado por janela de 1h", async () => {
+    test("duas confirmações simultâneas não consomem o mesmo token duas vezes", async () => {
+      await post("/auth/register", {
+        fullName: "Dra. Maria Silva",
+        email: "maria@exemplo.com",
+        password: "senha-segura-123",
+      });
+      const token = tokenFromMail();
+      const responses = await Promise.all([
+        post("/auth/verify-email", { token }),
+        post("/auth/verify-email", { token }),
+      ]);
+      expect(responses.map((response) => response.status).sort()).toEqual([
+        200, 400,
+      ]);
+    });
+
+    test("limite de reenvio mantém resposta neutra e não cria outro token", async () => {
       const body = {
         fullName: "Dra. Maria Silva",
         email: "maria@exemplo.com",
@@ -159,10 +178,9 @@ describe.skipIf(!dbUp)("Integração: auth + onboarding (Postgres real)", () => 
         expect(r.status).toBe(201);
       }
       const limited = await post("/auth/register", body);
-      expect(limited.status).toBe(429);
-      expect(
-        ((await limited.json()) as { error: { code: string } }).error.code,
-      ).toBe("RATE_LIMITED");
+      expect(limited.status).toBe(201);
+      expect(sent).toHaveLength(3);
+      expect(await prisma.verificationToken.count()).toBe(3);
     });
   });
 

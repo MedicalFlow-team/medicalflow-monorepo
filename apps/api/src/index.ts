@@ -1,12 +1,12 @@
 import { createApp } from "./app";
 import { loadEnv } from "./config/env";
 import { createPrismaClient } from "./services/db";
-import { ConsoleMailer } from "./services/mailer";
+import { createMailer } from "./services/mailer";
 
 // Raiz de composição: monta env, infra e aplicação.
 const env = loadEnv();
 const prisma = createPrismaClient(env.databaseUrl);
-const mailer = new ConsoleMailer();
+const mailer = createMailer(env);
 
 const app = createApp(env, { prisma, mailer }).listen(env.port);
 
