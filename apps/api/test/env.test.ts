@@ -8,6 +8,7 @@ const keys = [
   "AWS_REGION",
   "MAIL_FROM",
   "MAIL_PROVIDER",
+  "TRUST_PROXY",
 ] as const;
 const original = new Map(keys.map((key) => [key, process.env[key]]));
 
@@ -16,6 +17,29 @@ afterEach(() => {
     const value = original.get(key);
     if (value === undefined) delete process.env[key];
     else process.env[key] = value;
+  }
+});
+
+test("proxy confiável exige ativação explícita", () => {
+  const jwt = process.env.JWT_SECRET;
+  const db = process.env.DATABASE_URL;
+  process.env.JWT_SECRET = "test-only";
+  process.env.DATABASE_URL = "postgresql://unused";
+  process.env.CORS_ORIGIN = "https://web.test";
+  process.env.WAHA_BASE_URL = "https://waha.test";
+  process.env.APP_WEB_URL = "https://web.test";
+  try {
+    delete process.env.TRUST_PROXY;
+    expect(loadEnv().trustProxy).toBe(false);
+    process.env.TRUST_PROXY = "true";
+    expect(loadEnv().trustProxy).toBe(true);
+    process.env.TRUST_PROXY = "invalid";
+    expect(() => loadEnv()).toThrow("TRUST_PROXY deve ser true ou false");
+  } finally {
+    if (jwt === undefined) delete process.env.JWT_SECRET;
+    else process.env.JWT_SECRET = jwt;
+    if (db === undefined) delete process.env.DATABASE_URL;
+    else process.env.DATABASE_URL = db;
   }
 });
 

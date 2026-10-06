@@ -1,4 +1,5 @@
 import { Elysia } from "elysia";
+import { sessionMetadataFromRequest } from "../../lib/session-metadata";
 import * as m from "./model";
 import type { AuthDeps } from "./service";
 import { AuthService } from "./service";
@@ -33,10 +34,22 @@ export function authModule(deps: AuthDeps) {
           response: { 200: m.messageResponse },
         },
       )
-      .post("/login", ({ body }) => service.login(body), {
-        body: m.loginBody,
-        response: { 200: m.loginResponse },
-      })
+      .post(
+        "/login",
+        ({ body, request, server }) =>
+          service.login(
+            body,
+            sessionMetadataFromRequest({
+              request,
+              peerAddress: server?.requestIP(request)?.address ?? null,
+              trustProxy: deps.config.trustProxy,
+            }),
+          ),
+        {
+          body: m.loginBody,
+          response: { 200: m.loginResponse },
+        },
+      )
       .post("/forgot-password", ({ body }) => service.forgotPassword(body), {
         body: m.forgotPasswordBody,
         response: { 200: m.messageResponse },

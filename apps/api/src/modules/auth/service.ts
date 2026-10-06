@@ -1,6 +1,7 @@
 import { hash, verify as verifyHash } from "argon2";
 import type { Prisma, PrismaClient } from "../../generated/prisma/client";
 import { ApiError } from "../../lib/api-error";
+import type { SessionMetadata } from "../../lib/session-metadata";
 import { normalizeEmail } from "../../lib/slug";
 import { generateToken, hashToken } from "../../lib/tokens";
 import type { Mailer } from "../../services/mailer";
@@ -32,6 +33,7 @@ export interface AuthConfig {
   passwordResetTtlMinutes: number;
   verificationResendPerHour: number;
   webAppUrl: string;
+  trustProxy: boolean;
 }
 
 export interface AuthDeps {
@@ -145,7 +147,10 @@ export class AuthService {
   }
 
   /** #208 — login; falhas indistinguíveis; pendente recebe estado claro. */
-  async login(body: LoginBody): Promise<LoginResponse> {
+  async login(
+    body: LoginBody,
+    sessionMetadata: SessionMetadata,
+  ): Promise<LoginResponse> {
     const email = normalizeEmail(body.email);
     const user = await this.deps.prisma.user.findUnique({
       where: { email },
@@ -169,7 +174,12 @@ export class AuthService {
       Date.now() + this.deps.config.sessionTtlSeconds * 1000,
     );
     const session = await this.deps.prisma.session.create({
-      data: { userId: user.id, expiresAt },
+      data: {
+        userId: user.id,
+        expiresAt,
+        ipAddress: sessionMetadata.ipAddress,
+        userAgent: sessionMetadata.userAgent,
+      },
     });
     const token = signSessionToken(
       { sid: session.id, sub: user.id },
