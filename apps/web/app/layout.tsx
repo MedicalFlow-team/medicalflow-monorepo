@@ -37,6 +37,9 @@ export default function RootLayout({
         inter.variable,
       )}
     >
+      <head>
+        <meta name="apple-mobile-web-app-title" content="Flowcare" />
+      </head>
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );
