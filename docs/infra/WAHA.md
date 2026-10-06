@@ -16,7 +16,7 @@
 
 1. **Envio de mensagens** (confirmações na seção 8 do contrato) — realizado pelo cliente WAHA do backend.
 2. **Webhook de respostas** — o painel do WAHA deve apontar o webhook para a API:
-   `https://api.selbr.com/api/webhooks/waha` (após o registro DNS existir),
+   `https://api.flowcare.me/api/webhooks/waha` (após o registro DNS existir),
    com o header/query `WAHA_WEBHOOK_SECRET` validado pelo back (§8).
 3. **Alerta de sessão** — `infra/monitoring/check-health.sh` polla `GET /api/sessions`
    de dentro da rede e alerta se status ≠ `WORKING` (QR pendente, desconectado).

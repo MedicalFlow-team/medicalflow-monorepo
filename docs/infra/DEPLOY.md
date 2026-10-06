@@ -30,16 +30,16 @@ push na main
 
 ## DNS
 
-Zona `selbr.com` (Cloudflare, já configurada):
+Zona `flowcare.me` (Cloudflare, já configurada):
 
 | Registro | Tipo | Valor | Proxy |
 |---|---|---|---|
-| `selbr.com` (apex) | A | IP do VPS | 🟠 proxied — edge HTTPS da CF (Universal SSL cobre apex + 1º nível); SSL mode **Full** |
-| `www.selbr.com` | A | IP do VPS | 🟠 proxied |
-| `api.selbr.com` | A | IP do VPS | ⚪ **DNS-only (cinza)** — o traefik emite cert Let's Encrypt direto. Motivo: o proxy CF limita request a 100 MB e o upload de áudio vai até 500 MB (RF-D2) |
+| `flowcare.me` (apex) | A | IP do VPS | 🟠 proxied — edge HTTPS da CF (Universal SSL cobre apex + 1º nível); SSL mode **Full** |
+| `www.flowcare.me` | A | IP do VPS | 🟠 proxied |
+| `api.flowcare.me` | A | IP do VPS | ⚪ **DNS-only (cinza)** — o traefik emite cert Let's Encrypt direto. Motivo: o proxy CF limita request a 100 MB e o upload de áudio vai até 500 MB (RF-D2) |
 
 - Apex e www: HTTP-01 atravessa o proxy Cloudflare normalmente (mesmo padrão de waha/train/stream) — requer SSL mode **Full ou Full (strict)** na zona; em **Flexible** causa redirect loop.
-- Sem o registro `api.selbr.com` (DNS-only), o cert da API não emite e a rota pública não existe.
+- Sem o registro `api.flowcare.me` (DNS-only), o cert da API não emite e a rota pública não existe.
 
 ## Operação
 
