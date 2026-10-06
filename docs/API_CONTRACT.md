@@ -102,7 +102,7 @@ Em caso de falha (códigos HTTP 4xx e 5xx), a API responde com a seguinte estrut
 * **Descrição:** Confirma o endereço de e-mail com o token recebido.
 * **Permissão:** Pública.
 * **Body:** `{ "token": "<token_verificacao>" }`
-* **Respostas:** `200 OK` (`{ "message": "E-mail confirmado com sucesso." }`), `400 INVALID_TOKEN`.
+* **Respostas:** `200 OK` com o mesmo DTO de sessão de `POST /auth/login` (`token`, `user`, `availableOrganizations`, `onboardingCompleted`), `400 INVALID_TOKEN`. O token de verificação é consumido uma única vez; o frontend guarda a sessão em cookie HttpOnly e segue para o onboarding ou clínica disponível.
 
 #### `POST /auth/resend-verification`
 * **Descrição:** Solicita outro link de confirmação para uma conta ainda pendente. A resposta é igual para e-mail inexistente, já confirmado ou temporariamente limitado, para não revelar o estado da conta.

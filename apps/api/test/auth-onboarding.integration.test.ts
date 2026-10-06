@@ -140,6 +140,13 @@ describe.skipIf(!dbUp)("Integração: auth + onboarding (Postgres real)", () => 
 
       const ok = await post("/auth/verify-email", { token });
       expect(ok.status).toBe(200);
+      const confirmed = (await ok.json()) as {
+        token: string;
+        user: { email: string };
+      };
+      expect(confirmed.token).toBeTruthy();
+      expect(confirmed.user.email).toBe("maria@exemplo.com");
+      expect(await prisma.session.count()).toBe(1);
 
       const reuse = await post("/auth/verify-email", { token });
       expect(reuse.status).toBe(400);
@@ -165,6 +172,7 @@ describe.skipIf(!dbUp)("Integração: auth + onboarding (Postgres real)", () => 
       expect(responses.map((response) => response.status).sort()).toEqual([
         200, 400,
       ]);
+      expect(await prisma.session.count()).toBe(1);
     });
 
     test("limite de reenvio mantém resposta neutra e não cria outro token", async () => {

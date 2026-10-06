@@ -22,10 +22,19 @@ export function authModule(deps: AuthDeps) {
           response: { 201: m.messageResponse },
         },
       )
-      .post("/verify-email", ({ body }) => service.verifyEmail(body.token), {
-        body: m.verifyEmailBody,
-        response: { 200: m.messageResponse },
-      })
+      .post(
+        "/verify-email",
+        ({ body, request, server }) =>
+          service.verifyEmail(
+            body.token,
+            sessionMetadataFromRequest({
+              request,
+              peerAddress: server?.requestIP(request)?.address ?? null,
+              trustProxy: deps.config.trustProxy,
+            }),
+          ),
+        { body: m.verifyEmailBody, response: { 200: m.loginResponse } },
+      )
       .post(
         "/resend-verification",
         ({ body }) => service.resendVerification(body.email),
