@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { FormEvent } from "react";
 import { startTransition, useEffect, useState } from "react";
 import {
@@ -10,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { unwrapActionResult } from "@/lib/auth";
+import { destinationAfterLogin, unwrapActionResult } from "@/lib/auth";
 
 const COOLDOWN_SECONDS = 60;
 
@@ -21,8 +22,9 @@ export function VerifyEmail({
   token?: string;
   initialEmail?: string;
 }) {
+  const router = useRouter();
   const [pending, setPending] = useState(false);
-  const [verified, setVerified] = useState(false);
+  const [showResend, setShowResend] = useState(!token);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [retryAt, setRetryAt] = useState(0);
@@ -43,13 +45,16 @@ export function VerifyEmail({
     setError("");
     startTransition(async () => {
       try {
-        unwrapActionResult(await verifyEmailAction({ token }));
-        setVerified(true);
-        setMessage("E-mail confirmado. Entre na sua conta para continuar.");
+        const result = unwrapActionResult(await verifyEmailAction({ token }));
+        router.replace(destinationAfterLogin(result, null));
+        router.refresh();
       } catch (cause) {
+        if (cause instanceof Error && cause.name === "INVALID_TOKEN") {
+          setShowResend(true);
+        }
         setError(
           cause instanceof Error && cause.name === "INVALID_TOKEN"
-            ? "Este link é inválido, expirou ou já foi usado. Solicite outro abaixo."
+            ? "Este link expirou ou já foi usado. Peça um novo abaixo."
             : cause instanceof Error
               ? cause.message
               : "Não foi possível confirmar o e-mail.",
@@ -91,17 +96,16 @@ export function VerifyEmail({
 
   return (
     <div className="space-y-5">
-      {token && !verified && (
+      {token && !showResend && (
         <div className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            Confirme seu endereço para acessar o Flowcare. O link pode ser usado
-            uma única vez.
+            Clique no botão abaixo para confirmar seu e-mail e continuar.
           </p>
           <Button
             type="button"
             onClick={confirm}
             disabled={pending}
-            className="w-full"
+            className="h-[46px] w-full rounded-lg text-base font-normal"
           >
             {pending ? "Confirmando..." : "Confirmar e-mail"}
           </Button>
@@ -109,8 +113,8 @@ export function VerifyEmail({
       )}
       {!token && (
         <p className="text-sm text-muted-foreground">
-          Confira sua caixa de entrada. Se o link expirou, solicite outro
-          abaixo.
+          Enviamos um link de confirmação para seu e-mail. Confira a caixa de
+          entrada e o spam. Se não encontrar a mensagem, peça outro link abaixo.
         </p>
       )}
       {error && (
@@ -119,15 +123,9 @@ export function VerifyEmail({
         </p>
       )}
       {message && <output className="block text-sm">{message}</output>}
-      {verified ? (
-        <Button asChild className="w-full">
-          <Link href="/login?returnTo=%2Fonboarding%2Fprofile">
-            Entrar para continuar
-          </Link>
-        </Button>
-      ) : (
+      {showResend && (
         <form onSubmit={resend} className="space-y-3">
-          <Label htmlFor="verify-email">Precisa de outro link?</Label>
+          <Label htmlFor="verify-email">E-mail para receber outro link</Label>
           <Input
             id="verify-email"
             name="email"
@@ -139,8 +137,7 @@ export function VerifyEmail({
           />
           <Button
             type="submit"
-            variant="outline"
-            className="w-full"
+            className="h-[46px] w-full rounded-lg text-base font-normal"
             disabled={pending || secondsLeft > 0}
           >
             {secondsLeft > 0

@@ -204,6 +204,14 @@ test("cadastro, confirmação, reenvio e recuperação chamam os endpoints Elysi
   const paths: string[] = [];
   globalThis.fetch = (async (url: string | URL | Request) => {
     paths.push(String(url));
+    if (String(url).endsWith("/auth/verify-email")) {
+      return Response.json({
+        token: "não expor",
+        user: { id: "user-1", email: credentials.email, fullName: "Ana Silva" },
+        availableOrganizations: [],
+        onboardingCompleted: false,
+      });
+    }
     return Response.json({ message: "OK", token: "não expor" });
   }) as typeof fetch;
   const results = [
@@ -224,7 +232,8 @@ test("cadastro, confirmação, reenvio e recuperação chamam os endpoints Elysi
     "http://api.test/api/auth/resend-verification",
     "http://api.test/api/auth/forgot-password",
   ]);
-  expect(cookieWrites).toHaveLength(0);
+  expect(cookieWrites).toHaveLength(1);
+  expect(cookieWrites[0]).toMatchObject({ httpOnly: true, value: "não expor" });
 });
 
 test("cadastro rejeita aceite de termos ausente no servidor", async () => {
