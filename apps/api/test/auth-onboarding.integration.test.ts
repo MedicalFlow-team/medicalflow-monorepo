@@ -13,7 +13,7 @@ import type { Mailer } from "../src/services/mailer";
 
 const DATABASE_URL =
   process.env.TEST_DATABASE_URL ??
-  "postgresql://medflow:medflow@127.0.0.1:5433/medflow";
+  "postgresql://flowcare:flowcare@127.0.0.1:5433/flowcare";
 
 let prisma!: PrismaClient;
 let dbUp = false;

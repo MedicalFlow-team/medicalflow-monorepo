@@ -1,5 +1,5 @@
 {
-  "name": "medflow-api",
+  "name": "flowcare-api",
   "version": "0.1.0",
   "private": true,
   "type": "module",

@@ -1,4 +1,4 @@
-// MedicalFlow — schema Prisma (issue #199, escopo inicial: identidade + organizações)
+// Flowcare — schema Prisma (issue #199, escopo inicial: identidade + organizações)
 //
 // Convenções (docs/API_CONTRACT.md §1):
 // - IDs: strings opacas (UUID v4 gerado no banco);

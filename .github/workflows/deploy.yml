@@ -1,11 +1,11 @@
 name: Deploy (produção)
 
 on:
-  push:
-    branches: [main]
+  # Reativar push somente após concluir MIGRATION_RUNBOOK_FLOWCARE.md.
+  workflow_dispatch:
 
 concurrency:
-  group: deploy-medflow
+  group: deploy-flowcare
   cancel-in-progress: false
 
 permissions:
@@ -41,8 +41,8 @@ jobs:
           file: ${{ matrix.file }}
           push: true
           tags: |
-            ghcr.io/medicalflow-team/medicalflow-monorepo-${{ matrix.name }}:${{ github.sha }}
-            ghcr.io/medicalflow-team/medicalflow-monorepo-${{ matrix.name }}:latest
+            ghcr.io/flow-care/flowcare-${{ matrix.name }}:${{ github.sha }}
+            ghcr.io/flow-care/flowcare-${{ matrix.name }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -54,13 +54,13 @@ jobs:
       - name: SSH no VPS e deploy
         uses: appleboy/ssh-action@v1.2.2
         with:
-          host: ${{ secrets.MEDFLOW_VPS_HOST }}
+          host: ${{ secrets.FLOWCARE_VPS_HOST }}
           username: root
-          key: ${{ secrets.MEDFLOW_VPS_SSH_KEY }}
+          key: ${{ secrets.FLOWCARE_VPS_SSH_KEY }}
           script_stop: true
           script: |
             set -euo pipefail
-            cd /root/medicalflow-monorepo
+            cd /root/flowcare-monorepo
             # Deploy determinístico: SHA exato do push (a branch local do VPS
             # pode ser outra — git pull sozinho puxaria a branch errada).
             git fetch origin

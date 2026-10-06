@@ -1,11 +1,11 @@
-# MedicalFlow — Plano de Testes e Matriz de Rastreabilidade
+# Flowcare — Plano de Testes e Matriz de Rastreabilidade
 
 **Versão:** 4.0
 **Status:** Baseline de planejamento vNext
-**Backlog:** [MedicalFlow - Delivery](https://github.com/orgs/MedicalFlow-team/projects/2)
+**Backlog:** [Flowcare - Delivery](https://github.com/orgs/Flowcare-team/projects/2)
 **Contrato da API:** [`API_CONTRACT.md`](API_CONTRACT.md)
 
-Este documento define a estratégia global de garantia de qualidade para o **MedicalFlow**, estabelecendo a matriz de rastreabilidade entre as decisões estratégicas de produto, as tarefas de desenvolvimento e as 15 issues formais de QA do projeto.
+Este documento define a estratégia global de garantia de qualidade para o **Flowcare**, estabelecendo a matriz de rastreabilidade entre as decisões estratégicas de produto, as tarefas de desenvolvimento e as 15 issues formais de QA do projeto.
 
 ---
 
@@ -65,21 +65,21 @@ A tabela a seguir relaciona as **15 Issues Oficiais de QA** do board com seus m�
 
 | Issue de QA | Módulo Funcional | Issues de Entrega Cobertas | Códigos de Casos de Teste |
 |---|---|---|---|
-| **[#214](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/214)** | Autenticação & Sessões | #192, #207–#213 | `ID-01` a `ID-08` |
-| **[#226](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/226)** | Onboarding & Primeira Clínica | #193, #215–#219, #221–#225 | `ONB-01` a `ONB-07` |
-| **[#235](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/235)** | Organizações, Troca & Painel | #191, #197, #227–#234 | `ORG-01` a `ORG-07` |
-| **[#249](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/249)** | Agendamentos & Recepção | #236–#248 | `AGD-01` a `AGD-08` |
-| **[#261](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/261)** | Pacientes, Prontuário & Anexos | #250–#260 | `PAC-01` a `PAC-08` |
-| **[#272](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/272)** | Consultas, Áudio & Anamnese | #195, #262–#271 | `CON-01` a `CON-08` |
-| **[#286](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/286)** | Documentos, Versionamento & PDF | #195, #273–#285 | `DOC-01` a `DOC-09` |
-| **[#294](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/294)** | Modelos de Documentos | #287–#293 | `MOD-01` a `MOD-05` |
-| **[#302](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/302)** | Comunicações & WhatsApp (WAHA) | #196, #295–#301 | `MSG-01` a `MSG-06` |
-| **[#313](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/313)** | Configurações & Horários | #303–#312 | `CFG-01` a `CFG-06` |
-| **[#326](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/326)** | Equipe, Convites & RBAC Granular | #194, #314–#325 | `EQP-01` a `EQP-08` |
-| **[#330](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/330)** | Auditoria & Logs de Segurança | #327–#329 | `AUD-01` a `AUD-05` |
-| **[#340](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/340)** | Conta Pessoal & Sessões | #331–#333, #335–#339 | `CPT-01` a `CPT-06` |
-| **[#345](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/345)** | Navegação por URL, Abas & Sheets | #345 | `NAV-01` a `NAV-05` |
-| **[#346](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/346)** | Acessibilidade, Foco & Teclado | #346 | `ACS-01` a `ACS-05` |
+| **[#214](https://github.com/Flowcare-team/flowcare-monorepo/issues/214)** | Autenticação & Sessões | #192, #207–#213 | `ID-01` a `ID-08` |
+| **[#226](https://github.com/Flowcare-team/flowcare-monorepo/issues/226)** | Onboarding & Primeira Clínica | #193, #215–#219, #221–#225 | `ONB-01` a `ONB-07` |
+| **[#235](https://github.com/Flowcare-team/flowcare-monorepo/issues/235)** | Organizações, Troca & Painel | #191, #197, #227–#234 | `ORG-01` a `ORG-07` |
+| **[#249](https://github.com/Flowcare-team/flowcare-monorepo/issues/249)** | Agendamentos & Recepção | #236–#248 | `AGD-01` a `AGD-08` |
+| **[#261](https://github.com/Flowcare-team/flowcare-monorepo/issues/261)** | Pacientes, Prontuário & Anexos | #250–#260 | `PAC-01` a `PAC-08` |
+| **[#272](https://github.com/Flowcare-team/flowcare-monorepo/issues/272)** | Consultas, Áudio & Anamnese | #195, #262–#271 | `CON-01` a `CON-08` |
+| **[#286](https://github.com/Flowcare-team/flowcare-monorepo/issues/286)** | Documentos, Versionamento & PDF | #195, #273–#285 | `DOC-01` a `DOC-09` |
+| **[#294](https://github.com/Flowcare-team/flowcare-monorepo/issues/294)** | Modelos de Documentos | #287–#293 | `MOD-01` a `MOD-05` |
+| **[#302](https://github.com/Flowcare-team/flowcare-monorepo/issues/302)** | Comunicações & WhatsApp (WAHA) | #196, #295–#301 | `MSG-01` a `MSG-06` |
+| **[#313](https://github.com/Flowcare-team/flowcare-monorepo/issues/313)** | Configurações & Horários | #303–#312 | `CFG-01` a `CFG-06` |
+| **[#326](https://github.com/Flowcare-team/flowcare-monorepo/issues/326)** | Equipe, Convites & RBAC Granular | #194, #314–#325 | `EQP-01` a `EQP-08` |
+| **[#330](https://github.com/Flowcare-team/flowcare-monorepo/issues/330)** | Auditoria & Logs de Segurança | #327–#329 | `AUD-01` a `AUD-05` |
+| **[#340](https://github.com/Flowcare-team/flowcare-monorepo/issues/340)** | Conta Pessoal & Sessões | #331–#333, #335–#339 | `CPT-01` a `CPT-06` |
+| **[#345](https://github.com/Flowcare-team/flowcare-monorepo/issues/345)** | Navegação por URL, Abas & Sheets | #345 | `NAV-01` a `NAV-05` |
+| **[#346](https://github.com/Flowcare-team/flowcare-monorepo/issues/346)** | Acessibilidade, Foco & Teclado | #346 | `ACS-01` a `ACS-05` |
 
 ---
 

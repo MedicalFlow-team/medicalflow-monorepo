@@ -4,7 +4,7 @@ FROM oven/bun:1.4-slim AS build
 WORKDIR /app
 COPY package.json bun.lock ./
 COPY apps/api/package.json apps/api/
-RUN bun install --frozen-lockfile --filter medflow-api
+RUN bun install --frozen-lockfile --filter flowcare-api
 COPY apps/api/prisma ./apps/api/prisma
 COPY apps/api/prisma.config.ts ./apps/api/
 # src/generated é gitignored: o Prisma Client nasce aqui (Bun roda TS nativo).
@@ -15,7 +15,7 @@ FROM oven/bun:1.4-slim AS deps
 WORKDIR /app
 COPY package.json bun.lock ./
 COPY apps/api/package.json apps/api/
-RUN bun install --frozen-lockfile --production --filter medflow-api
+RUN bun install --frozen-lockfile --production --filter flowcare-api
 # alguns pacotes (pg, @prisma/adapter-pg) ficam em apps/api/node_modules:
 # garante que o path exista para o COPY do estágio runtime.
 RUN mkdir -p apps/api/node_modules

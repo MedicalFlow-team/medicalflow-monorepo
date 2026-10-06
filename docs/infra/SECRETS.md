@@ -7,11 +7,11 @@
 | Local | Conteúdo |
 |---|---|
 | `.env.example` (repo) | Nome de todas as variáveis + valores fake/explicação |
-| `/root/medflow/.env` (VPS) | Valores reais de produção, lido pela stack (`env_file`) |
+| `/root/flowcare/.env` (VPS) | Valores reais de produção, lido pela stack (`env_file`) |
 | `apps/api/.env` (dev local) | Valores de dev (postgres local etc.) — gitignored |
 | `.env` (raiz, dev local) | Credenciais do Postgres e variáveis do Compose — gitignored |
 | `apps/web/.env` (dev local) | `API_INTERNAL_URL`, acessível apenas no servidor Next.js — gitignored |
-| GitHub Secrets | `MEDFLOW_VPS_HOST`, `MEDFLOW_VPS_SSH_KEY` (só o pipeline usa) |
+| GitHub Secrets | `FLOWCARE_VPS_HOST`, `FLOWCARE_VPS_SSH_KEY` (só o pipeline usa) |
 
 ## Gerar valores fortes
 
@@ -32,7 +32,7 @@ Traefik. Fora desse cenário, mantenha o padrão seguro `false`, que ignora
 `X-Forwarded-For` enviado pelo cliente.
 
 Antes do próximo deploy, configure também `API_INTERNAL_URL`, `API_HOST`,
-`WEB_HOST` e `WEB_ALT_HOST` em `/root/medflow/.env`, sem aspas. O script de
+`WEB_HOST` e `WEB_ALT_HOST` em `/root/flowcare/.env`, sem aspas. O script de
 deploy exporta esses quatro valores para a interpolação da stack. Os hosts
 são domínios sem protocolo; `APP_WEB_URL` é a URL pública completa usada nos
 links de confirmação e recuperação. Enquanto o e-mail não estiver pronto,
@@ -57,7 +57,7 @@ openssl rand -base64 24 # POSTGRES_PASSWORD
 
 ## Categorias
 
-- **Postgres**: `POSTGRES_DB/USER/PASSWORD` + `DATABASE_URL` (host interno `medflow_postgres`).
+- **Postgres**: `POSTGRES_DB/USER/PASSWORD` + `DATABASE_URL` (host interno `flowcare_postgres`).
 - **API**: `JWT_SECRET` (auth §5 do contrato), `CORS_ORIGIN` (origem do front), `TRUST_PROXY` (somente atrás do Traefik).
 - **WAHA**: `WAHA_BASE_URL=http://waha:3000` (alias na rede traefik-public), `WAHA_API_KEY` (a mesma da stack waha — ver WAHA.md), `WAHA_WEBHOOK_SECRET` (valida o webhook §8).
 - **Sintesy B2B**: `SINTESEY_MODE` (`mock` em dev; `b2b` em prod), `SINTESEY_B2B_API_KEY`, `SINTESEY_COST_PER_MIN_CENTS`.
@@ -68,13 +68,13 @@ openssl rand -base64 24 # POSTGRES_PASSWORD
 1. **gitleaks no CI** — PR com segredo vaza = job falha.
 2. `.gitignore` cobre `.env*` (exceto `.env.example`) em qualquer nível.
 3. Nenhum segredo em imagem: tudo entra por `env_file` no runtime.
-4. Rotação = editar `/root/medflow/.env` + `docker stack deploy` de novo (recreate dos serviços).
+4. Rotação = editar `/root/flowcare/.env` + `docker stack deploy` de novo (recreate dos serviços).
 
 ## Rotacionar em emergência
 
 ```bash
 # JWT vazado:
-vim /root/medflow/.env            # novo valor
-cd /root/medicalflow-monorepo && bash infra/deploy.sh latest
+vim /root/flowcare/.env            # novo valor
+cd /root/flowcare-monorepo && bash infra/deploy.sh latest
 # (tokens antigos morrem; todos logam de novo)
 ```

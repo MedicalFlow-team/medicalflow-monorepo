@@ -1,4 +1,4 @@
-# MedicalFlow
+# Flowcare
 
 ## Backend
 

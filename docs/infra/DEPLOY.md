@@ -1,4 +1,4 @@
-# Deploy — MedicalFlow
+# Deploy — Flowcare
 
 Pipeline GitHub → GHCR → Docker Swarm. **Commit na main = deploy em produção** (não existe staging por decisão do time).
 
@@ -16,12 +16,12 @@ push na main
 
 ## Setup único (já feito no VPS)
 
-1. **Repo clonado** em `/root/medicalflow-monorepo` (pipeline faz `git pull --ff-only`).
-2. **`/root/medflow/.env`** — variáveis de produção (ver SECRETS.md).
+1. **Repo clonado** em `/root/flowcare-monorepo` (pipeline faz `git pull --ff-only`).
+2. **`/root/flowcare/.env`** — variáveis de produção (ver SECRETS.md).
 3. **Rede `traefik-public`** — já existe (mesma do WAHA/traefik).
 4. **Secrets do GitHub** (Settings → Secrets and variables → Actions):
-   - `MEDFLOW_VPS_HOST` — IP do VPS
-   - `MEDFLOW_VPS_SSH_KEY` — chave privada SSH (root)
+   - `FLOWCARE_VPS_HOST` — IP do VPS
+   - `FLOWCARE_VPS_SSH_KEY` — chave privada SSH (root)
 
 ## GHCR (pull das imagens)
 
@@ -45,16 +45,16 @@ Zona `selbr.com` (Cloudflare, já configurada):
 
 ```bash
 docker stack ls                                 # stacks do swarm
-docker service ls | grep medflow                 # estado dos 3 serviços
-docker service logs medflow_api -f              # logs estruturados (JSON)
-docker service ps medflow_api                   # tasks/restarts
-docker exec -it $(docker ps -qf name=medflow_postgres) psql -U medflow -d medflow  # psql
+docker service ls | grep flowcare                 # estado dos 3 serviços
+docker service logs flowcare_api -f              # logs estruturados (JSON)
+docker service ps flowcare_api                   # tasks/restarts
+docker exec -it $(docker ps -qf name=flowcare_postgres) psql -U flowcare -d flowcare  # psql
 ```
 
 ## Deploy manual (emergência)
 
 ```bash
-cd /root/medicalflow-monorepo
+cd /root/flowcare-monorepo
 git pull --ff-only
 bash infra/deploy.sh <tag>   # tag = sha do commit (ou latest)
 ```
@@ -63,7 +63,7 @@ bash infra/deploy.sh <tag>   # tag = sha do commit (ou latest)
 
 | Caminho | Papel |
 |---|---|
-| `stacks/medflow-stack.yml` | Stack de produção (postgres + api + web) |
+| `stacks/flowcare-stack.yml` | Stack de produção (postgres + api + web) |
 | `docker-compose.dev.yml` | Dev local (postgres + api hot-reload) |
 | `infra/deploy.sh` | Deploy usado pelo pipeline |
 | `infra/backup/backup-postgres.sh` | Backup diário (cron 03:00) |

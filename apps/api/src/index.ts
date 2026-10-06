@@ -16,7 +16,7 @@ console.log(
     ts: new Date().toISOString(),
     level: "info",
     msg: "boot",
-    service: "medflow-api",
+    service: "flowcare-api",
     version: env.version,
     env: env.nodeEnv,
     port: app.server?.port ?? env.port,

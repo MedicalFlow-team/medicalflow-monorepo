@@ -1,6 +1,6 @@
 # Guia de Contribuicao e Padroes de Engenharia
 
-Diretrizes tecnicas e operacionais para desenvolvimento no MedicalFlow.
+Diretrizes tecnicas e operacionais para desenvolvimento no Flowcare.
 
 ---
 

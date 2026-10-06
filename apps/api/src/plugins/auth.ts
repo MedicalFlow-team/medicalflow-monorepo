@@ -15,7 +15,7 @@ const SESSION_ACTIVITY_WRITE_INTERVAL_MS = 5 * 60 * 1000;
  * Erros de domínio sobem para o onError da aplicação (envelope §2).
  */
 export function authPlugin(deps: { prisma: PrismaClient; jwtSecret: string }) {
-  return new Elysia({ name: "auth" }).derive(
+  return new Elysia({ name: "auth-plugin" }).derive(
     { as: "scoped" },
     async ({ headers }) => {
       const bearer = headers.authorization;

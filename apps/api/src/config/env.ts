@@ -4,7 +4,7 @@
  * Regras:
  * - Variável obrigatória NUNCA tem default: erro de boot com nome claro.
  * - URLs e segredos vêm do ambiente; produção define tudo
- *   via /root/medflow/.env (ver docs/infra/SECRETS.md).
+ *   via /root/flowcare/.env (ver docs/infra/SECRETS.md).
  */
 export interface Env {
   port: number;

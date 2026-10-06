@@ -1,6 +1,6 @@
-# medflow-api
+# flowcare-api
 
-API do MedicalFlow — **ElysiaJS + Bun + TypeScript**. Contrato de rotas: [`docs/API_CONTRACT.md`](../../docs/API_CONTRACT.md) (fonte única).
+API do Flowcare — **ElysiaJS + Bun + TypeScript**. Contrato de rotas: [`docs/API_CONTRACT.md`](../../docs/API_CONTRACT.md) (fonte única).
 
 ## Rodar (dev)
 
