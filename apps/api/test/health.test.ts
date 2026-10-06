@@ -11,6 +11,7 @@ const testEnv: Env = {
   databaseUrl: "postgresql://unused",
   // WAHA inexistente: o probe DEVE degradar para "down" sem derrubar o /health
   corsOrigin: "http://localhost:3000",
+  trustProxy: false,
   wahaBaseUrl: "http://127.0.0.1:1",
   wahaApiKey: null,
   webAppUrl: "http://localhost:3000",

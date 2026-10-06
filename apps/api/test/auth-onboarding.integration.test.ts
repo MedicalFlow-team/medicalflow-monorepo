@@ -32,6 +32,7 @@ const testEnv: Env = {
   jwtSecret: "integration-test-secret",
   databaseUrl: DATABASE_URL,
   corsOrigin: "http://localhost:3000",
+  trustProxy: false,
   wahaBaseUrl: "http://127.0.0.1:1",
   wahaApiKey: null,
   webAppUrl: "http://localhost:3000",
