@@ -565,7 +565,7 @@ O fluxo obrigatório é:
 #### `GET /me/sessions`
 * **Descrição:** Lista todas as sessões ativas do usuário com IP, navegador e última atividade.
 * **Permissão:** Autenticado.
-* **Respostas:** `200 OK` (`{ "sessions": [ { "id": "sess_current", "isCurrent": true, "ipAddress": "201.20.1.5", "userAgent": "Chrome/MacOS" } ] }`).
+* **Respostas:** `200 OK` (`{ "sessions": [ { "id": "sess_current", "isCurrent": true, "ipAddress": "201.20.1.5", "userAgent": "Chrome/macOS", "lastActiveAt": "2026-10-05T14:30:00.000Z" } ] }`). A atividade é atualizada com resolução de até 5 minutos para evitar uma escrita no banco a cada requisição.
 
 #### `DELETE /me/sessions/:sessionId`
 * **Descrição:** Revoga uma sessão específica.

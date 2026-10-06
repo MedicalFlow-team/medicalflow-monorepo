@@ -3,6 +3,8 @@ import type { PrismaClient } from "../generated/prisma/client";
 import { Unauthenticated } from "../modules/auth/errors";
 import { verifySessionToken } from "../services/session-token";
 
+const SESSION_ACTIVITY_WRITE_INTERVAL_MS = 5 * 60 * 1000;
+
 /**
  * Plugin de autenticação: transforma `Authorization: Bearer <jwt>` em
  * `auth: { userId, sessionId }` tipado, validando a Session viva no banco
@@ -22,16 +24,33 @@ export function authPlugin(deps: { prisma: PrismaClient; jwtSecret: string }) {
       const claims = verifySessionToken(bearer.slice(7), deps.jwtSecret);
       if (!claims) throw Unauthenticated();
 
+      const now = new Date();
       const session = await deps.prisma.session.findFirst({
         where: {
           id: claims.sid,
           userId: claims.sub,
           revokedAt: null,
-          expiresAt: { gt: new Date() },
+          expiresAt: { gt: now },
         },
-        select: { id: true },
+        select: { id: true, lastActiveAt: true },
       });
       if (!session) throw Unauthenticated();
+
+      const activityCutoff = new Date(
+        now.getTime() - SESSION_ACTIVITY_WRITE_INTERVAL_MS,
+      );
+      if (session.lastActiveAt < activityCutoff) {
+        await deps.prisma.session.updateMany({
+          where: {
+            id: session.id,
+            userId: claims.sub,
+            revokedAt: null,
+            expiresAt: { gt: now },
+            lastActiveAt: { lt: activityCutoff },
+          },
+          data: { lastActiveAt: now },
+        });
+      }
 
       return { auth: { userId: claims.sub, sessionId: session.id } };
     },

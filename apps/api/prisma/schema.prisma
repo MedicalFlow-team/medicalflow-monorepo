@@ -55,13 +55,14 @@ model User {
 }
 
 model Session {
-  id        String    @id @default(uuid()) @db.Uuid
-  userId    String    @db.Uuid
-  expiresAt DateTime
-  revokedAt DateTime?
-  createdAt DateTime  @default(now())
-  userAgent String?
-  ipAddress String?
+  id           String    @id @default(uuid()) @db.Uuid
+  userId       String    @db.Uuid
+  expiresAt    DateTime
+  revokedAt    DateTime?
+  createdAt    DateTime  @default(now())
+  lastActiveAt DateTime  @default(now())
+  userAgent    String?
+  ipAddress    String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

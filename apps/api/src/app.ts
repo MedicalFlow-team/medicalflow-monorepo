@@ -3,6 +3,7 @@ import { Elysia, t } from "elysia";
 import type { Env } from "./config/env";
 import type { PrismaClient } from "./generated/prisma/client";
 import { ApiError } from "./lib/api-error";
+import { accountModule } from "./modules/account";
 import { authModule } from "./modules/auth";
 import type { AuthDeps } from "./modules/auth/service";
 import { onboardingModule } from "./modules/onboarding";
@@ -61,6 +62,7 @@ export function createApp(env: Env, deps: AppDeps) {
       passwordResetTtlMinutes: 30,
       verificationResendPerHour: 3,
       webAppUrl: env.webAppUrl,
+      trustProxy: env.trustProxy,
     },
   };
   const onboardingDeps: OnboardingDeps = {
@@ -113,8 +115,7 @@ export function createApp(env: Env, deps: AppDeps) {
           return status(400, {
             error: {
               code: "VALIDATION_ERROR",
-              message:
-                error instanceof Error ? error.message : "Dados inválidos.",
+              message: "Dados inválidos.",
             },
           });
         default:
@@ -127,7 +128,8 @@ export function createApp(env: Env, deps: AppDeps) {
       }
     })
     .use(authModule(authDeps))
-    .use(onboardingModule(onboardingDeps));
+    .use(onboardingModule(onboardingDeps))
+    .use(accountModule({ prisma: deps.prisma, jwtSecret: env.jwtSecret }));
 
   return app;
 }

@@ -27,6 +27,10 @@ API exige `JWT_SECRET`, `DATABASE_URL`, `CORS_ORIGIN`, `WAHA_BASE_URL` e
 `APP_WEB_URL`. O frontend exige `API_INTERNAL_URL`; nenhuma dessas variáveis
 deve receber o prefixo `NEXT_PUBLIC_`.
 
+Use `TRUST_PROXY=true` somente no deploy em que a API recebe tráfego pelo
+Traefik. Fora desse cenário, mantenha o padrão seguro `false`, que ignora
+`X-Forwarded-For` enviado pelo cliente.
+
 Antes do próximo deploy, configure também `API_INTERNAL_URL`, `API_HOST`,
 `WEB_HOST` e `WEB_ALT_HOST` em `/root/flowcare/.env`, sem aspas. O script de
 deploy exporta esses quatro valores para a interpolação da stack. Os hosts
@@ -54,7 +58,7 @@ openssl rand -base64 24 # POSTGRES_PASSWORD
 ## Categorias
 
 - **Postgres**: `POSTGRES_DB/USER/PASSWORD` + `DATABASE_URL` (host interno `flowcare_postgres`).
-- **API**: `JWT_SECRET` (auth §5 do contrato), `CORS_ORIGIN` (origem do front).
+- **API**: `JWT_SECRET` (auth §5 do contrato), `CORS_ORIGIN` (origem do front), `TRUST_PROXY` (somente atrás do Traefik).
 - **WAHA**: `WAHA_BASE_URL=http://waha:3000` (alias na rede traefik-public), `WAHA_API_KEY` (a mesma da stack waha — ver WAHA.md), `WAHA_WEBHOOK_SECRET` (valida o webhook §8).
 - **Sintesy B2B**: `SINTESEY_MODE` (`mock` em dev; `b2b` em prod), `SINTESEY_B2B_API_KEY`, `SINTESEY_COST_PER_MIN_CENTS`.
 - **gorouter**: `GOROUTER_BASE_URL` (alias `gorouter` na rede traefik-public), `GOROUTER_API_KEY`, `GOROUTER_MODEL`.

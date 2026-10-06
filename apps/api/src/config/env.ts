@@ -13,6 +13,7 @@ export interface Env {
   jwtSecret: string;
   databaseUrl: string;
   corsOrigin: string;
+  trustProxy: boolean;
   wahaBaseUrl: string;
   wahaApiKey: string | null;
   /** Base pública do front (usada nos links de e-mail). */
@@ -34,6 +35,14 @@ function required(name: string): string {
 
 function optional(name: string, fallback: string): string {
   return process.env[name] ?? fallback;
+}
+
+function optionalBoolean(name: string, fallback: boolean): boolean {
+  const value = process.env[name]?.trim().toLowerCase();
+  if (!value) return fallback;
+  if (value === "true") return true;
+  if (value === "false") return false;
+  throw new Error(`[boot] ${name} deve ser true ou false.`);
 }
 
 export function loadEnv(): Env {
@@ -73,6 +82,7 @@ export function loadEnv(): Env {
     jwtSecret: required("JWT_SECRET"),
     databaseUrl: required("DATABASE_URL"),
     corsOrigin: required("CORS_ORIGIN"),
+    trustProxy: optionalBoolean("TRUST_PROXY", false),
     wahaBaseUrl: required("WAHA_BASE_URL"),
     wahaApiKey: process.env.WAHA_API_KEY ?? null,
     webAppUrl: required("APP_WEB_URL"),
