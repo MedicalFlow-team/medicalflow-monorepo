@@ -1,18 +1,18 @@
 # ============================================================
-# MedicalFlow — stack de PRODUÇÃO (Docker Swarm)
+# Flowcare — stack de PRODUÇÃO (Docker Swarm)
 # Deploy: pipeline (push na main) → infra/deploy.sh → docker stack deploy.
 #
 # Decisões do time (issues #3/#5/#7):
-#   - Postgres roda DENTRO da stack (sem serviço externo), rede interna medflow_net.
+#   - Postgres roda DENTRO da stack (sem serviço externo), rede interna flowcare_net.
 #   - Sem ambiente de staging — só produção.
 #   - WAHA NÃO está aqui: é a stack `waha` já existente (docs/infra/WAHA.md).
 #
 # Requisitos no host (docs/infra/DEPLOY.md):
-#   - /root/medflow/.env  (variáveis de produção — docs/infra/SECRETS.md)
+#   - /root/flowcare/.env  (variáveis de produção — docs/infra/SECRETS.md)
 #   - rede externa traefik-public já criada
-#   - MEDFLOW_TAG exportado no deploy (sha do commit)
+#   - FLOWCARE_TAG exportado no deploy (sha do commit)
 #
-# DNS interno da stack: postgres = `medflow_postgres` (usado no DATABASE_URL).
+# DNS interno da stack: postgres = `flowcare_postgres` (usado no DATABASE_URL).
 # ============================================================
 
 x-logging: &logging
@@ -24,9 +24,9 @@ x-logging: &logging
 services:
   postgres:
     image: postgres:16-alpine
-    env_file: /root/medflow/.env
+    env_file: /root/flowcare/.env
     volumes:
-      - medflow_postgres_data:/var/lib/postgresql/data
+      - flowcare_postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 10s
@@ -34,7 +34,7 @@ services:
       retries: 5
       start_period: 15s
     networks:
-      - medflow_net
+      - flowcare_net
     deploy:
       replicas: 1
       restart_policy:
@@ -46,8 +46,8 @@ services:
     logging: *logging
 
   api:
-    image: ghcr.io/medicalflow-team/medicalflow-monorepo-api:${MEDFLOW_TAG:?MEDFLOW_TAG e obrigatorio (infra/deploy.sh exporta)}
-    env_file: /root/medflow/.env
+    image: ghcr.io/flowcare-team/flowcare-monorepo-api:${FLOWCARE_TAG:?FLOWCARE_TAG e obrigatorio (infra/deploy.sh exporta)}
+    env_file: /root/flowcare/.env
     healthcheck:
       test: ["CMD", "bun", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 30s
@@ -55,18 +55,18 @@ services:
       retries: 3
       start_period: 10s
     networks:
-      - medflow_net
+      - flowcare_net
       - traefik-public
     deploy:
       replicas: 1
       labels:
         - traefik.enable=true
         - traefik.docker.network=traefik-public
-        - traefik.http.routers.medflow-api.rule=Host(`${API_HOST:?Defina API_HOST no .env}`)
-        - traefik.http.routers.medflow-api.entrypoints=websecure
-        - traefik.http.routers.medflow-api.tls=true
-        - traefik.http.routers.medflow-api.tls.certresolver=letsencrypt
-        - traefik.http.services.medflow-api.loadbalancer.server.port=3000
+        - traefik.http.routers.flowcare-api.rule=Host(`${API_HOST:?Defina API_HOST no .env}`)
+        - traefik.http.routers.flowcare-api.entrypoints=websecure
+        - traefik.http.routers.flowcare-api.tls=true
+        - traefik.http.routers.flowcare-api.tls.certresolver=letsencrypt
+        - traefik.http.services.flowcare-api.loadbalancer.server.port=3000
       restart_policy:
         condition: any
         delay: 5s
@@ -79,7 +79,7 @@ services:
     logging: *logging
 
   web:
-    image: ghcr.io/medicalflow-team/medicalflow-monorepo-web:${MEDFLOW_TAG:?MEDFLOW_TAG e obrigatorio (infra/deploy.sh exporta)}
+    image: ghcr.io/flowcare-team/flowcare-monorepo-web:${FLOWCARE_TAG:?FLOWCARE_TAG e obrigatorio (infra/deploy.sh exporta)}
     environment:
       API_INTERNAL_URL: ${API_INTERNAL_URL:?Defina API_INTERNAL_URL no .env}
     healthcheck:
@@ -89,18 +89,18 @@ services:
       retries: 3
       start_period: 15s
     networks:
-      - medflow_net # permite SSR chamar a api por `medflow_api:3000`
+      - flowcare_net # permite SSR chamar a api por `flowcare_api:3000`
       - traefik-public
     deploy:
       replicas: 1
       labels:
         - traefik.enable=true
         - traefik.docker.network=traefik-public
-        - traefik.http.routers.medflow-web.rule=(Host(`${WEB_HOST:?Defina WEB_HOST no .env}`) || Host(`${WEB_ALT_HOST:?Defina WEB_ALT_HOST no .env}`))
-        - traefik.http.routers.medflow-web.entrypoints=websecure
-        - traefik.http.routers.medflow-web.tls=true
-        - traefik.http.routers.medflow-web.tls.certresolver=letsencrypt
-        - traefik.http.services.medflow-web.loadbalancer.server.port=3000
+        - traefik.http.routers.flowcare-web.rule=(Host(`${WEB_HOST:?Defina WEB_HOST no .env}`) || Host(`${WEB_ALT_HOST:?Defina WEB_ALT_HOST no .env}`))
+        - traefik.http.routers.flowcare-web.entrypoints=websecure
+        - traefik.http.routers.flowcare-web.tls=true
+        - traefik.http.routers.flowcare-web.tls.certresolver=letsencrypt
+        - traefik.http.services.flowcare-web.loadbalancer.server.port=3000
       restart_policy:
         condition: any
         delay: 5s
@@ -113,10 +113,10 @@ services:
     logging: *logging
 
 volumes:
-  medflow_postgres_data:
+  flowcare_postgres_data:
 
 networks:
-  medflow_net:
+  flowcare_net:
     driver: overlay
   traefik-public:
     external: true

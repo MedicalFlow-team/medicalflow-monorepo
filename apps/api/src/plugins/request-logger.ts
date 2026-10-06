@@ -2,7 +2,7 @@ import { Elysia } from "elysia";
 
 /**
  * Logs estruturados: uma linha JSON por request, sem dependências —
- * consumível via `docker service logs medflow_api` ou qualquer collector.
+ * consumível via `docker service logs flowcare_api` ou qualquer collector.
  *
  * `/api/health` fica fora do log: o healthcheck do Docker polla a cada 30s
  * e viraria ruído (2.880 linhas/dia sem informação).

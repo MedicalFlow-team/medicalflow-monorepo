@@ -2,11 +2,11 @@
 
 - **Status:** Proposed
 - **Origem histórica:** issue #13 (taxonomia anterior)
-- **Fonte vigente:** contrato da API do MedicalFlow + issue atual que implementar a integração
+- **Fonte vigente:** contrato da API do Flowcare + issue atual que implementar a integração
 
 ## Contexto
 
-A integração com o Sintesy fica isolada no backend. O frontend usa apenas a API do MedicalFlow e não acessa credenciais nem o contrato externo diretamente.
+A integração com o Sintesy fica isolada no backend. O frontend usa apenas a API do Flowcare e não acessa credenciais nem o contrato externo diretamente.
 
 No contrato interno, a transcrição entra por `POST /transcriptions`. O cliente upstream do Sintesy referencia `POST /sintesy/assistant/transcribe/`.
 
@@ -18,7 +18,7 @@ No contrato interno, a transcrição entra por `POST /transcriptions`. O cliente
 - Manter todas as credenciais somente no backend.
 - Enviar o modelo `stt-low`.
 - Resposta mínima esperada: `{ transcription, durationSeconds?, requestId }`.
-- Prever códigos de erro estáveis no limite entre MedicalFlow e Sintesy.
+- Prever códigos de erro estáveis no limite entre Flowcare e Sintesy.
 - Fazer retry com backoff; após esgotar as tentativas, mapear a falha externa para `502 UPSTREAM_FAILURE`.
 - Medir uso por consumidor/requisição no lado Sintesy e persistir as métricas necessárias ao painel de consumo.
 - Prever rotação e revogação da API key.
@@ -30,7 +30,7 @@ O contrato atual considera uma clínica por deploy; por isso a credencial do Sin
 
 ## Limite entre API interna e Sintesy
 
-O frontend chama apenas a API do MedicalFlow, por exemplo:
+O frontend chama apenas a API do Flowcare, por exemplo:
 
 - `POST /transcriptions` para criar o job;
 - `GET /transcriptions/{id}` para polling;
@@ -55,4 +55,4 @@ Quando disponível, a integração deve permitir registrar consumidor/clínica, 
 
 ## Consequências
 
-O `SintesyClient` deve ser implementado atrás desta fronteira, preservando o contrato interno do MedicalFlow. Este ADR permanece `Proposed` até a equipe revisar os pontos pendentes com o responsável pelo Sintesy.
+O `SintesyClient` deve ser implementado atrás desta fronteira, preservando o contrato interno do Flowcare. Este ADR permanece `Proposed` até a equipe revisar os pontos pendentes com o responsável pelo Sintesy.

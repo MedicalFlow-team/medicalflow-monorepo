@@ -26,8 +26,8 @@ export function safeReturnPath(value: string | null): string | null {
   if (!value || !value.startsWith("/") || value.startsWith("//")) return null;
   if (value.includes("\\")) return null;
   try {
-    const url = new URL(value, "https://medicalflow.local");
-    if (url.origin !== "https://medicalflow.local") return null;
+    const url = new URL(value, "https://flowcare.local");
+    if (url.origin !== "https://flowcare.local") return null;
     if (
       url.pathname === "/app" ||
       url.pathname.startsWith("/app/") ||

@@ -16,11 +16,15 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "MedicalFlow",
-  description: "Gestão clínica MedicalFlow",
+  title: "Flowcare",
+  description: "Gestão clínica Flowcare",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html
       lang="pt-BR"

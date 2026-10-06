@@ -60,11 +60,11 @@ test("produção inicia sem e-mail e exige configuração somente ao ativar SES"
     process.env.MAIL_PROVIDER = "ses";
     expect(() => loadEnv()).toThrow("AWS_REGION e MAIL_FROM");
     process.env.AWS_REGION = "sa-east-1";
-    process.env.MAIL_FROM = "MedicalFlow <no-reply@web.test>";
+    process.env.MAIL_FROM = "Flowcare <no-reply@web.test>";
     expect(loadEnv()).toMatchObject({
       mailProvider: "ses",
       sesRegion: "sa-east-1",
-      mailFrom: "MedicalFlow <no-reply@web.test>",
+      mailFrom: "Flowcare <no-reply@web.test>",
     });
     process.env.NODE_ENV = "test";
     expect(() => loadEnv()).toThrow("não enviam e-mails externos");

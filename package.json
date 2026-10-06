@@ -1,8 +1,8 @@
 {
-  "name": "medicalflow-monorepo",
+  "name": "flowcare-monorepo",
   "version": "0.1.0",
   "private": true,
-  "description": "Workspace Bun para as aplicações MedicalFlow",
+  "description": "Workspace Bun para as aplicações Flowcare",
   "workspaces": ["apps/*"],
   "scripts": {
     "dev": "bun run --parallel dev:api dev:web",

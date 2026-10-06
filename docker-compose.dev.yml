@@ -1,5 +1,5 @@
 # ============================================================
-# MedicalFlow — ambiente de desenvolvimento local
+# Flowcare — ambiente de desenvolvimento local
 # Uso: docker compose -f docker-compose.dev.yml up -d
 #   - Postgres 16 (extensões via docker/postgres/initdb)
 #   - API com hot-reload em http://localhost:3001
@@ -19,7 +19,7 @@ services:
       - "5432:5432"
     volumes:
       - ./docker/postgres/initdb:/docker-entrypoint-initdb.d:ro
-      - medflow_dev_pgdata:/var/lib/postgresql/data
+      - flowcare_dev_pgdata:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
@@ -51,4 +51,4 @@ services:
         condition: service_healthy
 
 volumes:
-  medflow_dev_pgdata:
+  flowcare_dev_pgdata:

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import { AuthForm } from "@/components/medicalflow/auth-form";
+import { AuthForm } from "@/components/flowcare/auth-form";
 
-export const metadata: Metadata = { title: "Cadastro | MedicalFlow" };
+export const metadata: Metadata = { title: "Cadastro | Flowcare" };
 
 export default function Page() {
   return (

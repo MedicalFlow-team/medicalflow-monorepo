@@ -1,8 +1,8 @@
-# MedicalFlow — Contrato da API
+# Flowcare — Contrato da API
 
 **Status:** Contrato de planejamento vNext
-**Backlog:** [MedicalFlow - Delivery](https://github.com/orgs/MedicalFlow-team/projects/2)
-**Fontes:** Issues [#191](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/191)–[#199](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/199) e tarefas do board
+**Backlog:** [Flowcare - Delivery](https://github.com/orgs/Flowcare-team/projects/2)
+**Fontes:** Issues [#191](https://github.com/Flowcare-team/flowcare-monorepo/issues/191)–[#199](https://github.com/Flowcare-team/flowcare-monorepo/issues/199) e tarefas do board
 **Base URL:** `https://<environment>/api`
 
 Este documento é a fonte de verdade para o contrato HTTP entre a API (`apps/api`) e seus consumidores (`apps/web`, integrações). Schemas Elysia/TypeBox e a documentação OpenAPI gerada devem seguir estas especificações estritamente.
@@ -25,7 +25,7 @@ Este documento é a fonte de verdade para o contrato HTTP entre a API (`apps/api
 | **Tipagem e Contrato** | Os tipos de entrada e saída são derivados estritamente dos schemas Elysia/TypeBox e OpenAPI gerados. |
 
 > [!NOTE]
-> **Pendência Arquitetural (Decisão [#192](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/192)):** O transporte exato da sessão permanece entre cookie seguro (`HttpOnly`, `Secure`, `SameSite=Lax`) ou tokens de acesso rotativos com tempo de vida curto. É terminantemente proibido o uso de JWTs sem expiração. Toda sessão possui TTL finito e pode ser revogada individualmente ou em lote pelo usuário.
+> **Pendência Arquitetural (Decisão [#192](https://github.com/Flowcare-team/flowcare-monorepo/issues/192)):** O transporte exato da sessão permanece entre cookie seguro (`HttpOnly`, `Secure`, `SameSite=Lax`) ou tokens de acesso rotativos com tempo de vida curto. É terminantemente proibido o uso de JWTs sem expiração. Toda sessão possui TTL finito e pode ser revogada individualmente ou em lote pelo usuário.
 
 ### Contexto Organizacional Ativo
 
@@ -83,7 +83,7 @@ Em caso de falha (códigos HTTP 4xx e 5xx), a API responde com a seguinte estrut
 ---
 
 ### Módulo 1: Autenticação & Sessões
-*(Ref: Issues [#192](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/192), [#207](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/207), [#208](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/208), [#209](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/209))*
+*(Ref: Issues [#192](https://github.com/Flowcare-team/flowcare-monorepo/issues/192), [#207](https://github.com/Flowcare-team/flowcare-monorepo/issues/207), [#208](https://github.com/Flowcare-team/flowcare-monorepo/issues/208), [#209](https://github.com/Flowcare-team/flowcare-monorepo/issues/209))*
 
 #### `POST /auth/register`
 * **Descrição:** Cria uma nova conta pessoal e dispara e-mail de verificação.
@@ -138,7 +138,7 @@ Em caso de falha (códigos HTTP 4xx e 5xx), a API responde com a seguinte estrut
 ---
 
 ### Módulo 2: Onboarding & Primeira Clínica
-*(Ref: Issues [#193](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/193), [#215](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/215)–[#218](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/218))*
+*(Ref: Issues [#193](https://github.com/Flowcare-team/flowcare-monorepo/issues/193), [#215](https://github.com/Flowcare-team/flowcare-monorepo/issues/215)–[#218](https://github.com/Flowcare-team/flowcare-monorepo/issues/218))*
 
 #### `GET /onboarding/progress`
 * **Descrição:** Recupera o estado atual do assistente de primeiro acesso.
@@ -194,7 +194,7 @@ Em caso de falha (códigos HTTP 4xx e 5xx), a API responde com a seguinte estrut
 ---
 
 ### Módulo 3: Organizações & Alternância de Contexto
-*(Ref: Issues [#191](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/191), [#227](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/227), [#228](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/228))*
+*(Ref: Issues [#191](https://github.com/Flowcare-team/flowcare-monorepo/issues/191), [#227](https://github.com/Flowcare-team/flowcare-monorepo/issues/227), [#228](https://github.com/Flowcare-team/flowcare-monorepo/issues/228))*
 
 > [!NOTE]
 > A issue #191 cita um arquivo `PRODUCT_SCOPE.md`, mas esse arquivo não existe no estado atual nem no histórico disponível do repositório. Até que uma fonte substituta seja indicada, a lista de módulos e rotas desta seção é o inventário canônico para validar a cobertura multi-tenant.
@@ -263,7 +263,7 @@ O fluxo obrigatório é:
 ---
 
 ### Módulo 4: Equipe, Convites & RBAC Granular
-*(Ref: Issues [#194](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/194), [#314](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/314)–[#319](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/319))*
+*(Ref: Issues [#194](https://github.com/Flowcare-team/flowcare-monorepo/issues/194), [#314](https://github.com/Flowcare-team/flowcare-monorepo/issues/314)–[#319](https://github.com/Flowcare-team/flowcare-monorepo/issues/319))*
 
 #### `GET /organizations/:orgSlug/members`
 * **Descrição:** Lista os membros da equipe da clínica com seus respectivos papéis.
@@ -308,7 +308,7 @@ O fluxo obrigatório é:
 ---
 
 ### Módulo 5: Pacientes & Prontuário
-*(Ref: Issues [#250](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/250)–[#254](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/254))*
+*(Ref: Issues [#250](https://github.com/Flowcare-team/flowcare-monorepo/issues/250)–[#254](https://github.com/Flowcare-team/flowcare-monorepo/issues/254))*
 
 #### `GET /organizations/:orgSlug/patients`
 * **Descrição:** Consulta e filtra a lista de pacientes da clínica por nome, CPF ou telefone.
@@ -343,7 +343,7 @@ O fluxo obrigatório é:
 ---
 
 ### Módulo 6: Agendamentos & Recepção
-*(Ref: Issues [#237](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/237)–[#241](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/241))*
+*(Ref: Issues [#237](https://github.com/Flowcare-team/flowcare-monorepo/issues/237)–[#241](https://github.com/Flowcare-team/flowcare-monorepo/issues/241))*
 
 #### `GET /organizations/:orgSlug/appointments`
 * **Descrição:** Lista os agendamentos da clínica filtrados por intervalo de datas, profissional ou status.
@@ -378,7 +378,7 @@ O fluxo obrigatório é:
 ---
 
 ### Módulo 7: Consultas Clínicas, Áudio & Anamnese
-*(Ref: Issues [#195](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/195), [#262](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/262)–[#267](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/267))*
+*(Ref: Issues [#195](https://github.com/Flowcare-team/flowcare-monorepo/issues/195), [#262](https://github.com/Flowcare-team/flowcare-monorepo/issues/262)–[#267](https://github.com/Flowcare-team/flowcare-monorepo/issues/267))*
 
 #### `POST /organizations/:orgSlug/consultations`
 * **Descrição:** Inicia uma nova consulta clínica vinculada a um agendamento prévio e paciente.
@@ -413,7 +413,7 @@ O fluxo obrigatório é:
 ---
 
 ### Módulo 8: Documentos Clínicos, Versionamento & Anulação
-*(Ref: Issues [#195](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/195), [#273](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/273)–[#278](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/278))*
+*(Ref: Issues [#195](https://github.com/Flowcare-team/flowcare-monorepo/issues/195), [#273](https://github.com/Flowcare-team/flowcare-monorepo/issues/273)–[#278](https://github.com/Flowcare-team/flowcare-monorepo/issues/278))*
 
 #### `POST /organizations/:orgSlug/documents`
 * **Descrição:** Cria rascunho de receita, atestado, pedido de exame ou relatório médico.
@@ -452,7 +452,7 @@ O fluxo obrigatório é:
 ---
 
 ### Módulo 9: Modelos de Documentos
-*(Ref: Issues [#287](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/287)–[#290](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/290))*
+*(Ref: Issues [#287](https://github.com/Flowcare-team/flowcare-monorepo/issues/287)–[#290](https://github.com/Flowcare-team/flowcare-monorepo/issues/290))*
 
 #### `GET /organizations/:orgSlug/document-templates`
 * **Descrição:** Lista os modelos de receitas e atestados configurados na clínica.
@@ -473,7 +473,7 @@ O fluxo obrigatório é:
 ---
 
 ### Módulo 10: Comunicações & Integração WhatsApp (WAHA)
-*(Ref: Issues [#196](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/196), [#295](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/295)–[#298](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/298))*
+*(Ref: Issues [#196](https://github.com/Flowcare-team/flowcare-monorepo/issues/196), [#295](https://github.com/Flowcare-team/flowcare-monorepo/issues/295)–[#298](https://github.com/Flowcare-team/flowcare-monorepo/issues/298))*
 
 #### `GET /organizations/:orgSlug/communications/whatsapp/status`
 * **Descrição:** Consulta o status da sessão do WhatsApp (conectado, desconectado, QR code pendente).
@@ -494,7 +494,7 @@ O fluxo obrigatório é:
 ---
 
 ### Módulo 11: Painel & Indicadores da Clínica
-*(Ref: Issues [#197](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/197), [#229](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/229), [#230](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/230))*
+*(Ref: Issues [#197](https://github.com/Flowcare-team/flowcare-monorepo/issues/197), [#229](https://github.com/Flowcare-team/flowcare-monorepo/issues/229), [#230](https://github.com/Flowcare-team/flowcare-monorepo/issues/230))*
 
 #### `GET /organizations/:orgSlug/dashboard/metrics`
 * **Descrição:** Retorna os indicadores operacionais da clínica (consultas no mês, faltas, taxa de confirmação).
@@ -510,7 +510,7 @@ O fluxo obrigatório é:
 ---
 
 ### Módulo 12: Configurações da Clínica & Horários
-*(Ref: Issues [#303](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/303)–[#306](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/306))*
+*(Ref: Issues [#303](https://github.com/Flowcare-team/flowcare-monorepo/issues/303)–[#306](https://github.com/Flowcare-team/flowcare-monorepo/issues/306))*
 
 #### `GET /organizations/:orgSlug/settings`
 * **Descrição:** Consulta as configurações institucionais, dados cadastrais e logotipo da clínica.
@@ -532,7 +532,7 @@ O fluxo obrigatório é:
 ---
 
 ### Módulo 13: Auditoria & Logs de Segurança
-*(Ref: Issues [#327](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/327), [#328](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/328))*
+*(Ref: Issues [#327](https://github.com/Flowcare-team/flowcare-monorepo/issues/327), [#328](https://github.com/Flowcare-team/flowcare-monorepo/issues/328))*
 
 #### `GET /organizations/:orgSlug/audit-logs`
 * **Descrição:** Consulta os registros de auditoria da clínica (quem acessou, alterou ou excluiu dados).
@@ -543,7 +543,7 @@ O fluxo obrigatório é:
 ---
 
 ### Módulo 14: Conta Pessoal & Gerenciamento de Sessões
-*(Ref: Issues [#331](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/331)–[#335](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/335))*
+*(Ref: Issues [#331](https://github.com/Flowcare-team/flowcare-monorepo/issues/331)–[#335](https://github.com/Flowcare-team/flowcare-monorepo/issues/335))*
 
 #### `GET /me/profile`
 * **Descrição:** Consulta os dados da conta pessoal do usuário logado.
@@ -583,7 +583,7 @@ O fluxo obrigatório é:
 
 A definição completa e o schema Prisma oficial para o banco PostgreSQL são mantidos na issue de consolidação de dados:
 
-👉 **[Issue #199 — Consolidar o modelo de dados relacional e schema do Prisma](https://github.com/MedicalFlow-team/medicalflow-monorepo/issues/199)**
+👉 **[Issue #199 — Consolidar o modelo de dados relacional e schema do Prisma](https://github.com/Flowcare-team/flowcare-monorepo/issues/199)**
 
 ### Principais Entidades e Vínculos:
 * **`User` / `Account`**: Usuário global e credenciais da conta pessoal. Nenhum papel global: toda permissão nasce de um `Membership` em uma clínica.

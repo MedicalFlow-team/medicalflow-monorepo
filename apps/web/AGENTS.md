@@ -8,6 +8,6 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 <!-- END:nextjs-agent-rules -->
 
-## MedicalFlow project workflow
+## Flowcare project workflow
 
-For every task in this project, follow the project skill at `.agents/skills/medicalflow-workflow/SKILL.md`. Treat it as applicable to all project work. Keep this file's Next.js-specific instructions in force as well.
+For every task in this project, follow the project skill at `.agents/skills/flowcare-workflow/SKILL.md`. Treat it as applicable to all project work. Keep this file's Next.js-specific instructions in force as well.

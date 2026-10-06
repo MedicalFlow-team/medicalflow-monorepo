@@ -63,7 +63,7 @@ export class AuthService {
           const token = await this.mintToken(existing.id, "EMAIL_VERIFICATION");
           await this.deliver({
             to: email,
-            subject: "MedicalFlow — confirmação de cadastro",
+            subject: "Flowcare — confirmação de cadastro",
             text: this.verificationText(token),
           });
         } catch (error) {
@@ -87,7 +87,7 @@ export class AuthService {
     const token = await this.mintToken(user.id, "EMAIL_VERIFICATION");
     await this.deliver({
       to: email,
-      subject: "MedicalFlow — confirmação de cadastro",
+      subject: "Flowcare — confirmação de cadastro",
       text: this.verificationText(token),
     });
 
@@ -129,7 +129,7 @@ export class AuthService {
         const token = await this.mintToken(user.id, "EMAIL_VERIFICATION");
         await this.deliver({
           to: email,
-          subject: "MedicalFlow — confirmação de cadastro",
+          subject: "Flowcare — confirmação de cadastro",
           text: this.verificationText(token),
         });
       } catch (error) {
@@ -200,7 +200,7 @@ export class AuthService {
       const token = await this.mintToken(user.id, "PASSWORD_RESET");
       await this.deliver({
         to: email,
-        subject: "MedicalFlow — redefinição de senha",
+        subject: "Flowcare — redefinição de senha",
         text: this.resetText(token),
       });
     }
@@ -298,10 +298,10 @@ export class AuthService {
   }
 
   private verificationText(token: string): string {
-    return `Confirme seu e-mail no MedicalFlow:\n${this.deps.config.webAppUrl}/verify-email?token=${token}\n\nO link é de uso único e expira em ${this.deps.config.emailVerificationTtlHours}h.`;
+    return `Confirme seu e-mail no Flowcare:\n${this.deps.config.webAppUrl}/verify-email?token=${token}\n\nO link é de uso único e expira em ${this.deps.config.emailVerificationTtlHours}h.`;
   }
 
   private resetText(token: string): string {
-    return `Redefina sua senha no MedicalFlow:\n${this.deps.config.webAppUrl}/reset-password?token=${token}\n\nO link é de uso único e expira em ${this.deps.config.passwordResetTtlMinutes}min.`;
+    return `Redefina sua senha no Flowcare:\n${this.deps.config.webAppUrl}/reset-password?token=${token}\n\nO link é de uso único e expira em ${this.deps.config.passwordResetTtlMinutes}min.`;
   }
 }

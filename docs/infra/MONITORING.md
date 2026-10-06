@@ -3,22 +3,22 @@
 ## O que existe
 
 - **Logs estruturados** (`apps/api/src/plugins/request-logger.ts`): uma linha JSON por request
-  (`{ts, level, msg, method, path, status, ms}`). `docker service logs medflow_api -f`.
+  (`{ts, level, msg, method, path, status, ms}`). `docker service logs flowcare_api -f`.
 - **`/api/health`** (§12 do contrato): status da API + versão + probe do WAHA.
 - **`infra/monitoring/check-health.sh`** (cron `*/5 * * * *` no VPS):
   - health da API + status real da sessão WhatsApp (`WAHA /api/sessions` = `WORKING`?);
   - alerta **só na mudança de estado** (não spam) via `HEALTH_ALERT_WEBHOOK`;
-  - estado anterior em `/root/medflow/.health-state`.
+  - estado anterior em `/root/flowcare/.health-state`.
 
 ## Webhook de alerta
 
-Defina em `/root/medflow/.env`:
+Defina em `/root/flowcare/.env`:
 
 ```bash
 HEALTH_ALERT_WEBHOOK=<url>
 ```
 
-O script posta `{"content": "[medflow] PROBLEMA: {estado}"}` — formato Discord/Slack.
+O script posta `{"content": "[flowcare] PROBLEMA: {estado}"}` — formato Discord/Slack.
 Para Telegram, troque o payload em `check-health.sh` (`{"chat_id": "...", "text": "..."}`).
 
 ## Alertas que chegam hoje
@@ -32,8 +32,8 @@ Para Telegram, troque o payload em `check-health.sh` (`{"chat_id": "...", "text"
 ## Crontab instalada no VPS
 
 ```cron
-*/5 * * * * /root/medicalflow-monorepo/infra/monitoring/check-health.sh >> /root/medflow/health.log 2>&1
-0 3 * * *   /root/medicalflow-monorepo/infra/backup/backup-postgres.sh  >> /root/medflow/backup.log 2>&1
+*/5 * * * * /root/flowcare-monorepo/infra/monitoring/check-health.sh >> /root/flowcare/health.log 2>&1
+0 3 * * *   /root/flowcare-monorepo/infra/backup/backup-postgres.sh  >> /root/flowcare/backup.log 2>&1
 ```
 
 ## Evolução (pós-MVP)

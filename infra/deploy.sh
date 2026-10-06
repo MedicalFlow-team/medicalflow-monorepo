@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ============================================================
-# MedicalFlow — deploy da stack no Docker Swarm.
+# Flowcare — deploy da stack no Docker Swarm.
 # Executa NO VPS (chamado por .github/workflows/deploy.yml via SSH,
 # ou manualmente: bash infra/deploy.sh <tag-da-imagem>).
 #
@@ -9,16 +9,16 @@
 set -euo pipefail
 
 TAG="${1:?uso: deploy.sh <tag-da-imagem>}"
-REPO_DIR="/root/medicalflow-monorepo"
-STACK="medflow"
-ENV_FILE="/root/medflow/.env"
+REPO_DIR="/root/flowcare-monorepo"
+STACK="flowcare"
+ENV_FILE="/root/flowcare/.env"
 
 # Variáveis do Postgres lidas do .env de produção (mesma fonte da stack)
 POSTGRES_DB="$(grep -E '^POSTGRES_DB=' "$ENV_FILE" | cut -d= -f2-)"
 POSTGRES_USER="$(grep -E '^POSTGRES_USER=' "$ENV_FILE" | cut -d= -f2-)"
 
 cd "$REPO_DIR"
-export MEDFLOW_TAG="$TAG"
+export FLOWCARE_TAG="$TAG"
 
 # docker stack deploy não carrega .env para interpolação como o Compose.
 # Exporta somente os endereços públicos/internos necessários, sem executar o arquivo.
@@ -39,11 +39,11 @@ done
 # - as tasks do swarm resolvem a imagem já presente no node, sem depender
 #   do registry durante o rollout.
 echo "==> pré-pull das imagens (tag $TAG)"
-docker pull "ghcr.io/medicalflow-team/medicalflow-monorepo-api:$TAG"
-docker pull "ghcr.io/medicalflow-team/medicalflow-monorepo-web:$TAG"
+docker pull "ghcr.io/flowcare-team/flowcare-monorepo-api:$TAG"
+docker pull "ghcr.io/flowcare-team/flowcare-monorepo-web:$TAG"
 
 echo "==> docker stack deploy ($STACK, tag $TAG)"
-docker stack deploy --with-registry-auth -c stacks/medflow-stack.yml "$STACK"
+docker stack deploy --with-registry-auth -c stacks/flowcare-stack.yml "$STACK"
 
 # --- Extensões do Postgres (unaccent + pg_trgm — §3.2 da busca) ---
 # Swarm não suporta bind mount relativo (initdb do compose dev não roda aqui),
@@ -63,9 +63,9 @@ if [ -z "${PG_CID:-}" ]; then echo "FALHA: postgres não subiu" >&2; exit 1; fi
 if compgen -G "apps/api/prisma/migrations/*" > /dev/null; then
   DB_URL="$(grep -E '^DATABASE_URL=' "$ENV_FILE" | cut -d= -f2-)"
   echo "==> prisma migrate deploy"
-  docker run --rm --network "${STACK}_medflow_net" \
+  docker run --rm --network "${STACK}_flowcare_net" \
     -e DATABASE_URL="$DB_URL" \
-    "ghcr.io/medicalflow-team/medicalflow-monorepo-api:$TAG" \
+    "ghcr.io/flowcare-team/flowcare-monorepo-api:$TAG" \
     bunx prisma migrate deploy
 else
   echo "==> sem migrations ainda — pulando"

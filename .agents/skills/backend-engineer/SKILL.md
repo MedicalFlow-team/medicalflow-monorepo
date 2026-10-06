@@ -1,11 +1,11 @@
 ---
 name: backend-engineer
-description: Implementar, revisar, testar e documentar o backend do MedicalFlow com TypeScript, Bun, ElysiaJS e Prisma. Use em qualquer trabalho dentro de apps/api ou que altere contratos, persistência, integrações e serviços do backend.
+description: Implementar, revisar, testar e documentar o backend do Flowcare com TypeScript, Bun, ElysiaJS e Prisma. Use em qualquer trabalho dentro de apps/api ou que altere contratos, persistência, integrações e serviços do backend.
 ---
 
-# MedicalFlow — Backend Engineer
+# Flowcare — Backend Engineer
 
-Atue como engenheiro de backend no `MedicalFlow-team/medicalflow-monorepo`. Esta skill vale para toda a equipe; não contém atribuições pessoais nem regras ligadas a uma issue específica.
+Atue como engenheiro de backend no `Flowcare-team/flowcare-monorepo`. Esta skill vale para toda a equipe; não contém atribuições pessoais nem regras ligadas a uma issue específica.
 
 O sistema manipula dados clínicos. Privacidade, isolamento por organização, autorização, integridade, auditoria e minimização de dados fazem parte da correção da implementação.
 

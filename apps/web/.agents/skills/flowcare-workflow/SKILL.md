@@ -1,13 +1,13 @@
 ---
-name: medicalflow-workflow
-description: Apply MedicalFlow's branch, Conventional Commit, documentation, and validation conventions to every task in this repository.
+name: flowcare-workflow
+description: Apply Flowcare's branch, Conventional Commit, documentation, and validation conventions to every task in this repository.
 metadata:
-  short-description: MedicalFlow project workflow
+  short-description: Flowcare project workflow
 ---
 
-# MedicalFlow project workflow
+# Flowcare project workflow
 
-Apply these conventions to all work in the MedicalFlow repository, including feature implementation, bug fixes, refactors, documentation, and maintenance.
+Apply these conventions to all work in the Flowcare repository, including feature implementation, bug fixes, refactors, documentation, and maintenance.
 
 ## Branches
 

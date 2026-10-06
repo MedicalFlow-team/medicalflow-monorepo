@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ============================================================
-# MedicalFlow — checagem operacional.
+# Flowcare — checagem operacional.
 # Crontab: */5 * * * *  (instalado no VPS — docs/infra/MONITORING.md)
 #
 # Verifica (executando dentro do container da api — independe de DNS):
@@ -8,12 +8,12 @@
 #   2. Sessão do WhatsApp: WAHA /api/sessions deve ter status WORKING
 #
 # Alerta por webhook (HEALTH_ALERT_WEBHOOK) apenas em MUDANÇA de estado,
-# para não spammar a cada 5 min. Estado anterior: /root/medflow/.health-state
+# para não spammar a cada 5 min. Estado anterior: /root/flowcare/.health-state
 # ============================================================
 set -euo pipefail
 
-ENV_FILE="/root/medflow/.env"
-STATE_FILE="/root/medflow/.health-state"
+ENV_FILE="/root/flowcare/.env"
+STATE_FILE="/root/flowcare/.health-state"
 WEBHOOK="$(grep -E '^HEALTH_ALERT_WEBHOOK=' "$ENV_FILE" 2>/dev/null | cut -d= -f2- || true)"
 
 alert() {
@@ -34,7 +34,7 @@ NEWEST_CID() {
     echo "$(docker inspect -f '{{.State.StartedAt}}' "$c") $c"
   done | sort -r | head -1 | awk '{print $2}'
 }
-API_CID="$(NEWEST_CID medflow_api)"
+API_CID="$(NEWEST_CID flowcare_api)"
 if [ -z "$API_CID" ]; then
   RESULT='{"api":"sem-container"}'
 else
@@ -67,9 +67,9 @@ echo "[$(date -Is)] $RESULT"
 PREV="$(cat "$STATE_FILE" 2>/dev/null || echo none)"
 if [ "$RESULT" != "$PREV" ]; then
   if [ "$RESULT" = '{"api":"ok","waha":"ok"}' ]; then
-    alert "[medflow] RECUPERADO: $RESULT (antes: $PREV)"
+    alert "[flowcare] RECUPERADO: $RESULT (antes: $PREV)"
   else
-    alert "[medflow] PROBLEMA: $RESULT (antes: $PREV)"
+    alert "[flowcare] PROBLEMA: $RESULT (antes: $PREV)"
   fi
   echo "$RESULT" > "$STATE_FILE"
 fi

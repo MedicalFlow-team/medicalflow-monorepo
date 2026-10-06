@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import { VerifyEmail } from "@/components/medicalflow/verify-email";
+import { VerifyEmail } from "@/components/flowcare/verify-email";
 
-export const metadata: Metadata = { title: "Confirmar e-mail | MedicalFlow" };
+export const metadata: Metadata = { title: "Confirmar e-mail | Flowcare" };
 
 export default async function Page({
   searchParams,

@@ -94,8 +94,8 @@ export function VerifyEmail({
       {token && !verified && (
         <div className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            Confirme seu endereço para acessar o MedicalFlow. O link pode ser
-            usado uma única vez.
+            Confirme seu endereço para acessar o Flowcare. O link pode ser usado
+            uma única vez.
           </p>
           <Button
             type="button"

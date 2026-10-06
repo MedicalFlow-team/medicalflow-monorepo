@@ -24,7 +24,7 @@ test("SES recebe o conteúdo e o log contém somente o ID da mensagem", async ()
   try {
     const mailer = new SesMailer(
       "sa-east-1",
-      "MedicalFlow <no-reply@example.com>",
+      "Flowcare <no-reply@example.com>",
       async (sent) => {
         command = sent;
         return { MessageId: "ses-message-123" };
@@ -40,7 +40,7 @@ test("SES recebe o conteúdo e o log contém somente o ID da mensagem", async ()
   }
 
   expect(command?.input).toMatchObject({
-    FromEmailAddress: "MedicalFlow <no-reply@example.com>",
+    FromEmailAddress: "Flowcare <no-reply@example.com>",
     Destination: { ToAddresses: ["person@example.com"] },
     Content: {
       Simple: {

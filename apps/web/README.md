@@ -1,10 +1,10 @@
-# MedicalFlow Web
+# Flowcare Web
 
 Ambiente local validado com Bun 1.4.2. Os scripts de lint e typecheck usam
 os pontos de entrada JavaScript das ferramentas para evitar os launchers
 `.exe` bloqueados pelo Controle de Aplicativo do Windows.
 
-Frontend Next.js do MedicalFlow. Os fluxos de autenticação ficam em `/login`,
+Frontend Next.js do Flowcare. Os fluxos de autenticação ficam em `/login`,
 `/register`, `/verify-email`, `/forgot-password` e `/reset-password`.
 
 Na raiz do monorepositório, instale as dependências com `bun install` e execute
