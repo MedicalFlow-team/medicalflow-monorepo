@@ -39,8 +39,8 @@ done
 # - as tasks do swarm resolvem a imagem já presente no node, sem depender
 #   do registry durante o rollout.
 echo "==> pré-pull das imagens (tag $TAG)"
-docker pull "ghcr.io/flowcare-team/flowcare-monorepo-api:$TAG"
-docker pull "ghcr.io/flowcare-team/flowcare-monorepo-web:$TAG"
+docker pull "ghcr.io/flow-care/flowcare-api:$TAG"
+docker pull "ghcr.io/flow-care/flowcare-web:$TAG"
 
 echo "==> docker stack deploy ($STACK, tag $TAG)"
 docker stack deploy --with-registry-auth -c stacks/flowcare-stack.yml "$STACK"
@@ -65,7 +65,7 @@ if compgen -G "apps/api/prisma/migrations/*" > /dev/null; then
   echo "==> prisma migrate deploy"
   docker run --rm --network "${STACK}_flowcare_net" \
     -e DATABASE_URL="$DB_URL" \
-    "ghcr.io/flowcare-team/flowcare-monorepo-api:$TAG" \
+    "ghcr.io/flow-care/flowcare-api:$TAG" \
     bunx prisma migrate deploy
 else
   echo "==> sem migrations ainda — pulando"

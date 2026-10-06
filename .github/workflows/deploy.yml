@@ -1,8 +1,8 @@
 name: Deploy (produção)
 
 on:
-  push:
-    branches: [main]
+  # Reativar push somente após concluir MIGRATION_RUNBOOK_FLOWCARE.md.
+  workflow_dispatch:
 
 concurrency:
   group: deploy-flowcare
@@ -41,8 +41,8 @@ jobs:
           file: ${{ matrix.file }}
           push: true
           tags: |
-            ghcr.io/flowcare-team/flowcare-monorepo-${{ matrix.name }}:${{ github.sha }}
-            ghcr.io/flowcare-team/flowcare-monorepo-${{ matrix.name }}:latest
+            ghcr.io/flow-care/flowcare-${{ matrix.name }}:${{ github.sha }}
+            ghcr.io/flow-care/flowcare-${{ matrix.name }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
