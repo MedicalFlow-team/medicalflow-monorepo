@@ -11,9 +11,9 @@ import {
   resetPasswordAction,
 } from "@/app/(auth)/actions";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { destinationAfterLogin, unwrapActionResult } from "@/lib/auth";
 
 type AuthMode = "login" | "register" | "forgot-password" | "reset-password";
@@ -214,29 +214,24 @@ export function AuthForm({
         </div>
       )}
       {isRegister && (
-        <div className="flex items-start gap-2 py-0.5">
-          <Checkbox
+        <div className="flex items-center gap-3 py-1">
+          <Switch
             id="terms"
             name="terms"
             required
             checked={acceptedTerms}
-            onCheckedChange={(checked) => setAcceptedTerms(checked === true)}
-            className="size-5 rounded border-0 bg-[#D9D9D9] data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
+            onCheckedChange={setAcceptedTerms}
+            disabled={pending}
           />
           <Label
             htmlFor="terms"
-            className="block text-[10px] font-normal leading-3"
+            className="block cursor-pointer text-xs font-normal leading-4"
           >
             Ao continuar, você concorda com nossos{" "}
             <span className="underline">Termos de serviço</span> e{" "}
             <span className="underline">Política de privacidade</span>.
           </Label>
         </div>
-      )}
-      {(isRegister || isReset) && (
-        <p className="text-xs text-muted-foreground">
-          A senha deve ter entre 8 e 72 caracteres.
-        </p>
       )}
       {error && (
         <p role="alert" className="text-sm text-destructive">

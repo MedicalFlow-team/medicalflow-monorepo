@@ -117,12 +117,17 @@ export async function registerAction(input: RegisterInput) {
 
 export async function verifyEmailAction(input: { token: string }) {
   return runAction(async () => {
-    await postApi(
+    const result = await postApi(
       "/auth/verify-email",
       validate(tokenInput, input),
-      messageResponse,
+      loginResponse,
     );
-    return { message: "E-mail confirmado. Entre na sua conta para continuar." };
+    await saveSession(result.token);
+    return {
+      user: result.user,
+      availableOrganizations: result.availableOrganizations,
+      onboardingCompleted: result.onboardingCompleted,
+    };
   });
 }
 

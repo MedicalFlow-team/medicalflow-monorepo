@@ -97,8 +97,11 @@ export class AuthService {
   }
 
   /** #207 — confirmação de e-mail com token de uso único (hash no banco). */
-  async verifyEmail(tokenValue: string): Promise<{ message: string }> {
-    await this.deps.prisma.$transaction(async (tx) => {
+  async verifyEmail(
+    tokenValue: string,
+    sessionMetadata: SessionMetadata,
+  ): Promise<LoginResponse> {
+    return this.deps.prisma.$transaction(async (tx) => {
       const record = await tx.verificationToken.findUnique({
         where: { tokenHash: hashToken(tokenValue) },
       });
@@ -118,8 +121,18 @@ export class AuthService {
         where: { id: record.userId },
         data: { emailVerified: true },
       });
+      const user = await tx.user.findUniqueOrThrow({
+        where: { id: record.userId },
+        include: {
+          memberships: {
+            where: { status: "ACTIVE" },
+            include: { organization: true },
+          },
+          onboarding: true,
+        },
+      });
+      return this.createSession(user, sessionMetadata, tx);
     });
-    return { message: "E-mail confirmado com sucesso." };
   }
 
   /** #207 — reenvio com resposta neutra para e-mail inexistente ou já verificado. */
@@ -170,10 +183,23 @@ export class AuthService {
       throw AccountNotVerified();
     }
 
+    return this.createSession(user, sessionMetadata);
+  }
+
+  private async createSession(
+    user: Prisma.UserGetPayload<{
+      include: {
+        memberships: { include: { organization: true } };
+        onboarding: true;
+      };
+    }>,
+    sessionMetadata: SessionMetadata,
+    db: Prisma.TransactionClient | PrismaClient = this.deps.prisma,
+  ): Promise<LoginResponse> {
     const expiresAt = new Date(
       Date.now() + this.deps.config.sessionTtlSeconds * 1000,
     );
-    const session = await this.deps.prisma.session.create({
+    const session = await db.session.create({
       data: {
         userId: user.id,
         expiresAt,
