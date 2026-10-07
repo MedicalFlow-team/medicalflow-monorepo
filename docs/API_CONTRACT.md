@@ -262,8 +262,10 @@ O fluxo obrigatório é:
 
 ---
 
-### Módulo 4: Equipe, Convites & RBAC Granular
+### Módulo 4: Equipe, Convites & Papéis Fixos
 *(Ref: Issues [#194](https://github.com/Flowcare-team/flowcare-monorepo/issues/194), [#314](https://github.com/Flowcare-team/flowcare-monorepo/issues/314)–[#319](https://github.com/Flowcare-team/flowcare-monorepo/issues/319))*
+
+**Proposta do MVP, pendente de revisão clínica:** a [matriz de papéis e capacidades](RBAC_MVP.md) define quatro papéis fixos: `ADMIN`, `ADMIN_PROFESSIONAL`, `PROFESSIONAL` e `RECEPTIONIST`. Papéis personalizados e `roles:manage` ficam fora do MVP. O schema atual ainda contém três papéis e precisa ser migrado antes de aplicar a matriz em produção.
 
 #### `GET /organizations/:orgSlug/members`
 * **Descrição:** Lista os membros da equipe da clínica com seus respectivos papéis.
@@ -274,7 +276,7 @@ O fluxo obrigatório é:
 * **Descrição:** Envia convite por e-mail para integrar uma pessoa à equipe com um papel específico.
 * **Permissão:** `team:invite`.
 * **Cabeçalho Obrigatório:** `Idempotency-Key`
-* **Body:** `{ "email": "recepcao@exemplo.com", "roleId": "role_receptionist" }`
+* **Body:** `{ "email": "recepcao@exemplo.com", "role": "RECEPTIONIST" }`
 * **Respostas:** `201 Created` (`{ "invite": { "id": "inv_1", "email": "...", "expiresAt": "..." } }`), `409 ALREADY_EXISTS`.
 
 #### `POST /invites/:token/accept`
@@ -286,7 +288,7 @@ O fluxo obrigatório é:
 #### `PATCH /organizations/:orgSlug/members/:memberId/role`
 * **Descrição:** Altera o papel de um membro. Valida obrigatoriamente a proteção do último administrador.
 * **Permissão:** `team:manage`.
-* **Body:** `{ "roleId": "role_doctor", "version": 1 }`
+* **Body:** `{ "role": "PROFESSIONAL", "version": 1 }`
 * **Respostas:** `200 OK`, `409 LAST_ADMIN_REQUIRED`, `409 VERSION_CONFLICT`.
 
 #### `DELETE /organizations/:orgSlug/members/:memberId`
@@ -295,15 +297,11 @@ O fluxo obrigatório é:
 * **Respostas:** `200 OK`, `409 LAST_ADMIN_REQUIRED`.
 
 #### `GET /organizations/:orgSlug/roles`
-* **Descrição:** Lista os papéis padrão (Administrador, Profissional, Recepcionista) e papéis personalizados da clínica.
+* **Descrição:** Lista os quatro papéis fixos com suas capacidades e a contagem de membros da clínica em cada papel.
 * **Permissão:** `roles:read`.
 * **Respostas:** `200 OK`.
 
-#### `POST /organizations/:orgSlug/roles`
-* **Descrição:** Cria um papel personalizado de acesso atribuindo permissões granulares especificadas.
-* **Permissão:** `roles:manage`.
-* **Body:** `{ "name": "Enfermeira Chefe", "permissions": ["patients:read", "patients:write", "consultations:read"] }`
-* **Respostas:** `201 Created`.
+> `POST` e `PATCH /organizations/:orgSlug/roles` não fazem parte do MVP; criação e edição de papéis personalizados foram adiadas.
 
 ---
 
@@ -336,7 +334,7 @@ O fluxo obrigatório é:
 
 #### `POST /organizations/:orgSlug/patients/:patientId/attachments`
 * **Descrição:** Upload de arquivo/exame privado para o prontuário do paciente.
-* **Permissão:** `patients:write`.
+* **Permissão:** `patients:attachments:write`.
 * **Body:** `multipart/form-data` (`file`, `category`, `description`).
 * **Respostas:** `201 Created` (`{ "attachmentId": "att_123", "fileName": "exame_sangue.pdf" }`), `413 FILE_TOO_LARGE`.
 
@@ -504,7 +502,7 @@ O fluxo obrigatório é:
 
 #### `GET /organizations/:orgSlug/dashboard/usage`
 * **Descrição:** Consulta as métricas de consumo da clínica (minutos de transcrição por IA utilizados).
-* **Permissão:** `dashboard:read`.
+* **Permissão:** `usage:read`.
 * **Respostas:** `200 OK` (`{ "transcriptionMinutesUsed": 320, "monthlyQuota": 1000 }`).
 
 ---
