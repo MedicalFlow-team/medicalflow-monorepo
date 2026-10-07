@@ -1,6 +1,6 @@
 # Flowcare — papéis e permissões do MVP
 
-**Proposta de decisão de produto, pendente de revisão clínica:** [#194](https://github.com/flow-care/flowcare/issues/194). Este documento define autorização de clínica; identidade e conta pessoal são globais. As rotas planejadas em [API_CONTRACT.md](API_CONTRACT.md) devem aplicar esta matriz quando forem implementadas. Dados de saúde são dados pessoais sensíveis segundo a [ANPD](https://www.gov.br/anpd/pt-br/acesso-a-informacao/perguntas-frequentes), por isso a separação entre operação e conteúdo clínico é explícita.
+**Decisão de produto do MVP:** [#194](https://github.com/flow-care/flowcare/issues/194). Este documento define autorização de clínica; identidade e conta pessoal são globais. As rotas planejadas em [API_CONTRACT.md](API_CONTRACT.md) devem aplicar esta matriz quando forem implementadas. As condições de habilitação para cada ação clínica devem ser revisadas por responsável clínico antes da ativação. Dados de saúde são dados pessoais sensíveis segundo a [ANPD](https://www.gov.br/anpd/pt-br/acesso-a-informacao/perguntas-frequentes), por isso a separação entre operação e conteúdo clínico é explícita.
 
 ## Papéis fixos
 
@@ -34,7 +34,7 @@ Não há criação nem edição de papéis personalizados no MVP. Uma pessoa tem
 | Modelos de documentos: `templates:read`, `templates:write` | — | ✓* | ✓* | — |
 | WhatsApp e mensagens logísticas: `communications:read`, `communications:write` | ✓ | ✓ | — | ✓ |
 | Painel operacional sem dados financeiros: `dashboard:read` | ✓ | ✓ | ✓ | ✓ |
-| Consumo e custo: `usage:read` | ✓ | ✓ | — | — |
+| Consumo de transcrição: `usage:read` | ✓ | ✓ | — | — |
 | Configurações da clínica e horários: `settings:read`, `settings:write` | ✓ | ✓ | — | — |
 | Trilha de auditoria, sem conteúdo clínico bruto: `audit:read` | ✓ | ✓ | — | — |
 
@@ -52,5 +52,7 @@ Autenticação (`/auth/*`) e conta pessoal (`/me/*`) dependem da própria identi
 ## Implementação planejada
 
 A task [#228](https://github.com/flow-care/flowcare/issues/228) implementa o contexto organizacional e a verificação de capacidade na API Elysia, usando um plugin ou macro tipada após autenticação e validação de `orgSlug`, conforme o [ciclo de vida oficial do Elysia](https://elysiajs.com/essential/life-cycle). A task [#317](https://github.com/flow-care/flowcare/issues/317) protege troca de papel e último administrador. A interface lista somente os quatro papéis fixos. A criação/edição de papéis personalizados das tasks #316, #319 e #325 sai do escopo do MVP.
+
+Antes de ativar emissão de documentos, aprovação de anamnese ou outra ação clínica, responsável clínico valida as habilitações específicas por tipo de recurso. A matriz de papéis não substitui essa validação.
 
 Casos mínimos de validação: recepção e administrador não leem timeline ou anexos clínicos; profissional não vê consumo nem altera equipe; profissional habilitado acessa ações clínicas permitidas; dono não recebe acesso clínico implícito; papel alterado perde acesso na requisição seguinte; não é possível remover o último administrador; slug ou recurso de outra clínica não vaza dados.

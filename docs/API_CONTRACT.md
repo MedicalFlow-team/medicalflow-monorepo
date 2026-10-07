@@ -265,7 +265,7 @@ O fluxo obrigatório é:
 ### Módulo 4: Equipe, Convites & Papéis Fixos
 *(Ref: Issues [#194](https://github.com/Flowcare-team/flowcare-monorepo/issues/194), [#314](https://github.com/Flowcare-team/flowcare-monorepo/issues/314)–[#319](https://github.com/Flowcare-team/flowcare-monorepo/issues/319))*
 
-**Proposta do MVP, pendente de revisão clínica:** a [matriz de papéis e capacidades](RBAC_MVP.md) define quatro papéis fixos: `ADMIN`, `ADMIN_PROFESSIONAL`, `PROFESSIONAL` e `RECEPTIONIST`. Papéis personalizados e `roles:manage` ficam fora do MVP. O schema atual ainda contém três papéis e precisa ser migrado antes de aplicar a matriz em produção.
+**Decisão de produto do MVP:** a [matriz de papéis e capacidades](RBAC_MVP.md) define quatro papéis fixos: `ADMIN`, `ADMIN_PROFESSIONAL`, `PROFESSIONAL` e `RECEPTIONIST`. Papéis personalizados e `roles:manage` ficam fora do MVP. O schema atual ainda contém três papéis e precisa ser migrado antes de aplicar a matriz em produção. Habilitações específicas de ações clínicas exigem revisão por responsável clínico antes da ativação.
 
 #### `GET /organizations/:orgSlug/members`
 * **Descrição:** Lista os membros da equipe da clínica com seus respectivos papéis.
