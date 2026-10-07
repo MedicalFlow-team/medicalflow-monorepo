@@ -21,10 +21,12 @@ export class AccountService {
   /**
    * Altera a senha do usuário após validar a senha atual via Argon2id.
    * Não altera nada no banco se a senha atual for incorreta.
-   * Não revoga sessões (fora do escopo da Issue #332; reservado para Issue #333).
+   * Revoga as outras sessões na mesma transação da troca de senha (#192).
+   * A sessão atual permanece ativa; revogação manual é tratada na #333.
    */
   async changePassword(
     userId: string,
+    currentSessionId: string,
     body: ChangePasswordBody,
   ): Promise<ChangePasswordResponse> {
     const user = await this.deps.prisma.user.findUnique({
@@ -42,9 +44,15 @@ export class AccountService {
     }
 
     const newHash = await hash(body.newPassword);
-    await this.deps.prisma.user.update({
-      where: { id: userId },
-      data: { passwordHash: newHash },
+    await this.deps.prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: userId },
+        data: { passwordHash: newHash },
+      });
+      await tx.session.updateMany({
+        where: { userId, id: { not: currentSessionId }, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
     });
 
     return { message: "Senha alterada com sucesso." };

@@ -1,6 +1,6 @@
 # Flowcare — Contrato da API
 
-**Status:** Contrato de planejamento vNext
+**Status:** Contrato de planejamento vNext (implementação parcial)
 **Backlog:** [Flowcare - Delivery](https://github.com/orgs/Flowcare-team/projects/2)
 **Fontes:** Issues [#191](https://github.com/Flowcare-team/flowcare-monorepo/issues/191)–[#199](https://github.com/Flowcare-team/flowcare-monorepo/issues/199) e tarefas do board
 **Base URL:** `https://<environment>/api`
@@ -25,7 +25,7 @@ Este documento é a fonte de verdade para o contrato HTTP entre a API (`apps/api
 | **Tipagem e Contrato** | Os tipos de entrada e saída são derivados estritamente dos schemas Elysia/TypeBox e OpenAPI gerados. |
 
 > [!NOTE]
-> **Pendência Arquitetural (Decisão [#192](https://github.com/Flowcare-team/flowcare-monorepo/issues/192)):** O transporte exato da sessão permanece entre cookie seguro (`HttpOnly`, `Secure`, `SameSite=Lax`) ou tokens de acesso rotativos com tempo de vida curto. É terminantemente proibido o uso de JWTs sem expiração. Toda sessão possui TTL finito e pode ser revogada individualmente ou em lote pelo usuário.
+> **Decisão #192 para o MVP:** A API usa `Authorization: Bearer <JWT>`. O JWT expira em 12 horas e exige uma `Session` ativa no banco. O Next.js guarda o token em cookie `HttpOnly`, `SameSite=Lax` e `Secure` em produção. Não há renovação automática; depois de 12 horas a pessoa faz login novamente. Logout da API e revogação manual ainda estão pendentes.
 
 ### Contexto Organizacional Ativo
 
@@ -85,6 +85,8 @@ Em caso de falha (códigos HTTP 4xx e 5xx), a API responde com a seguinte estrut
 ### Módulo 1: Autenticação & Sessões
 *(Ref: Issues [#192](https://github.com/Flowcare-team/flowcare-monorepo/issues/192), [#207](https://github.com/Flowcare-team/flowcare-monorepo/issues/207), [#208](https://github.com/Flowcare-team/flowcare-monorepo/issues/208), [#209](https://github.com/Flowcare-team/flowcare-monorepo/issues/209))*
 
+**Implementado:** JWT com `sid`/`sub` e sessão persistida, TTL de 12 horas sem renovação automática; verificação de e-mail em 24 horas, reset em 30 minutos e até 3 emissões de token de verificação por conta a cada hora (incluindo o token inicial). Senhas usam Argon2id e aceitam 8 a 72 caracteres. Tokens enviados por e-mail são de uso único e persistidos somente como SHA-256. Proteção por IP, uniformização de latência e invalidação de tokens anteriores ao reenvio estão na [#356](https://github.com/flow-care/flowcare/issues/356).
+
 #### `POST /auth/register`
 * **Descrição:** Cria uma nova conta pessoal e dispara e-mail de verificação.
 * **Permissão:** Pública.
@@ -134,19 +136,22 @@ Em caso de falha (códigos HTTP 4xx e 5xx), a API responde com a seguinte estrut
 * **Descrição:** Encerra a sessão ativa do usuário.
 * **Permissão:** Autenticado.
 * **Respostas:** `200 OK` (`{ "message": "Sessão encerrada." }`).
+* **Estado:** Planejado; ainda não implementado na API.
 
 ---
 
 ### Módulo 2: Onboarding & Primeira Clínica
 *(Ref: Issues [#193](https://github.com/Flowcare-team/flowcare-monorepo/issues/193), [#215](https://github.com/Flowcare-team/flowcare-monorepo/issues/215)–[#218](https://github.com/Flowcare-team/flowcare-monorepo/issues/218))*
 
+**Decisão #193 para o MVP:** Depois de confirmar o e-mail, quem cria uma clínica precisa informar apenas os dados mínimos da clínica para entrar no dashboard. Nome pessoal já vem do cadastro; telefone, título profissional e registro profissional são opcionais ou exigidos somente para a função clínica correspondente. Horários e convites podem ser configurados depois. Quem entra por convite confirma o e-mail, autentica-se com a conta do endereço convidado e aceita o convite; não cria clínica. Convites expiram após 7 dias, têm uso único, podem ser revogados e o reenvio substitui o token anterior. As rotas implementadas são `/onboarding/progress` e `/onboarding/organization`; `/onboarding/status` e `/onboarding/clinic` não foram adotadas. Perfil complementar, horários, conclusão e convites seguem planejados.
+
 #### `GET /onboarding/progress`
 * **Descrição:** Recupera o estado atual do assistente de primeiro acesso.
 * **Permissão:** Autenticado.
-* **Respostas:** `200 OK` (`{ "currentStep": "ORGANIZATION_SETUP", "completed": false, "draftData": { ... } }`).
+* **Respostas:** `200 OK` (`{ "currentStep": "ORGANIZATION_SETUP", "completed": false, "draftData": {}, "version": 0 }`).
 
 #### `POST /onboarding/profile`
-* **Descrição:** Completa o perfil pessoal inicial durante o primeiro acesso.
+* **Descrição:** Salva dados pessoais e profissionais complementares. Não bloqueia o acesso inicial à clínica; dados de registro profissional só são obrigatórios antes de ações clínicas que os exigem.
 * **Permissão:** Autenticado.
 * **Body:** `{ "professionalTitle": "Médica Cardiologista", "registrationNumber": "CRM/SP 123456" }`
 * **Respostas:** `200 OK`, `400 VALIDATION_ERROR`.
@@ -172,9 +177,10 @@ Em caso de falha (códigos HTTP 4xx e 5xx), a API responde com a seguinte estrut
   ```
   `slug` é opcional: ausente, é derivado do `name` (normalizado). `phone`/`address` entram com as issues de dados institucionais (#303).
 * **Respostas:** `201 Created` (`{ "organization": { "id": "org_1", "name": "...", "slug": "vida-e-saude", "role": "ADMIN", "isOwner": true } }`), `409 ALREADY_EXISTS`.
+* **Estado:** Implementado para `name` e `slug`. `phone`, `address` e `Idempotency-Key` ainda não são processados; ver #217 e #303.
 
 #### `POST /onboarding/schedule-rules`
-* **Descrição:** Configura os dias e horários padrão de atendimento da clínica durante o onboarding.
+* **Descrição:** Configura opcionalmente os dias e horários padrão de atendimento da clínica durante o onboarding ou depois dele.
 * **Permissão:** Autenticado (Administrador).
 * **Body:**
   ```json
@@ -187,7 +193,7 @@ Em caso de falha (códigos HTTP 4xx e 5xx), a API responde com a seguinte estrut
 * **Respostas:** `200 OK`.
 
 #### `POST /onboarding/complete`
-* **Descrição:** Finaliza a jornada de onboarding e marca a conta como pronta para uso.
+* **Descrição:** Finaliza a jornada de onboarding após confirmação de e-mail e criação da clínica. Perfil complementar, horários e convites não bloqueiam a conclusão.
 * **Permissão:** Autenticado.
 * **Respostas:** `200 OK` (`{ "redirectUrl": "/app/vida-e-saude/dashboard" }`).
 
@@ -279,9 +285,10 @@ O fluxo obrigatório é:
 
 #### `POST /invites/:token/accept`
 * **Descrição:** Aceita um convite de equipe enviado por e-mail e cria o vínculo de Membership na clínica.
-* **Permissão:** Autenticado.
+* **Permissão:** Autenticado, e-mail verificado e igual ao destinatário do convite.
 * **Body:** `{ "token": "inv_token_999" }`
 * **Respostas:** `200 OK` (`{ "organizationSlug": "vida-e-saude" }`), `410 INVITE_EXPIRED`.
+* **Regras:** Convite válido por 7 dias, uso único e vinculado a e-mail, clínica e papel. Revogação ou reenvio invalidam o token anterior. Aceite repetido não cria outro vínculo.
 
 #### `PATCH /organizations/:orgSlug/members/:memberId/role`
 * **Descrição:** Altera o papel de um membro. Valida obrigatoriamente a proteção do último administrador.
@@ -557,7 +564,7 @@ O fluxo obrigatório é:
 * **Respostas:** `200 OK`.
 
 #### `POST /me/change-password`
-* **Descrição:** Altera a senha do usuário solicitando a senha atual como confirmação de segurança.
+* **Descrição:** Altera a senha do usuário solicitando a senha atual como confirmação de segurança. Revoga atomicamente as outras sessões; a sessão atual permanece ativa.
 * **Permissão:** Autenticado.
 * **Body:** `{ "currentPassword": "<senha_atual>", "newPassword": "<nova_senha>" }`
 * **Respostas:** `200 OK`.

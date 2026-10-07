@@ -85,15 +85,34 @@ async function setup(
     };
   });
 
-  const touchSession = mock(async ({ data }: Prisma.SessionUpdateManyArgs) => {
-    const lastActiveAt = data.lastActiveAt as Date;
-    sessionLastActiveAt = lastActiveAt;
-    const currentSession = sessionsSeed.find(
-      (session) => session.id === "session-current",
-    );
-    if (currentSession) currentSession.lastActiveAt = lastActiveAt;
-    return { count: 1 };
-  });
+  const touchSession = mock(
+    async ({ where, data }: Prisma.SessionUpdateManyArgs) => {
+      if (data.revokedAt) {
+        let count = 0;
+        for (const session of sessionsSeed) {
+          if (session.userId !== where?.userId || session.revokedAt !== null)
+            continue;
+          if (
+            where?.id &&
+            typeof where.id === "object" &&
+            "not" in where.id &&
+            session.id === where.id.not
+          )
+            continue;
+          session.revokedAt = data.revokedAt as Date;
+          count++;
+        }
+        return { count };
+      }
+      const lastActiveAt = data.lastActiveAt as Date;
+      sessionLastActiveAt = lastActiveAt;
+      const currentSession = sessionsSeed.find(
+        (session) => session.id === "session-current",
+      );
+      if (currentSession) currentSession.lastActiveAt = lastActiveAt;
+      return { count: 1 };
+    },
+  );
 
   const findManySessions = mock(
     async ({ where }: Prisma.SessionFindManyArgs) => {
@@ -114,6 +133,8 @@ async function setup(
   );
 
   const prisma = {
+    $transaction: async (operation: (tx: PrismaClient) => Promise<unknown>) =>
+      operation(prisma as PrismaClient),
     user: {
       findUnique: findUniqueUser,
       update: updateUser,
@@ -234,6 +255,37 @@ describe("#332 POST /api/me/change-password e GET /api/me/sessions", () => {
 
       const hashAfter = userRecord().passwordHash;
       expect(hashAfter).not.toBe(hashBefore);
+    });
+
+    test("troca de senha revoga outras sessões sem encerrar a atual", async () => {
+      const now = new Date();
+      const base = {
+        userId: "user-a",
+        expiresAt: new Date(now.getTime() + 3600_000),
+        revokedAt: null,
+        ipAddress: null,
+        userAgent: null,
+        createdAt: now,
+        lastActiveAt: now,
+      };
+      const sessionsSeed: MockSession[] = [
+        { ...base, id: "session-current" },
+        { ...base, id: "session-other-device" },
+      ];
+      const { postChangePassword, token, currentPasswordPlain } = await setup(
+        {},
+        sessionsSeed,
+      );
+      const res = await postChangePassword(
+        {
+          currentPassword: currentPasswordPlain,
+          newPassword: credentialFixtures.replacement,
+        },
+        `Bearer ${token}`,
+      );
+      expect(res.status).toBe(200);
+      expect(sessionsSeed[0]?.revokedAt).toBeNull();
+      expect(sessionsSeed[1]?.revokedAt).toBeInstanceOf(Date);
     });
 
     test("segredo/hash nunca aparece na resposta de sucesso", async () => {
