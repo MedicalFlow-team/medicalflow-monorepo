@@ -71,8 +71,9 @@ Em caso de falha (códigos HTTP 4xx e 5xx), a API responde com a seguinte estrut
 | **409** | `ALREADY_EXISTS` | Conflito de duplicidade de chave única (ex: e-mail já cadastrado, slug já utilizado). |
 | **409** | `SLOT_CONFLICT` | Horário de agendamento já reservado por outro paciente. |
 | **409** | `LAST_ADMIN_REQUIRED` | Tentativa de remover ou rebaixar o último administrador da organização. |
+| **409** | `DOCUMENT_STATE_CONFLICT` | Tentativa de editar, emitir ou anular documento fora do estado permitido. |
 | **410** | `INVITE_EXPIRED` | O convite para a equipe expirou ou foi revogado. |
-| **422** | `BUSINESS_RULE_VIOLATION` | Violação de regra de negócio (ex: tentar alterar documento clínico já emitido). |
+| **422** | `BUSINESS_RULE_VIOLATION` | Violação de regra de negócio com estado válido (ex: campos clínicos obrigatórios ausentes para emissão). |
 | **429** | `RATE_LIMITED` | Limite de requisições excedido. |
 | **500** | `INTERNAL` | Erro interno do servidor. Não exibe stack traces nem detalhes de infraestrutura em produção. |
 
@@ -415,8 +416,18 @@ O fluxo obrigatório é:
 ### Módulo 8: Documentos Clínicos, Versionamento & Anulação
 *(Ref: Issues [#195](https://github.com/Flowcare-team/flowcare-monorepo/issues/195), [#273](https://github.com/Flowcare-team/flowcare-monorepo/issues/273)–[#278](https://github.com/Flowcare-team/flowcare-monorepo/issues/278))*
 
+**Decisão do MVP:** ver [ciclo de vida e snapshot](DOCUMENTS_MVP.md). Receitas controladas e assinatura eletrônica não fazem parte do MVP. `ISSUED` indica PDF final para impressão e assinatura manuscrita, não documento eletrônico assinado. Todas as rotas deste módulo ainda são planejadas.
+
+#### `GET /organizations/:orgSlug/documents`
+* **Descrição:** Lista documentos da clínica com paginação e filtros, sem conteúdo clínico completo na listagem.
+* **Permissão:** `documents:read`.
+
+#### `GET /organizations/:orgSlug/documents/:documentId`
+* **Descrição:** Consulta detalhe, estado e vínculo de versões de um documento.
+* **Permissão:** `documents:read`.
+
 #### `POST /organizations/:orgSlug/documents`
-* **Descrição:** Cria rascunho de receita, atestado, pedido de exame ou relatório médico.
+* **Descrição:** Cria rascunho de receita simples, atestado, pedido de exame ou laudo. Receita controlada e documento livre/personalizado são recusados no MVP.
 * **Permissão:** `documents:write`.
 * **Body:** `{ "patientId": "pat_1", "type": "PRESCRIPTION", "title": "Receita Simples", "content": "..." }`
 * **Respostas:** `201 Created` (`{ "documentId": "doc_99", "status": "DRAFT", "version": 1 }`).
@@ -425,16 +436,21 @@ O fluxo obrigatório é:
 * **Descrição:** Edita o conteúdo de um documento **enquanto ele for RASCUNHO** (`DRAFT`).
 * **Permissão:** `documents:write`.
 * **Body:** `{ "content": "Novo texto...", "version": 1 }`
-* **Respostas:** `200 OK`, `422 BUSINESS_RULE_VIOLATION` (se o documento já foi assinado/emitido).
+* **Respostas:** `200 OK`, `409 DOCUMENT_STATE_CONFLICT` (se não estiver em `DRAFT`), `409 VERSION_CONFLICT`.
 
 #### `POST /organizations/:orgSlug/documents/:documentId/issue`
-* **Descrição:** Emite o documento com snapshot imutável dos dados médicos e assinatura.
+* **Descrição:** Finaliza o documento com snapshot imutável e PDF para impressão e assinatura manuscrita; não assina eletronicamente.
 * **Permissão:** `documents:issue`.
 * **Body:** `{ "version": 2 }`
-* **Respostas:** `200 OK` (`{ "status": "ISSUED", "issuedAt": "...", "snapshotHash": "sha256_..." }`).
+* **Respostas:** `200 OK` (`{ "status": "ISSUED", "issuedAt": "...", "snapshotHash": "sha256_..." }`), `409 DOCUMENT_STATE_CONFLICT`, `422 BUSINESS_RULE_VIOLATION` (campos obrigatórios ausentes). Uma falha de PDF não conclui a emissão.
+
+#### `POST /organizations/:orgSlug/documents/:documentId/rectify`
+* **Descrição:** Cria novo rascunho vinculado a um documento `ISSUED`, preservando o original. A emissão do novo rascunho recebe a próxima versão da cadeia.
+* **Permissão:** `documents:write`.
+* **Respostas:** `201 Created` (`{ "documentId": "doc_100", "status": "DRAFT", "replacesDocumentId": "doc_99" }`), `409 DOCUMENT_STATE_CONFLICT`.
 
 #### `GET /organizations/:orgSlug/documents/:documentId/pdf`
-* **Descrição:** Baixa ou visualiza o PDF oficial gerado a partir do snapshot imutável do documento emitido.
+* **Descrição:** Após autorização, transmite o PDF privado gerado a partir do snapshot imutável, identificado como arquivo para impressão e assinatura manuscrita.
 * **Permissão:** `documents:read`.
 * **Respostas:** `200 OK` (`Content-Type: application/pdf`).
 
@@ -442,12 +458,16 @@ O fluxo obrigatório é:
 * **Descrição:** Anula formalmente um documento emitido. Exige justificativa motivada e mantém histórico de versões.
 * **Permissão:** `documents:void`.
 * **Body:** `{ "reason": "Erro na dosagem do medicamento prescrevido", "version": 3 }`
-* **Respostas:** `200 OK` (`{ "status": "VOIDED", "voidedAt": "...", "voidReason": "..." }`).
+* **Respostas:** `200 OK` (`{ "status": "VOIDED", "voidedAt": "...", "voidReason": "..." }`), `409 DOCUMENT_STATE_CONFLICT`.
 
 #### `GET /organizations/:orgSlug/documents/:documentId/versions`
 * **Descrição:** Retorna a trilha de histórico de todas as alterações e snapshots do documento.
 * **Permissão:** `documents:read`.
 * **Respostas:** `200 OK` (`{ "versions": [ { "version": 1, "status": "DRAFT" }, { "version": 2, "status": "ISSUED" } ] }`).
+
+#### `GET /organizations/:orgSlug/documents/:documentId/versions/:versionId`
+* **Descrição:** Consulta um snapshot histórico imutável autorizado.
+* **Permissão:** `documents:read`.
 
 ---
 

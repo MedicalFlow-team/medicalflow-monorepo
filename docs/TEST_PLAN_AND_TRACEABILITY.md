@@ -144,11 +144,11 @@ A tabela a seguir relaciona as **15 Issues Oficiais de QA** do board com seus m�
 * **`CON-08`**: Garantir limpeza dos arquivos temporários de áudio no cliente após o envio.
 
 ### 5.7. Documentos Clínicos, Versionamento, Anulação & PDF (Issue #286)
-* **`DOC-01`**: Criar rascunho de receita ou atestado.
+* **`DOC-01`**: Criar rascunhos de receita simples, atestado, laudo e pedido de exame; recusar receita controlada e documento livre no MVP.
 * **`DOC-02`**: Editar rascunho de documento enquanto estiver em status `DRAFT`.
 * **`DOC-03`**: Emitir documento gerando snapshot imutável dos dados clínicos.
-* **`DOC-04`**: Impedir qualquer edição em documento em status `ISSUED` (`422 BUSINESS_RULE_VIOLATION`).
-* **`DOC-05`**: Gerar PDF oficial a partir do snapshot e conferir layout/conteúdo.
+* **`DOC-04`**: Impedir qualquer edição em documento em status `ISSUED` ou `VOIDED` (`409 DOCUMENT_STATE_CONFLICT`).
+* **`DOC-05`**: Gerar PDF para impressão e assinatura manuscrita a partir do snapshot e conferir layout/conteúdo; não apresentar como assinado eletronicamente.
 * **`DOC-06`**: Anular documento emitido exigindo justificativa obrigatória.
 * **`DOC-07`**: Validar que documento anulado exibe tarja visual de anulação e não pode ser re-emitido.
 * **`DOC-08`**: Consultar histórico completo de versões do documento.
