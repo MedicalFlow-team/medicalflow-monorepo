@@ -40,6 +40,11 @@ model User {
   id            String   @id @default(uuid()) @db.Uuid
   email         String   @unique
   fullName      String
+  phone         String?
+  professionalRole String?
+  professionalTitle String?
+  registrationNumber String?
+  profileCompletedAt DateTime?
   passwordHash  String
   emailVerified Boolean  @default(false)
   createdAt     DateTime @default(now())

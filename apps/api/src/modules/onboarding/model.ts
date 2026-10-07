@@ -24,6 +24,39 @@ export const progressResponse = t.Object({
   version: t.Number(),
 });
 
+export const profileBody = t.Object({
+  fullName: t.String({ minLength: 3, maxLength: 120 }),
+  phone: t.String({ minLength: 10, maxLength: 20 }),
+  professionalRole: t.Union([
+    t.Literal("MANAGEMENT"),
+    t.Literal("CLINICAL"),
+    t.Literal("RECEPTION"),
+  ]),
+  professionalTitle: t.Optional(t.String({ maxLength: 120 })),
+  registrationNumber: t.Optional(t.String({ maxLength: 80 })),
+});
+
+export const profileDraftBody = t.Object({
+  fullName: t.String({ maxLength: 120 }),
+  phone: t.String({ maxLength: 20 }),
+  professionalRole: t.Union([
+    t.Literal("MANAGEMENT"),
+    t.Literal("CLINICAL"),
+    t.Literal("RECEPTION"),
+  ]),
+  professionalTitle: t.String({ maxLength: 120 }),
+  registrationNumber: t.String({ maxLength: 80 }),
+});
+
+export const profileResponse = t.Object({
+  fullName: t.String(),
+  phone: t.Union([t.String(), t.Null()]),
+  professionalRole: t.Union([t.String(), t.Null()]),
+  professionalTitle: t.Union([t.String(), t.Null()]),
+  registrationNumber: t.Union([t.String(), t.Null()]),
+  completed: t.Boolean(),
+});
+
 export const organizationCreatedResponse = t.Object({
   organization: t.Object({
     id: t.String(),
@@ -40,3 +73,5 @@ export const organizationCreatedResponse = t.Object({
 
 export type CreateOrganizationBody = typeof createOrganizationBody.static;
 export type ProgressResponse = typeof progressResponse.static;
+export type ProfileBody = typeof profileBody.static;
+export type ProfileDraftBody = typeof profileDraftBody.static;

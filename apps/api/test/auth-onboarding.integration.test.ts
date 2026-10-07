@@ -68,6 +68,20 @@ function post(path: string, body: unknown, token?: string) {
   );
 }
 
+function patch(path: string, body: unknown, token?: string) {
+  const headers: Record<string, string> = {
+    "content-type": "application/json",
+  };
+  if (token) headers.authorization = `Bearer ${token}`;
+  return api.handle(
+    new Request(`http://localhost/api${path}`, {
+      method: "PATCH",
+      headers,
+      body: JSON.stringify(body),
+    }),
+  );
+}
+
 function get(path: string, token?: string) {
   const headers: Record<string, string> = {};
   if (token) headers.authorization = `Bearer ${token}`;
@@ -334,7 +348,7 @@ describe.skipIf(!dbUp)("Integração: auth + onboarding (Postgres real)", () => 
         draftData: Record<string, unknown>;
         version: number;
       };
-      expect(body.currentStep).toBe("ORGANIZATION_SETUP");
+      expect(body.currentStep).toBe("PROFILE_SETUP");
       expect(body.completed).toBe(false);
       expect(body.version).toBe(0);
 
@@ -346,8 +360,65 @@ describe.skipIf(!dbUp)("Integração: auth + onboarding (Postgres real)", () => 
       const token2 = ((await login2.json()) as { token: string }).token;
       const res2 = await get("/onboarding/progress", token2);
       expect(((await res2.json()) as { currentStep: string }).currentStep).toBe(
-        "ORGANIZATION_SETUP",
+        "PROFILE_SETUP",
       );
+    });
+
+    test("rascunho do perfil volta após recarregar e conclusão avança uma vez", async () => {
+      const token = await loginToken();
+      expect((await get("/onboarding/profile")).status).toBe(401);
+
+      const draft = await patch(
+        "/onboarding/profile",
+        {
+          fullName: "Dra. Maria Silva",
+          phone: "85",
+          professionalRole: "CLINICAL",
+          professionalTitle: "Médica",
+          registrationNumber: "",
+        },
+        token,
+      );
+      expect(draft.status).toBe(200);
+      const restored = await get("/onboarding/profile", token);
+      expect(((await restored.json()) as { phone: string }).phone).toBe("85");
+
+      const invalid = await post(
+        "/onboarding/profile",
+        {
+          fullName: "Dra. Maria Silva",
+          phone: "85999990000",
+          professionalRole: "CLINICAL",
+          professionalTitle: "Médica",
+          registrationNumber: "",
+        },
+        token,
+      );
+      expect(invalid.status).toBe(400);
+
+      const body = {
+        fullName: "Dra. Maria Silva",
+        phone: "(85) 99999-0000",
+        professionalRole: "CLINICAL",
+        professionalTitle: "Médica",
+        registrationNumber: "CRM/CE 123456",
+      };
+      const saved = await post("/onboarding/profile", body, token);
+      expect(saved.status).toBe(200);
+      expect(((await saved.json()) as { completed: boolean }).completed).toBe(
+        true,
+      );
+      const repeated = await post("/onboarding/profile", body, token);
+      expect(repeated.status).toBe(200);
+      expect(await prisma.onboardingProgress.count()).toBe(1);
+      const progress = await get("/onboarding/progress", token);
+      expect(
+        ((await progress.json()) as { currentStep: string }).currentStep,
+      ).toBe("ORGANIZATION_SETUP");
+      const user = await prisma.user.findUnique({
+        where: { email: "maria@exemplo.com" },
+      });
+      expect(user?.phone).toBe("85999990000");
     });
 
     test("cria clínica com slug normalizado, criador ADMIN/isOwner e assinatura pendente", async () => {

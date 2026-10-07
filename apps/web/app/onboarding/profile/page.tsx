@@ -1,18 +1,51 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
+import { ProfileForm } from "@/components/flowcare/profile-form";
+import type { Profile } from "@/lib/onboarding-profile";
+import {
+  ProfileApiError,
+  profileApiRequest,
+} from "@/server/onboarding-profile";
 
-export const metadata: Metadata = { title: "Primeiro acesso | Flowcare" };
+export const metadata: Metadata = { title: "Complete seu perfil | Flowcare" };
 
-export default function OnboardingProfilePage() {
+export default async function OnboardingProfilePage() {
+  let profile: Profile | null = null;
+  let loadError = false;
+  let unauthenticated = false;
+  try {
+    profile = await profileApiRequest("GET", null);
+  } catch (error) {
+    unauthenticated =
+      error instanceof ProfileApiError && error.code === "UNAUTHENTICATED";
+    loadError = true;
+  }
+
+  if (unauthenticated) redirect("/login");
+  if (profile?.completed) redirect("/onboarding/clinic");
+
   return (
-    <main className="mx-auto flex min-h-svh max-w-xl flex-col justify-center gap-4 px-6 py-12">
-      <h1 className="text-3xl font-semibold">Próximo passo: seu perfil</h1>
-      <p className="text-muted-foreground">
-        Sua conta está pronta. A próxima etapa é completar seu perfil pessoal
-        antes de configurar a clínica.
-      </p>
-      <p className="text-sm text-muted-foreground">
-        O formulário de perfil será disponibilizado nesta página em breve.
-      </p>
+    <main className="min-h-svh bg-background px-5 py-12 text-foreground">
+      <div className="mx-auto w-full max-w-lg">
+        <p className="mb-5 text-sm font-medium text-primary">Primeiro acesso</p>
+        <h1 className="text-3xl font-semibold tracking-tight">
+          Complete seu perfil
+        </h1>
+        <p className="mt-3 text-sm text-muted-foreground">
+          Confira seus dados pessoais antes de configurar a clínica.
+        </p>
+        {loadError ? (
+          <div
+            role="alert"
+            className="mt-8 rounded-lg border border-destructive p-4"
+          >
+            Não foi possível carregar seu perfil. Recarregue a página para
+            tentar novamente.
+          </div>
+        ) : profile ? (
+          <ProfileForm initialProfile={profile} />
+        ) : null}
+      </div>
     </main>
   );
 }
