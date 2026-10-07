@@ -34,6 +34,8 @@ Para Telegram, troque o payload em `check-health.sh` (`{"chat_id": "...", "text"
 ```cron
 */5 * * * * /root/flowcare-monorepo/infra/monitoring/check-health.sh >> /root/flowcare/health.log 2>&1
 0 3 * * *   /root/flowcare-monorepo/infra/backup/backup-postgres.sh  >> /root/flowcare/backup.log 2>&1
+*/5 * * * * /root/flowcare-monorepo/infra/backup/sync-wal.sh >> /root/flowcare/backup.log 2>&1
+*/5 * * * * /root/flowcare-monorepo/infra/backup/check-backup.sh >> /root/flowcare/backup-health.log 2>&1
 ```
 
 ## Evolução (pós-MVP)

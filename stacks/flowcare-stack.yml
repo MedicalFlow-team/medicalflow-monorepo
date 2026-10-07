@@ -25,8 +25,18 @@ services:
   postgres:
     image: postgres:16-alpine
     env_file: /root/flowcare/.env
+    command:
+      - postgres
+      - -c
+      - archive_mode=on
+      - -c
+      - archive_timeout=300s
+      - -c
+      - archive_command=/usr/local/bin/archive-wal.sh "%p" "%f"
     volumes:
       - flowcare_postgres_data:/var/lib/postgresql/data
+      - /root/flowcare/wal-spool:/wal-archive
+      - /root/flowcare-monorepo/infra/backup/archive-wal.sh:/usr/local/bin/archive-wal.sh:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 10s
