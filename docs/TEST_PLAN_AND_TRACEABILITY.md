@@ -174,7 +174,7 @@ A tabela a seguir relaciona as **15 Issues Oficiais de QA** do board com seus m�
 * **`CFG-02`**: Cadastrar horários de atendimento recorrentes por dia da semana.
 * **`CFG-03`**: Adicionar bloqueio de agenda em datas comemorativas ou feriados.
 * **`CFG-04`**: Configurar tópicos padrão de anamnese médica por profissional.
-* **`CFG-05`**: Acompanhar relatório de consumo de transcrição por IA.
+* **`CFG-05`**: Conferir segundos processados com sucesso, minutos derivados da soma, falhas sem consumo e detalhamento por profissional; não mostrar custo em R$ ou cota sem regra aprovada.
 * **`CFG-06`**: Impedir alteração de configurações por usuários sem permissão `settings:write`.
 
 ### 5.11. Equipe, Convites & RBAC Granular (Issue #326)
