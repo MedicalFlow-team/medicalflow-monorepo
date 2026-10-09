@@ -53,10 +53,17 @@ jobs:
     steps:
       - name: SSH no VPS e deploy
         uses: appleboy/ssh-action@v1.2.2
+        env:
+          STORAGE_ENDPOINT: ${{ secrets.STORAGE_ENDPOINT }}
+          STORAGE_BUCKET: ${{ secrets.STORAGE_BUCKET }}
+          STORAGE_REGION: ${{ secrets.STORAGE_REGION }}
+          STORAGE_ACCESS_KEY_ID: ${{ secrets.STORAGE_ACCESS_KEY_ID }}
+          STORAGE_SECRET_ACCESS_KEY: ${{ secrets.STORAGE_SECRET_ACCESS_KEY }}
         with:
           host: ${{ secrets.FLOWCARE_VPS_HOST }}
           username: root
           key: ${{ secrets.FLOWCARE_VPS_SSH_KEY }}
+          envs: STORAGE_ENDPOINT,STORAGE_BUCKET,STORAGE_REGION,STORAGE_ACCESS_KEY_ID,STORAGE_SECRET_ACCESS_KEY
           script_stop: true
           script: |
             set -euo pipefail
@@ -65,6 +72,23 @@ jobs:
             # pode ser outra — git pull sozinho puxaria a branch errada).
             git fetch origin
             git checkout --force "${{ github.sha }}"
+            umask 077
+            env_file=/root/flowcare/.env
+            temp_env=$(mktemp /root/flowcare/.env.storage.XXXXXX)
+            trap 'rm -f "$temp_env"' EXIT
+            for key in STORAGE_ENDPOINT STORAGE_BUCKET STORAGE_REGION STORAGE_ACCESS_KEY_ID STORAGE_SECRET_ACCESS_KEY; do
+              value="${!key:-}"
+              if [ -z "$value" ] || [[ "$value" == *$'\n'* ]]; then
+                echo "Missing or invalid $key" >&2
+                exit 1
+              fi
+            done
+            sed '/^STORAGE_ENDPOINT=/d; /^STORAGE_BUCKET=/d; /^STORAGE_REGION=/d; /^STORAGE_ACCESS_KEY_ID=/d; /^STORAGE_SECRET_ACCESS_KEY=/d' "$env_file" > "$temp_env"
+            for key in STORAGE_ENDPOINT STORAGE_BUCKET STORAGE_REGION STORAGE_ACCESS_KEY_ID STORAGE_SECRET_ACCESS_KEY; do
+              printf '%s=%s\n' "$key" "${!key}" >> "$temp_env"
+            done
+            chmod 600 "$temp_env"
+            mv -f "$temp_env" "$env_file"
             # GHCR: pacotes são privados por padrão. O GITHUB_TOKEN deste job
             # tem packages:write (fez o push) e vale só durante o run —
             # loga o daemon, stack deploy, e sai.

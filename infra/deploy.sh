@@ -115,6 +115,16 @@ for i in $(seq 1 60); do
         echo "==> OK após ${i} tentativa(s) (imagem :$TAG confirmada em execução):"
         docker exec "$API_CID" bun -e \
           'fetch("http://127.0.0.1:3000/api/health").then(r=>r.json()).then(j=>console.log(JSON.stringify(j)))'
+        if [ -f "$REPO_DIR/infra/storage/expire-audio.sh" ]; then
+          echo "==> validando expiração de áudio em modo simulação"
+          bash "$REPO_DIR/infra/storage/expire-audio.sh"
+          install -d -m 700 "$REPO_DIR/logs"
+          cron_line="25 3 * * * bash $REPO_DIR/infra/storage/expire-audio.sh >> $REPO_DIR/logs/audio-expiry.log 2>&1"
+          current_cron="$(crontab -l 2>/dev/null || true)"
+          if ! printf '%s\n' "$current_cron" | grep -Fq "$REPO_DIR/infra/storage/expire-audio.sh"; then
+            { printf '%s\n' "$current_cron"; printf '%s\n' "$cron_line"; } | sed '/^$/d' | crontab -
+          fi
+        fi
         exit 0
       fi
       # Saudável mas ainda na imagem anterior: com update_config start-first a

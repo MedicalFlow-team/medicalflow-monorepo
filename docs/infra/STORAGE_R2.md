@@ -8,16 +8,16 @@ O bucket de arquivos deve ser privado e não deve ter domínio público ou acess
 - URLs de upload expiram em 10 minutos; URLs de download expiram em 15 minutos.
 - Áudios aceitos: `audio/mp4`, `audio/webm` e `audio/mpeg`, até 50 MiB.
 - PDFs e imagens JPEG/PNG aceitos até 25 MiB.
-- Áudios brutos são excluídos após 30 dias pelo job `infra/storage/expire-audio.sh`. O R2 só oferece regras de lifecycle por prefixo; uma regra em `organizations/` também excluiria PDFs e anexos. A antiga regra `organizations/audio/` não atinge as chaves novas e pode permanecer temporariamente para objetos legados.
+- Áudios brutos podem ser excluídos após 30 dias pelo job `infra/storage/expire-audio.sh --apply`. A agenda instalada inicialmente executa apenas uma simulação. O R2 só oferece regras de lifecycle por prefixo; uma regra em `organizations/` também excluiria PDFs e anexos. A antiga regra `organizations/audio/` não atinge as chaves novas e pode permanecer temporariamente para objetos legados.
 - PDFs emitidos não devem ter regra de expiração automática; a retenção é perene até a política regulatória definir outra coisa.
 - O tamanho declarado é incluído em `Content-Length` assinado na URL PUT. O R2 rejeita com `403` um corpo cujo tamanho difere do declarado; o backend também recusa declarações acima do limite antes de assinar.
 
 ## Expiração operacional de áudio
 
-Na VPS, `infra/storage/expire-audio.sh` sem argumentos faz uma simulação: consulta áudios criados há mais de 30 dias, confere o prefixo da organização e mostra apenas contagens. Com `--apply`, exclui cada objeto do R2 e depois sua linha `StorageObject`. A exclusão do R2 é idempotente; se o banco falhar, a execução seguinte tenta novamente. Nenhum PDF ou anexo entra na consulta. Instale uma entrada diária no cron do host **depois do deploy desta versão e da configuração `STORAGE_*` na API**:
+Na VPS, `infra/storage/expire-audio.sh` sem argumentos faz uma simulação: consulta áudios criados há mais de 30 dias, confere o prefixo da organização e mostra apenas contagens. Com `--apply`, exclui cada objeto do R2 e depois sua linha `StorageObject`. A exclusão do R2 é idempotente; se o banco falhar, a execução seguinte tenta novamente. Nenhum PDF ou anexo entra na consulta. O deploy instala uma entrada diária de simulação no cron do host:
 
 ```cron
-25 3 * * * /root/flowcare/infra/storage/expire-audio.sh --apply >> /root/flowcare/logs/audio-expiry.log 2>&1
+25 3 * * * bash /root/flowcare/infra/storage/expire-audio.sh >> /root/flowcare/logs/audio-expiry.log 2>&1
 ```
 
 Antes de habilitar, rode uma simulação e confira a contagem. O job usa a data do upload como início da retenção de 30 dias; a integração com o estado de conclusão da transcrição ainda não existe e deve ser incorporada quando esse fluxo for implementado.
