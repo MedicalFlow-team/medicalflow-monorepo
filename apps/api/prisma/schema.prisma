@@ -113,7 +113,22 @@ model Organization {
   owner        User          @relation("OrganizationOwner", fields: [ownerId], references: [id], onDelete: Restrict)
   memberships  Membership[]
   subscription Subscription?
-  invites      OrganizationInvite[]
+  invites       OrganizationInvite[]
+  storageObjects StorageObject[]
+}
+
+model StorageObject {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  objectKey      String   @unique
+  contentType    String
+  sizeBytes      Int
+  category       String
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, category])
 }
 
 model Membership {

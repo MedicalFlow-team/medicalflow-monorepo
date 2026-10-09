@@ -8,6 +8,7 @@ import { authModule } from "./modules/auth";
 import type { AuthDeps } from "./modules/auth/service";
 import { inviteModule } from "./modules/invites";
 import { onboardingModule } from "./modules/onboarding";
+import { storageModule } from "./modules/storage";
 import type { OnboardingDeps } from "./modules/onboarding/service";
 import { createSesWebhook } from "./modules/webhooks/ses";
 import { requestLogger } from "./plugins/request-logger";
@@ -139,6 +140,19 @@ export function createApp(env: Env, deps: AppDeps) {
         jwtSecret: env.jwtSecret,
         mailer: deps.mailer,
         webAppUrl: env.webAppUrl,
+      }),
+    )
+    .use(
+      storageModule({
+        prisma: deps.prisma,
+        jwtSecret: env.jwtSecret,
+        config: {
+          endpoint: env.storageEndpoint ?? null,
+          bucket: env.storageBucket ?? null,
+          region: env.storageRegion ?? "auto",
+          accessKeyId: env.storageAccessKeyId ?? null,
+          secretAccessKey: env.storageSecretAccessKey ?? null,
+        },
       }),
     );
 
