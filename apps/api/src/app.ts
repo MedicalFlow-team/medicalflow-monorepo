@@ -7,6 +7,7 @@ import { accountModule } from "./modules/account";
 import { authModule } from "./modules/auth";
 import type { AuthDeps } from "./modules/auth/service";
 import { inviteModule } from "./modules/invites";
+import { sesWebhook } from "./modules/webhooks/ses";
 import { onboardingModule } from "./modules/onboarding";
 import type { OnboardingDeps } from "./modules/onboarding/service";
 import { requestLogger } from "./plugins/request-logger";
@@ -73,6 +74,7 @@ export function createApp(env: Env, deps: AppDeps) {
 
   const app = new Elysia({ prefix: "/api" })
     .use(requestLogger)
+    .use(sesWebhook)
     .use(
       cors({
         origin: env.corsOrigin.split(",").map((o) => o.trim()),
