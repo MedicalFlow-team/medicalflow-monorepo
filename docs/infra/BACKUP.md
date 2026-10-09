@@ -35,7 +35,7 @@ R2_PREFIX=flowcare/postgres
 BACKUP_ALERT_WEBHOOK=<webhook-operacional>
 ```
 
-O URL de alerta é opcional para a execução, mas obrigatório na operação. Os scripts não imprimem credenciais. Execute `chmod +x infra/backup/*.sh` após copiar um checkout que não preserve permissões.
+O URL de alerta é opcional para a execução, mas obrigatório na operação. Os scripts não imprimem credenciais. O deploy prepara o spool e ajusta `archive-wal.sh` para modo 755, pois o PostgreSQL o executa como UID 70. Se aplicar a stack sem `infra/deploy.sh`, faça esses dois passos manualmente antes do deploy.
 
 ## Agendamento
 
