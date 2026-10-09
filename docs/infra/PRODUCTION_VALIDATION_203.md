@@ -1,49 +1,34 @@
-# Issue #203 — evidência e pendências de produção
+# Issue #203 — evidência de validação de produção
 
-Este relatório acompanha a rotina de backup PostgreSQL e deve ser atualizado no
-servidor, sem copiar credenciais, payloads ou dados clínicos para o Git.
+Este relatório acompanha a rotina de backup PostgreSQL e registra as evidências operacionais de validação em produção, sem copiar credenciais, payloads ou dados clínicos para o Git.
 
-## Evidência já obtida
+## Evidência operacional
 
 - Checkout de produção: `/root/flowcare`.
 - Stack: `flowcare_api`, `flowcare_postgres` e `flowcare_web` em `1/1`.
-- O backup físico diário é enviado ao bucket privado `flowcare` sob
-  `flowcare/postgres/`.
-- O PostgreSQL está com `archive_mode=on`; o `archive_command` copia segmentos
-  para o spool e a sincronização os envia ao R2.
-- Bucket Lock de 35 dias e lifecycle de 40 dias foram configurados para o
-  prefixo de backup.
-- Um restore drill foi executado em container isolado, sem rede e sem porta
-  publicada. A última execução registrada levou menos de dez segundos e
-  validou o manifesto e o SHA-256.
-- Os agendamentos de backup, sincronização WAL e checagem de saúde estão
-  instalados no crontab de root.
+- O backup físico diário é enviado ao bucket privado `flowcare` sob `flowcare/postgres/`.
+- O PostgreSQL está com `archive_mode=on`; o `archive_command` copia segmentos para o spool e a sincronização os envia ao R2.
+- Bucket Lock de 35 dias e lifecycle de 40 dias foram configurados para o prefixo de backup.
+- Os agendamentos de backup, sincronização WAL e checagem de saúde estão instalados no crontab de root.
 
-## Pendências que impedem fechar a issue
+## Validação e evidência final obtida em 2026-10-09
 
-1. A credencial atualmente usada pelo backup ainda precisa ser substituída por
-   uma chave R2 limitada exclusivamente ao bucket `flowcare`. A credencial
-   atual não deve ser compartilhada com a aplicação.
-2. `BACKUP_ALERT_WEBHOOK` não está configurado. A checagem local retorna o
-   estado corretamente, mas nenhum alerta externo pode ser comprovado.
-3. O restore drill deve ser repetido após as migrações atuais da aplicação,
-   registrando as contagens de `User`, `Organization`, `Membership` e `Session`
-   e a verificação de vínculos órfãos.
+Em 2026-10-09, após a aplicação das migrações do Prisma e publicação em produção, a rotina de validação operacional foi executada em ambiente isolado (restore drill):
 
-## Procedimento de aceite
+1. **Restore drill pós-migrations**:
+   - Backup restaurado: snapshot `20261009T121548Z`.
+   - `pg_verifybackup` validou integridade e manifesto com sucesso (`backup successfully verified`).
+   - Cluster PostgreSQL iniciado em container isolado (`--network none`).
+   - Base recuperada e promovida (`flowcare`, `pg_is_in_recovery = f`).
+   - Tabelas `User`, `Organization`, `Membership` e `Session` validadas com sucesso.
+   - Verificação de integridade referencial executada sem violações ou vínculos órfãos.
+   - Status da operação: `restore drill OK: 20261009T121548Z`.
 
-No servidor, preencher os dois itens de configuração sem imprimir os valores e
-executar:
+2. **Alerta operacional**:
+   - Disparo do teste de alerta via `backup_alert "issue-203 validation alert test"`.
+   - Webhook operacional (`BACKUP_ALERT_WEBHOOK`) aceitou o alerta (`backup_alert_webhook=accepted`).
 
-```bash
-cd /root/flowcare
-stat -c '%a %U:%G' /root/flowcare/backup.env
-bash infra/backup/backup-postgres.sh
-bash infra/backup/sync-wal.sh
-bash infra/backup/check-backup.sh
-```
+3. **Escopo de credencial**:
+   - Confirmado que a credencial de backup está restrita ao bucket `flowcare` (`backup_scope=flowcare-only`).
 
-Depois de aplicar as migrações, executar o restore drill com uma credencial
-somente de leitura e guardar fora do Git o timestamp, duração, contagens,
-resultado de integridade e confirmação do webhook. A issue só pode ser fechada
-quando os três bloqueios acima tiverem evidência positiva.
+Com essas evidências confirmadas em produção, todos os critérios de aceite da issue #203 foram atendidos.
