@@ -163,11 +163,12 @@ A tabela a seguir relaciona as **15 Issues Oficiais de QA** do board com seus m�
 
 ### 5.9. Comunicações & WhatsApp (Issue #302)
 * **`MSG-01`**: Conectar sessão do WhatsApp via provedor WAHA e monitorar transição de status.
-* **`MSG-02`**: Enviar mensagem automática de lembrete de consulta.
-* **`MSG-03`**: Processar webhook de confirmação de leitura ou resposta do paciente.
-* **`MSG-04`**: Reenviar mensagem que falhou utilizando `Idempotency-Key` para evitar múltiplos disparos.
-* **`MSG-05`**: Configurar modelos de mensagens de lembrete e confirmação.
+* **`MSG-02`**: Enfileirar confirmação de agendamento, cancelamento e lembrete de 24 horas apenas com opt-in ativo, sem bloquear o agendamento quando WAHA estiver indisponível.
+* **`MSG-03`**: Processar webhook autenticado de entrega/leitura, incluindo eventos duplicados e fora de ordem.
+* **`MSG-04`**: Reenviar apenas `FAILED` com `Idempotency-Key`; impedir nova cópia após aceite, entrega ou leitura.
+* **`MSG-05`**: Configurar textos dos três eventos, recusando variáveis desconhecidas e conteúdo clínico.
 * **`MSG-06`**: Tratar desconexão do WhatsApp alertando a equipe na interface.
+* **`MSG-07`**: Revogar opt-in, impedir novos envios e cancelar mensagens ainda enfileiradas quando possível.
 
 ### 5.10. Configurações & Horários da Clínica (Issue #313)
 * **`CFG-01`**: Atualizar dados institucionais, endereço e logotipo da clínica.

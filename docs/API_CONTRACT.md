@@ -71,6 +71,7 @@ Em caso de falha (códigos HTTP 4xx e 5xx), a API responde com a seguinte estrut
 | **409** | `ALREADY_EXISTS` | Conflito de duplicidade de chave única (ex: e-mail já cadastrado, slug já utilizado). |
 | **409** | `SLOT_CONFLICT` | Horário de agendamento já reservado por outro paciente. |
 | **409** | `LAST_ADMIN_REQUIRED` | Tentativa de remover ou rebaixar o último administrador da organização. |
+| **409** | `MESSAGE_STATE_CONFLICT` | Tentativa de reenviar mensagem fora do estado permitido. |
 | **409** | `DOCUMENT_STATE_CONFLICT` | Tentativa de editar, emitir ou anular documento fora do estado permitido. |
 | **410** | `INVITE_EXPIRED` | O convite para a equipe expirou ou foi revogado. |
 | **422** | `BUSINESS_RULE_VIOLATION` | Violação de regra de negócio com estado válido (ex: campos clínicos obrigatórios ausentes para emissão). |
@@ -493,21 +494,40 @@ O fluxo obrigatório é:
 ### Módulo 10: Comunicações & Integração WhatsApp (WAHA)
 *(Ref: Issues [#196](https://github.com/Flowcare-team/flowcare-monorepo/issues/196), [#295](https://github.com/Flowcare-team/flowcare-monorepo/issues/295)–[#298](https://github.com/Flowcare-team/flowcare-monorepo/issues/298))*
 
+**Decisão do MVP:** ver [catálogo, consentimento e estados de mensagens](MESSAGING_MVP.md). Apenas confirmação de agendamento, cancelamento e lembrete 24 horas antes são enviados por WhatsApp, com opt-in ativo do paciente. Mensagens de autenticação e convite usam e-mail. As rotas abaixo ainda são planejadas.
+
 #### `GET /organizations/:orgSlug/communications/whatsapp/status`
 * **Descrição:** Consulta o status da sessão do WhatsApp (conectado, desconectado, QR code pendente).
 * **Permissão:** `communications:read`.
 * **Respostas:** `200 OK` (`{ "status": "CONNECTED", "phoneNumber": "5511999998888" }`).
 
 #### `GET /organizations/:orgSlug/communications/messages`
-* **Descrição:** Lista o histórico paginado de mensagens de confirmação e lembrete enviadas.
+* **Descrição:** Lista o histórico paginado de mensagens operacionais com filtros por estado e período; telefone mascarado.
 * **Permissão:** `communications:read`.
-* **Respostas:** `200 OK`.
+* **Respostas:** `200 OK` (`{ "items": [{ "id": "msg_1", "type": "APPOINTMENT_REMINDER", "status": "QUEUED", "phoneMasked": "(11) 98765-****" }], "nextCursor": null }`). Estados: `QUEUED`, `SENT`, `DELIVERED`, `READ`, `FAILED`.
+
+#### `PATCH /organizations/:orgSlug/patients/:patientId/communication-preferences`
+* **Descrição:** Registra opt-in ou opt-out de WhatsApp informado pelo paciente, com origem, autor e horário auditáveis. Opt-out cancela disparos pendentes quando possível.
+* **Permissão:** `patients:write`.
+* **Body:** `{ "whatsappOptIn": false, "source": "PATIENT_REQUEST" }`.
+
+#### `GET /organizations/:orgSlug/communications/whatsapp/templates`
+* **Descrição:** Lista os textos de confirmação, cancelamento e lembrete, com variáveis permitidas.
+* **Permissão:** `communications:read`.
+
+#### `PUT /organizations/:orgSlug/communications/whatsapp/templates/:type`
+* **Descrição:** Atualiza um texto operacional, recusando variáveis desconhecidas. O texto deve passar por revisão da clínica antes da ativação para impedir conteúdo clínico.
+* **Permissão:** `communications:write`.
+
+#### `POST /webhooks/whatsapp/status`
+* **Descrição:** Recebe atualização de entrega do WAHA após validar segredo configurado; evento repetido é idempotente e atualização fora de ordem não regride o estado.
+* **Permissão:** segredo do webhook, sem sessão de usuário.
 
 #### `POST /organizations/:orgSlug/communications/messages/:messageId/resend`
-* **Descrição:** Solicita reenvio de mensagem com falha, utilizando proteção contra duplicação de disparos.
+* **Descrição:** Solicita reenvio apenas de mensagem `FAILED`, após verificar novamente opt-in, telefone e agendamento; registra o operador. Mensagens `SENT`, `DELIVERED` e `READ` não são reenviadas.
 * **Permissão:** `communications:write`.
 * **Cabeçalho Obrigatório:** `Idempotency-Key`
-* **Respostas:** `200 OK` (`{ "status": "QUEUED" }`).
+* **Respostas:** `200 OK` (`{ "status": "QUEUED" }`), `409 MESSAGE_STATE_CONFLICT` se não for elegível. Repetir a chave retorna o resultado original.
 
 ---
 
