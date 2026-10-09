@@ -40,7 +40,7 @@ Receitas controladas exigem regras próprias de modelo, numeração e assinatura
 ## Execução rastreada
 
 Arquivos privados usam o serviço de storage da issue #205. As chaves sempre
-começam por `organizations/<organizationId>/`; URLs de upload expiram em até
+começam por `organizations/<category>/<organizationId>/`; URLs de upload expiram em até
 10 minutos e URLs de download em até 15 minutos. O bucket não deve expor
 domínio público. Áudios brutos e PDFs emitidos exigem regras de lifecycle
 configuradas no bucket específico de arquivos, separadas do bucket de backups.
