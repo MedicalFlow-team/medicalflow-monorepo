@@ -70,16 +70,22 @@ if compgen -G "apps/api/prisma/migrations/*" > /dev/null; then
   API_MIGRATION_CID=""
   for i in $(seq 1 30); do
     for cid in $(docker ps -qf "name=${STACK}_api"); do
-      if [ "$(docker inspect -f '{{.Config.Image}}' "$cid")" = "ghcr.io/flow-care/flowcare-api:$TAG" ]; then
-        API_MIGRATION_CID="$cid"
-        break
-      fi
+      case "$(docker inspect -f '{{.Config.Image}}' "$cid")" in
+        "ghcr.io/flow-care/flowcare-api:$TAG"|"ghcr.io/flow-care/flowcare-api:$TAG"@sha256:*)
+          API_MIGRATION_CID="$cid"
+          break
+          ;;
+      esac
     done
     if [ -n "$API_MIGRATION_CID" ]; then break; fi
     sleep 2
   done
   if [ -z "$API_MIGRATION_CID" ]; then
     echo "FALHA: API com imagem :$TAG não subiu para migration" >&2
+    docker service ps "${STACK}_api" --no-trunc \
+      --format '{{.Name}} {{.CurrentState}} {{.Error}} {{.Image}}' >&2 || true
+    docker service inspect "${STACK}_api" \
+      --format 'update={{json .UpdateStatus}}' >&2 || true
     exit 1
   fi
   docker exec "$API_MIGRATION_CID" bun run db:deploy
@@ -99,7 +105,9 @@ NEWEST_CID() {
 for i in $(seq 1 60); do
   API_CID="$(NEWEST_CID "${STACK}_api")"
   if [ -n "$API_CID" ]; then
-    RUNNING_TAG="$(docker inspect -f '{{.Config.Image}}' "$API_CID" 2>/dev/null | sed 's/.*://')" || RUNNING_TAG=""
+    RUNNING_IMAGE="$(docker inspect -f '{{.Config.Image}}' "$API_CID" 2>/dev/null)" || RUNNING_IMAGE=""
+    RUNNING_TAG="${RUNNING_IMAGE#ghcr.io/flow-care/flowcare-api:}"
+    RUNNING_TAG="${RUNNING_TAG%%@sha256:*}"
     if docker exec "$API_CID" bun -e \
       'fetch("http://127.0.0.1:3000/api/health").then(r=>r.ok?process.exit(0):process.exit(1)).catch(()=>process.exit(1))' \
       2>/dev/null; then
@@ -123,7 +131,9 @@ done
 API_CID="$(NEWEST_CID "${STACK}_api")"
 RUNNING_TAG=""
 if [ -n "$API_CID" ]; then
-  RUNNING_TAG="$(docker inspect -f '{{.Config.Image}}' "$API_CID" 2>/dev/null | sed 's/.*://')" || RUNNING_TAG=""
+  RUNNING_IMAGE="$(docker inspect -f '{{.Config.Image}}' "$API_CID" 2>/dev/null)" || RUNNING_IMAGE=""
+  RUNNING_TAG="${RUNNING_IMAGE#ghcr.io/flow-care/flowcare-api:}"
+  RUNNING_TAG="${RUNNING_TAG%%@sha256:*}"
 fi
 if [ "$RUNNING_TAG" != "$TAG" ]; then
   echo "FALHA: 300s e a imagem rodando continua '$RUNNING_TAG' (esperada '$TAG')." >&2
