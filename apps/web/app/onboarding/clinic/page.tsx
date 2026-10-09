@@ -1,16 +1,43 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
+import { ClinicForm } from "@/components/flowcare/clinic-form";
+import type { Profile } from "@/lib/onboarding-profile";
+import {
+  ProfileApiError,
+  profileApiRequest,
+} from "@/server/onboarding-profile";
 
-export const metadata: Metadata = { title: "Próxima etapa | Flowcare" };
+export const metadata: Metadata = { title: "Criar clínica | Flowcare" };
 
-export default function OnboardingClinicPage() {
+export default async function OnboardingClinicPage() {
+  let profile: Profile | null = null;
+  let unauthenticated = false;
+
+  try {
+    profile = await profileApiRequest("GET", null);
+  } catch (error) {
+    unauthenticated =
+      error instanceof ProfileApiError && error.code === "UNAUTHENTICATED";
+  }
+
+  if (unauthenticated) redirect("/login");
+  if (profile && !profile.completed) redirect("/onboarding/profile");
+
   return (
-    <main className="mx-auto flex min-h-svh max-w-xl flex-col justify-center gap-4 px-6 py-12">
-      <p className="text-sm font-medium text-primary">Perfil salvo</p>
-      <h1 className="text-3xl font-semibold">Próxima etapa: sua clínica</h1>
-      <p className="text-muted-foreground">
-        Seus dados pessoais foram salvos. A configuração da clínica será
-        disponibilizada aqui na próxima etapa do onboarding.
-      </p>
+    <main className="min-h-svh bg-background px-5 py-12 text-foreground">
+      <div className="mx-auto w-full max-w-lg">
+        <p className="mb-5 text-sm font-medium text-primary">
+          Configuração da clínica
+        </p>
+        <h1 className="text-3xl font-semibold tracking-tight">
+          Dê um nome à sua clínica
+        </h1>
+        <p className="mt-3 text-sm text-muted-foreground">
+          Defina o nome da sua clínica e o endereço que sua equipe usará para
+          acessá-la no aplicativo.
+        </p>
+        <ClinicForm />
+      </div>
     </main>
   );
 }
