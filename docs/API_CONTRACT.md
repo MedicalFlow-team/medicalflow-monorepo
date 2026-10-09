@@ -118,7 +118,7 @@ Em caso de falha (códigos HTTP 4xx e 5xx), a API responde com a seguinte estrut
 * **Descrição:** Autentica com e-mail e senha e inicia a sessão do usuário.
 * **Permissão:** Pública.
 * **Body:** `{ "email": "maria.silva@exemplo.com", "password": "<senha_segura>" }`
-* **Respostas:** `200 OK` (`{ "user": { "id": "usr_1", "email": "...", "fullName": "..." }, "availableOrganizations": [ { "id", "name", "slug", "role", "isOwner" } ], "token": "...", "onboardingCompleted": false }`), `401 INVALID_CREDENTIALS`, `401 ACCOUNT_NOT_VERIFIED`.
+* **Respostas:** `200 OK` (`{ "user": { "id": "usr_1", "email": "...", "fullName": "..." }, "availableOrganizations": [ { "id", "name", "slug", "role", "isOwner" } ], "token": "...", "onboardingCompleted": false, "onboardingCurrentStep": "PROFILE_SETUP" }`), `401 INVALID_CREDENTIALS`, `401 ACCOUNT_NOT_VERIFIED`.
 
 > `isOwner` = `true` quando a clínica foi criada pelo próprio usuário (ele é o pagador da assinatura); membros convidados recebem `isOwner: false` e não pagam.
 
@@ -150,7 +150,7 @@ Em caso de falha (códigos HTTP 4xx e 5xx), a API responde com a seguinte estrut
 #### `GET /onboarding/progress`
 * **Descrição:** Recupera o estado atual do assistente de primeiro acesso.
 * **Permissão:** Autenticado.
-* **Respostas:** `200 OK` (`{ "currentStep": "PROFILE_SETUP" | "ORGANIZATION_SETUP", "completed": false, "draftData": { ... }, "version": 0 }`). Contas sem perfil concluído recebem `PROFILE_SETUP`.
+* **Respostas:** `200 OK` (`{ "currentStep": "PROFILE_SETUP" | "ORGANIZATION_SETUP" | string, "completed": false, "draftData": { ... }, "version": 0 }`). Contas sem perfil concluído recebem `PROFILE_SETUP`. A conclusão é calculada pela última etapa registrada; quando uma nova etapa obrigatória é adicionada após a última concluída, contas existentes passam a receber essa etapa como pendente. Consulte `docs/ONBOARDING_STEPS.md`.
 
 #### `GET /onboarding/profile`
 * **Descrição:** Carrega o perfil da própria conta para o primeiro acesso, sem depender de clínica ativa.

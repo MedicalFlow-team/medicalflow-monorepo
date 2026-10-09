@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { onboardingStepPath } from "@/lib/onboarding-steps";
 import { getOnboardingProgress } from "@/server/onboarding";
 import { getSessionToken } from "@/server/session";
 
@@ -14,10 +15,7 @@ export default async function Home() {
   }
 
   if (!progress.completed) {
-    if (progress.currentStep === "ORGANIZATION_SETUP") {
-      redirect("/onboarding/clinic");
-    }
-    redirect("/onboarding/profile");
+    redirect(onboardingStepPath(progress.currentStep));
   }
 
   redirect("/app");

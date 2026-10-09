@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { OnboardingStepper } from "@/components/flowcare/onboarding-stepper";
 import { ProfileForm } from "@/components/flowcare/profile-form";
 import type { Profile } from "@/lib/onboarding-profile";
+import { onboardingStepPath } from "@/lib/onboarding-steps";
+import { getOnboardingProgress } from "@/server/onboarding";
 import {
   ProfileApiError,
   profileApiRequest,
@@ -28,13 +30,17 @@ export default async function OnboardingProfilePage({
   }
 
   if (unauthenticated) redirect("/login");
-  if (profile?.completed && edit !== "1") redirect("/onboarding/clinic");
+  if (profile?.completed && edit !== "1") {
+    const progress = await getOnboardingProgress();
+    if (progress?.completed) redirect("/app");
+    redirect(onboardingStepPath(progress?.currentStep ?? "ORGANIZATION_SETUP"));
+  }
 
   return (
     <main className="flex flex-1 justify-center px-5 pt-8">
       <div className="mx-auto w-full max-w-lg">
         <div className="mb-8">
-          <OnboardingStepper currentStep={1} />
+          <OnboardingStepper currentStep="PROFILE_SETUP" />
         </div>
         <h1 className="text-3xl font-semibold tracking-tight">
           Complete seu perfil

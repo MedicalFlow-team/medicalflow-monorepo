@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { ClinicForm } from "@/components/flowcare/clinic-form";
 import { OnboardingStepper } from "@/components/flowcare/onboarding-stepper";
 import type { Profile } from "@/lib/onboarding-profile";
+import { onboardingStepPath } from "@/lib/onboarding-steps";
+import { getOnboardingProgress } from "@/server/onboarding";
 import {
   ProfileApiError,
   profileApiRequest,
@@ -23,12 +25,17 @@ export default async function OnboardingClinicPage() {
 
   if (unauthenticated) redirect("/login");
   if (profile && !profile.completed) redirect("/onboarding/profile");
+  const progress = await getOnboardingProgress();
+  if (progress?.completed) redirect("/app");
+  if (progress && progress.currentStep !== "ORGANIZATION_SETUP") {
+    redirect(onboardingStepPath(progress.currentStep));
+  }
 
   return (
     <main className="flex flex-1 justify-center px-5 pt-8">
       <div className="mx-auto w-full max-w-lg">
         <div className="mb-8">
-          <OnboardingStepper currentStep={2} />
+          <OnboardingStepper currentStep="ORGANIZATION_SETUP" />
         </div>
         <h1 className="text-3xl font-semibold tracking-tight">
           Dê um nome à sua clínica

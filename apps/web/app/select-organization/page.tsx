@@ -1,10 +1,15 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { onboardingStepPath } from "@/lib/onboarding-steps";
+import { getOnboardingProgress } from "@/server/onboarding";
 import { getAvailableOrganizations } from "@/server/organizations";
 import { getSessionToken } from "@/server/session";
 
 export default async function SelectOrganizationPage() {
   if (!(await getSessionToken())) redirect("/login");
+  const progress = await getOnboardingProgress();
+  if (!progress) redirect("/login");
+  if (!progress.completed) redirect(onboardingStepPath(progress.currentStep));
 
   const organizations = await getAvailableOrganizations();
   if (!organizations) {

@@ -9,28 +9,29 @@ import {
   StepperSeparator,
   StepperTitle,
 } from "@/components/reui/stepper";
+import { onboardingSteps } from "@/lib/onboarding-steps";
 
-const steps = ["Perfil", "Clínica"];
-
-export function OnboardingStepper({ currentStep }: { currentStep: 1 | 2 }) {
+export function OnboardingStepper({ currentStep }: { currentStep: string }) {
+  const activeStep =
+    onboardingSteps.findIndex((step) => step.id === currentStep) + 1;
   return (
     <Stepper
       role="group"
-      value={currentStep}
+      value={activeStep}
       indicators={{ completed: <CheckIcon className="size-3.5" /> }}
     >
       <StepperNav aria-label="Etapas do primeiro acesso">
-        {steps.map((title, index) => (
+        {onboardingSteps.map((step, index) => (
           <StepperItem
-            key={title}
+            key={step.id}
             step={index + 1}
             className="relative flex-1 items-start"
           >
             <div className="flex flex-col items-center gap-2.5">
               <StepperIndicator>{index + 1}</StepperIndicator>
-              <StepperTitle>{title}</StepperTitle>
+              <StepperTitle>{step.title}</StepperTitle>
             </div>
-            {index < steps.length - 1 && (
+            {index < onboardingSteps.length - 1 && (
               <StepperSeparator className="absolute inset-x-0 top-3 left-[calc(50%+0.875rem)] m-0 w-[calc(100%-2rem+0.225rem)] flex-none bg-border" />
             )}
           </StepperItem>

@@ -43,6 +43,7 @@ const loginResponse = z.object({
     }),
   ),
   onboardingCompleted: z.boolean(),
+  onboardingCurrentStep: z.string(),
 });
 
 function validate<T>(schema: z.ZodType<T>, input: unknown): T {
@@ -95,6 +96,7 @@ export async function loginAction(
         }),
       ),
       onboardingCompleted: result.onboardingCompleted,
+      onboardingCurrentStep: result.onboardingCurrentStep,
     };
   });
 }
@@ -127,6 +129,7 @@ export async function verifyEmailAction(input: { token: string }) {
       user: result.user,
       availableOrganizations: result.availableOrganizations,
       onboardingCompleted: result.onboardingCompleted,
+      onboardingCurrentStep: result.onboardingCurrentStep,
     };
   });
 }

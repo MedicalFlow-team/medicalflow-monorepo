@@ -37,6 +37,7 @@ const session = {
     },
   ],
   onboardingCompleted: false,
+  onboardingCurrentStep: "PROFILE_SETUP",
 };
 
 beforeEach(() => {
@@ -89,12 +90,12 @@ test("proxy deixa passar uma sessão presente sem validar autorização", () => 
   expect(proxy(request).status).toBe(200);
 });
 
-test("proxy redireciona sessão presente para o app ao abrir autenticação", () => {
+test("proxy envia sessão presente para a resolução do onboarding", () => {
   const request = new NextRequest("http://localhost/login?returnTo=%2Fapp", {
     headers: { Cookie: "__Host-mf_session=opaque-token" },
   });
   expect(proxy(request).status).toBe(307);
-  expect(proxy(request).headers.get("location")).toBe("http://localhost/app");
+  expect(proxy(request).headers.get("location")).toBe("http://localhost/");
 });
 
 test("proxy deixa páginas públicas acessíveis sem sessão", () => {
@@ -103,6 +104,18 @@ test("proxy deixa páginas públicas acessíveis sem sessão", () => {
 
 test("login escolhe onboarding, clínica única ou seleção", () => {
   expect(destinationAfterLogin(session, null)).toBe("/onboarding/profile");
+  expect(
+    destinationAfterLogin(
+      { ...session, onboardingCurrentStep: "ORGANIZATION_SETUP" },
+      "/app/clinica/dashboard",
+    ),
+  ).toBe("/onboarding/clinic");
+  expect(
+    destinationAfterLogin(
+      { ...session, onboardingCurrentStep: "SCHEDULE_SETUP" },
+      null,
+    ),
+  ).toBe("/onboarding/pending");
   expect(
     destinationAfterLogin({ ...session, onboardingCompleted: true }, null),
   ).toBe("/app/clinica/dashboard");
@@ -210,6 +223,7 @@ test("cadastro, confirmação, reenvio e recuperação chamam os endpoints Elysi
         user: { id: "user-1", email: credentials.email, fullName: "Ana Silva" },
         availableOrganizations: [],
         onboardingCompleted: false,
+        onboardingCurrentStep: "PROFILE_SETUP",
       });
     }
     return Response.json({ message: "OK", token: "não expor" });

@@ -7,6 +7,7 @@ import { generateToken, hashToken } from "../../lib/tokens";
 import { actionEmailHtml } from "../../services/mail-templates";
 import type { Mailer } from "../../services/mailer";
 import { signSessionToken } from "../../services/session-token";
+import { resolveOnboardingState } from "../onboarding/steps";
 import {
   AccountNotVerified,
   InvalidCredentials,
@@ -216,6 +217,11 @@ export class AuthService {
       this.deps.config.jwtSecret,
       this.deps.config.sessionTtlSeconds,
     );
+    const onboarding = resolveOnboardingState({
+      profileCompleted: user.profileCompletedAt !== null,
+      hasOrganization: user.memberships.length > 0,
+      savedProgress: user.onboarding,
+    });
 
     return {
       token,
@@ -227,8 +233,8 @@ export class AuthService {
         role: m.role,
         isOwner: m.organization.ownerId === user.id,
       })),
-      onboardingCompleted:
-        (user.onboarding?.completed ?? false) || user.memberships.length > 0,
+      onboardingCompleted: onboarding.completed,
+      onboardingCurrentStep: onboarding.currentStep,
     };
   }
 

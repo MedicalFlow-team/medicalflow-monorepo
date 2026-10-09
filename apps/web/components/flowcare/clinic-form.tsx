@@ -47,9 +47,7 @@ export function ClinicForm() {
         }
 
         toast.success("Clínica criada com sucesso!");
-        router.replace(
-          `/app/${encodeURIComponent(result.data.organization.slug)}/dashboard`,
-        );
+        router.replace("/");
       } catch {
         toast.error("Erro ao criar a clínica. Tente novamente.");
       }
