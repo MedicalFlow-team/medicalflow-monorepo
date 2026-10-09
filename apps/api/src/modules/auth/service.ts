@@ -67,6 +67,7 @@ export class AuthService {
             to: email,
             subject: "Flowcare — confirmação de cadastro",
             text: this.verificationText(token),
+            html: this.verificationHtml(token),
           });
         } catch (error) {
           if (!(error instanceof ApiError && error.code === "RATE_LIMITED")) {
@@ -91,6 +92,7 @@ export class AuthService {
       to: email,
       subject: "Flowcare — confirmação de cadastro",
       text: this.verificationText(token),
+      html: this.verificationHtml(token),
     });
 
     return { message: GENERIC_REGISTER_MESSAGE };
@@ -146,6 +148,7 @@ export class AuthService {
           to: email,
           subject: "Flowcare — confirmação de cadastro",
           text: this.verificationText(token),
+          html: this.verificationHtml(token),
         });
       } catch (error) {
         // O limite por conta não pode revelar se o endereço existe.
@@ -238,6 +241,7 @@ export class AuthService {
         to: email,
         subject: "Flowcare — redefinição de senha",
         text: this.resetText(token),
+        html: this.resetHtml(token),
       });
     }
     return { message: GENERIC_RESET_MESSAGE };
@@ -324,6 +328,7 @@ export class AuthService {
     to: string;
     subject: string;
     text: string;
+    html?: string;
   }): Promise<void> {
     try {
       await this.deps.mailer.send(message);
@@ -337,7 +342,36 @@ export class AuthService {
     return `Confirme seu e-mail no Flowcare:\n${this.deps.config.webAppUrl}/verify-email?token=${token}\n\nO link é de uso único e expira em ${this.deps.config.emailVerificationTtlHours}h.`;
   }
 
+  private verificationHtml(token: string): string {
+    return this.htmlTemplate(
+      "Confirme seu e-mail",
+      `Confirme seu cadastro no Flowcare para continuar.`,
+      `${this.deps.config.webAppUrl}/verify-email?token=${token}`,
+      "Confirmar e-mail",
+    );
+  }
+
   private resetText(token: string): string {
     return `Redefina sua senha no Flowcare:\n${this.deps.config.webAppUrl}/reset-password?token=${token}\n\nO link é de uso único e expira em ${this.deps.config.passwordResetTtlMinutes}min.`;
+  }
+
+  private resetHtml(token: string): string {
+    return this.htmlTemplate(
+      "Redefina sua senha",
+      "Recebemos uma solicitação para redefinir sua senha no Flowcare.",
+      `${this.deps.config.webAppUrl}/reset-password?token=${token}`,
+      "Redefinir senha",
+    );
+  }
+
+  private htmlTemplate(
+    title: string,
+    paragraph: string,
+    href: string,
+    label: string,
+  ): string {
+    const escape = (value: string) =>
+      value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
+    return `<!doctype html><html lang="pt-BR"><body style="font-family:Arial,sans-serif;color:#1f2937;line-height:1.5"><h1>${escape(title)}</h1><p>${escape(paragraph)}</p><p><a href="${escape(href)}" style="background:#0f766e;color:#fff;padding:12px 18px;border-radius:6px;text-decoration:none">${escape(label)}</a></p><p>O link é de uso único e expira conforme as regras da conta.</p></body></html>`;
   }
 }
