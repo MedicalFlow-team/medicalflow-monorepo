@@ -39,4 +39,10 @@ Receitas controladas exigem regras próprias de modelo, numeração e assinatura
 
 ## Execução rastreada
 
+Arquivos privados usam o serviço de storage da issue #205. As chaves sempre
+começam por `organizations/<category>/<organizationId>/`; URLs de upload expiram em até
+10 minutos e URLs de download em até 15 minutos. O bucket não deve expor
+domínio público. Áudios brutos e PDFs emitidos exigem regras de lifecycle
+configuradas no bucket específico de arquivos, separadas do bucket de backups.
+
 Rascunho #273; validação e snapshot #274; emissão #275; PDF #276; consulta e versões #277; anulação #278; interface #279–#285; QA #286. Os campos de cada tipo exigem revisão clínica em #274. O ADR de renderização [ADR-003](adr/ADR-003-pdf-renderer.md) continua proposto e precisa de um spike em #276 antes da escolha entre processo Bun e worker separado.
