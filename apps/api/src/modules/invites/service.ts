@@ -3,7 +3,7 @@ import { ApiError } from "../../lib/api-error";
 import { generateToken, hashToken } from "../../lib/tokens";
 import { actionEmailHtml } from "../../services/mail-templates";
 import type { Mailer } from "../../services/mailer";
-import type { CreateInviteBody } from "./model";
+import type { CreateInviteBody, InviteDetailsResponse } from "./model";
 
 const TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -61,6 +61,32 @@ export class InviteService {
     return {
       id: invite.id,
       email: invite.email,
+      expiresAt: invite.expiresAt.toISOString(),
+    };
+  }
+
+  async getDetails(token: string): Promise<InviteDetailsResponse> {
+    const invite = await this.deps.prisma.organizationInvite.findUnique({
+      where: { tokenHash: hashToken(token) },
+      include: { organization: true },
+    });
+    if (
+      !invite ||
+      invite.revokedAt ||
+      invite.acceptedAt ||
+      invite.expiresAt <= new Date()
+    ) {
+      throw new ApiError(
+        "INVITE_EXPIRED",
+        410,
+        "Convite expirado ou inválido.",
+      );
+    }
+    return {
+      organizationName: invite.organization.name,
+      organizationSlug: invite.organization.slug,
+      email: invite.email,
+      role: invite.role,
       expiresAt: invite.expiresAt.toISOString(),
     };
   }
@@ -179,12 +205,12 @@ export class InviteService {
       await this.deps.mailer.send({
         to,
         subject: `Convite para ${organizationName}`,
-        text: `Você foi convidado para ${organizationName}: ${this.deps.webAppUrl}/invite?token=${token}`,
+        text: `Você foi convidado para ${organizationName}: ${this.deps.webAppUrl}/accept-invite/${token}`,
         html: actionEmailHtml({
           title: "Convite para clínica",
           description: `Você foi convidado para ${organizationName} no Flowcare.`,
           action: "Aceitar convite",
-          url: `${this.deps.webAppUrl}/invite?token=${token}`,
+          url: `${this.deps.webAppUrl}/accept-invite/${token}`,
           expiry: "O convite expira em 7 dias e pode ser usado apenas uma vez.",
         }),
       });

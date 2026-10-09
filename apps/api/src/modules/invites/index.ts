@@ -13,6 +13,10 @@ export function inviteModule(deps: {
 }) {
   const service = new InviteService(deps);
   return new Elysia({ name: "invites" })
+    .get("/invites/:token", ({ params }) => service.getDetails(params.token), {
+      params: t.Object({ token: t.String({ minLength: 20 }) }),
+      response: { 200: m.inviteDetailsResponse },
+    })
     .use(authPlugin({ prisma: deps.prisma, jwtSecret: deps.jwtSecret }))
     .post(
       "/organizations/:orgSlug/invites",
