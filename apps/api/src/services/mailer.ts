@@ -9,7 +9,12 @@ import type { Env } from "../config/env";
  * - SesMailer: produção via API do Amazon SES.
  */
 export interface Mailer {
-  send(params: { to: string; subject: string; text: string }): Promise<void>;
+  send(params: {
+    to: string;
+    subject: string;
+    text: string;
+    html?: string;
+  }): Promise<void>;
 }
 
 export class DisabledMailer implements Mailer {
@@ -43,6 +48,7 @@ export class ConsoleMailer implements Mailer {
     to: string;
     subject: string;
     text: string;
+    html?: string;
   }): Promise<void> {
     console.info(
       `[mailer:console] to=${params.to} subject="${params.subject}"\n${params.text}`,
@@ -76,6 +82,7 @@ export class SesMailer implements Mailer {
     to: string;
     subject: string;
     text: string;
+    html?: string;
   }): Promise<void> {
     const result = await this.sendViaSes(
       new SendEmailCommand({
@@ -87,7 +94,12 @@ export class SesMailer implements Mailer {
         Content: {
           Simple: {
             Subject: { Data: params.subject, Charset: "UTF-8" },
-            Body: { Text: { Data: params.text, Charset: "UTF-8" } },
+            Body: {
+              Text: { Data: params.text, Charset: "UTF-8" },
+              ...(params.html
+                ? { Html: { Data: params.html, Charset: "UTF-8" } }
+                : {}),
+            },
           },
         },
       }),
