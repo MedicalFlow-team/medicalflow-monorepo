@@ -78,7 +78,11 @@ export function ProfileForm({ initialProfile }: { initialProfile: Profile }) {
   const clinical = values.professionalRole === "CLINICAL";
 
   return (
-    <form className="mt-8 space-y-5" onSubmit={onSubmit} noValidate>
+    <form
+      className="mt-8 flex min-h-[540px] flex-col gap-5"
+      onSubmit={onSubmit}
+      noValidate
+    >
       <div className="space-y-2">
         <Label htmlFor="fullName" className="required">
           Nome completo
@@ -202,7 +206,7 @@ export function ProfileForm({ initialProfile }: { initialProfile: Profile }) {
           </div>
         </>
       )}
-      <div>
+      <div className="mt-auto">
         <Button
           type="submit"
           disabled={pending}
