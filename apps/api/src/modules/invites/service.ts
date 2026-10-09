@@ -151,7 +151,11 @@ export class InviteService {
       },
     });
     void this.send(invite.email, organization.name, token);
-    return { id: invite.id, email: invite.email, expiresAt: invite.expiresAt.toISOString() };
+    return {
+      id: invite.id,
+      email: invite.email,
+      expiresAt: invite.expiresAt.toISOString(),
+    };
   }
 
   private async authorizeAdmin(userId: string, slug: string) {
