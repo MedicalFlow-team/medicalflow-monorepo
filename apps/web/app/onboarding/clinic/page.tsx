@@ -30,9 +30,6 @@ export default async function OnboardingClinicPage() {
         <div className="mb-8">
           <OnboardingStepper currentStep={2} />
         </div>
-        <p className="mb-5 text-sm font-medium text-primary">
-          Configuração da clínica
-        </p>
         <h1 className="text-3xl font-semibold tracking-tight">
           Dê um nome à sua clínica
         </h1>
