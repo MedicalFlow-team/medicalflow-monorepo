@@ -80,6 +80,10 @@ if compgen -G "apps/api/prisma/migrations/*" > /dev/null; then
   done
   if [ -z "$API_MIGRATION_CID" ]; then
     echo "FALHA: API com imagem :$TAG não subiu para migration" >&2
+    docker service ps "${STACK}_api" --no-trunc \
+      --format '{{.Name}} {{.CurrentState}} {{.Error}} {{.Image}}' >&2 || true
+    docker service inspect "${STACK}_api" \
+      --format 'update={{json .UpdateStatus}}' >&2 || true
     exit 1
   fi
   docker exec "$API_MIGRATION_CID" bun run db:deploy
