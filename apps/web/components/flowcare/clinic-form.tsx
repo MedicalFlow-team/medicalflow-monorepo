@@ -139,7 +139,9 @@ export function ClinicForm() {
   return (
     <form onSubmit={handleSubmit} className="mt-8 space-y-6" noValidate>
       <div className="space-y-2">
-        <Label htmlFor="clinic-name">Nome da clínica</Label>
+        <Label htmlFor="clinic-name" className="required">
+          Nome da clínica
+        </Label>
         <Input
           id="clinic-name"
           className={inputClass}
@@ -156,7 +158,9 @@ export function ClinicForm() {
 
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <Label htmlFor="clinic-slug">Endereço no Flowcare</Label>
+          <Label htmlFor="clinic-slug" className="required">
+            Endereço no Flowcare
+          </Label>
           <button
             type="button"
             onClick={() => {

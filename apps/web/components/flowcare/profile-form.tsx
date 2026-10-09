@@ -81,7 +81,9 @@ export function ProfileForm({ initialProfile }: { initialProfile: Profile }) {
   return (
     <form className="mt-8 space-y-5" onSubmit={onSubmit} noValidate>
       <div className="space-y-2">
-        <Label htmlFor="fullName">Nome completo</Label>
+        <Label htmlFor="fullName" className="required">
+          Nome completo
+        </Label>
         <Input
           id="fullName"
           className={inputClass}
@@ -97,7 +99,9 @@ export function ProfileForm({ initialProfile }: { initialProfile: Profile }) {
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="phone">Telefone com DDD</Label>
+        <Label htmlFor="phone" className="required">
+          Telefone com DDD
+        </Label>
         <Input
           id="phone"
           className={inputClass}
@@ -115,7 +119,11 @@ export function ProfileForm({ initialProfile }: { initialProfile: Profile }) {
       </div>
 
       <div className="space-y-2">
-        <Label id="professionalRole-label" htmlFor="professionalRole">
+        <Label
+          id="professionalRole-label"
+          htmlFor="professionalRole"
+          className="required"
+        >
           Atuação profissional
         </Label>
         <DropdownMenu>
@@ -158,7 +166,7 @@ export function ProfileForm({ initialProfile }: { initialProfile: Profile }) {
       {clinical && (
         <>
           <div className="space-y-2">
-            <Label htmlFor="professionalTitle">
+            <Label htmlFor="professionalTitle" className="required">
               Profissão ou especialidade
             </Label>
             <Input
@@ -176,7 +184,9 @@ export function ProfileForm({ initialProfile }: { initialProfile: Profile }) {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="registrationNumber">Registro profissional</Label>
+            <Label htmlFor="registrationNumber" className="required">
+              Registro profissional
+            </Label>
             <Input
               id="registrationNumber"
               className={inputClass}
