@@ -26,7 +26,7 @@ export default async function OnboardingProfilePage() {
   if (profile?.completed) redirect("/onboarding/clinic");
 
   return (
-    <main className="flex min-h-svh items-center justify-center bg-background px-5 py-12 text-foreground">
+    <main className="flex flex-1 items-center justify-center px-5">
       <div className="mx-auto w-full max-w-lg">
         <div className="mb-8">
           <OnboardingStepper currentStep={1} />
