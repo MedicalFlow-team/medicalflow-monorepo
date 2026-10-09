@@ -83,6 +83,7 @@ export function ProfileForm({ initialProfile }: { initialProfile: Profile }) {
         <Label htmlFor="fullName">Nome completo</Label>
         <Input
           id="fullName"
+          className="h-11 bg-card px-3"
           name="fullName"
           autoComplete="name"
           value={values.fullName}
@@ -103,6 +104,7 @@ export function ProfileForm({ initialProfile }: { initialProfile: Profile }) {
         <Label htmlFor="phone">Telefone com DDD</Label>
         <Input
           id="phone"
+          className="h-11 bg-card px-3"
           name="phone"
           type="tel"
           autoComplete="tel"
@@ -133,7 +135,7 @@ export function ProfileForm({ initialProfile }: { initialProfile: Profile }) {
               event.target.value as ProfileInput["professionalRole"],
             )
           }
-          className="flex h-9 w-full rounded-md border border-input bg-card px-3 text-sm"
+          className="flex h-11 w-full rounded-md border border-input bg-card px-3 text-sm"
           required
         >
           <option value="MANAGEMENT">Gestão administrativa</option>
@@ -150,6 +152,7 @@ export function ProfileForm({ initialProfile }: { initialProfile: Profile }) {
             </Label>
             <Input
               id="professionalTitle"
+              className="h-11 bg-card px-3"
               name="professionalTitle"
               value={values.professionalTitle}
               onChange={(event) =>
@@ -175,6 +178,7 @@ export function ProfileForm({ initialProfile }: { initialProfile: Profile }) {
             <Label htmlFor="registrationNumber">Registro profissional</Label>
             <Input
               id="registrationNumber"
+              className="h-11 bg-card px-3"
               name="registrationNumber"
               placeholder="Ex.: CRM/CE 123456"
               value={values.registrationNumber}
@@ -216,11 +220,11 @@ export function ProfileForm({ initialProfile }: { initialProfile: Profile }) {
           variant="outline"
           onClick={onSaveDraft}
           disabled={pending}
-          className="sm:flex-1"
+          className="h-11 sm:flex-1"
         >
           Salvar rascunho
         </Button>
-        <Button type="submit" disabled={pending} className="sm:flex-1">
+        <Button type="submit" disabled={pending} className="h-11 sm:flex-1">
           {pending ? "Salvando..." : "Salvar e continuar"}
         </Button>
       </div>

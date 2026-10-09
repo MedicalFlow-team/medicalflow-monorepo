@@ -135,6 +135,7 @@ export function ClinicForm() {
         <Label htmlFor="clinic-name">Nome da clínica</Label>
         <Input
           id="clinic-name"
+          className="h-11 bg-card px-3"
           name="name"
           autoComplete="organization"
           value={name}
@@ -180,7 +181,9 @@ export function ClinicForm() {
           aria-describedby={fieldErrors.slug ? "slug-error" : undefined}
           maxLength={60}
           className={
-            !isCustomizingSlug ? "bg-muted/40 cursor-pointer" : undefined
+            !isCustomizingSlug
+              ? "h-11 cursor-pointer bg-card px-3"
+              : "h-11 bg-card px-3"
           }
           required
         />

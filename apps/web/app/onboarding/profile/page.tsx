@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { OnboardingStepper } from "@/components/flowcare/onboarding-stepper";
 import { ProfileForm } from "@/components/flowcare/profile-form";
 import type { Profile } from "@/lib/onboarding-profile";
 import {
@@ -27,6 +28,9 @@ export default async function OnboardingProfilePage() {
   return (
     <main className="min-h-svh bg-background px-5 py-12 text-foreground">
       <div className="mx-auto w-full max-w-lg">
+        <div className="mb-8">
+          <OnboardingStepper currentStep={1} />
+        </div>
         <p className="mb-5 text-sm font-medium text-primary">Primeiro acesso</p>
         <h1 className="text-3xl font-semibold tracking-tight">
           Complete seu perfil

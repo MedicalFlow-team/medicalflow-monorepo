@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { ClinicForm } from "@/components/flowcare/clinic-form";
+import { OnboardingStepper } from "@/components/flowcare/onboarding-stepper";
 import type { Profile } from "@/lib/onboarding-profile";
 import {
   ProfileApiError,
@@ -26,6 +27,9 @@ export default async function OnboardingClinicPage() {
   return (
     <main className="min-h-svh bg-background px-5 py-12 text-foreground">
       <div className="mx-auto w-full max-w-lg">
+        <div className="mb-8">
+          <OnboardingStepper currentStep={2} />
+        </div>
         <p className="mb-5 text-sm font-medium text-primary">
           Configuração da clínica
         </p>
