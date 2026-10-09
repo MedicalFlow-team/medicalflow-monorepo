@@ -227,7 +227,8 @@ export class AuthService {
         role: m.role,
         isOwner: m.organization.ownerId === user.id,
       })),
-      onboardingCompleted: user.onboarding?.completed ?? false,
+      onboardingCompleted:
+        (user.onboarding?.completed ?? false) || user.memberships.length > 0,
     };
   }
 

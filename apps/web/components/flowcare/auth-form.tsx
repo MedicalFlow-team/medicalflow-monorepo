@@ -1,9 +1,11 @@
 "use client";
 
+import { CheckIcon, Loader2Icon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { FormEvent } from "react";
 import { startTransition, useState } from "react";
+import { toast } from "sonner";
 import {
   forgotPasswordAction,
   loginAction,
@@ -25,6 +27,20 @@ const submitLabels: Record<AuthMode, string> = {
   "reset-password": "Alterar",
 };
 
+const pendingLabels: Record<AuthMode, string> = {
+  login: "Entrando...",
+  register: "Cadastrando...",
+  "forgot-password": "Enviando...",
+  "reset-password": "Alterando...",
+};
+
+const successLabels: Record<AuthMode, string> = {
+  login: "Entrando...",
+  register: "Cadastrado!",
+  "forgot-password": "Link enviado",
+  "reset-password": "Senha alterada!",
+};
+
 export function AuthForm({
   mode,
   token,
@@ -36,36 +52,34 @@ export function AuthForm({
 }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
   const isReset = mode === "reset-password";
   const isRegister = mode === "register";
   const showPassword = mode !== "forgot-password";
-  const inputClass = "h-[47px] rounded-lg bg-card px-3 text-base md:text-base";
+  const inputClass =
+    "h-[47px] rounded-lg bg-card px-3 text-base md:text-base border-transparent focus-visible:border-primary";
   const buttonClass =
     "h-[46px] w-full cursor-pointer rounded-lg text-base font-normal";
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (pending) return;
+    if (pending || isSuccess) return;
     const data = new FormData(event.currentTarget);
     const email = String(data.get("email") ?? "").trim();
     const password = String(data.get("password") ?? "");
     const confirmation = String(data.get("confirmation") ?? "");
-    setError("");
-    setMessage("");
 
     if ((isReset || isRegister) && password !== confirmation) {
-      setError("As senhas precisam ser iguais.");
+      toast.error("As senhas precisam ser iguais.");
       return;
     }
     if (isReset && !token) {
-      setError("Link inválido. Solicite um novo link de recuperação.");
+      toast.error("Link inválido. Solicite um novo link de recuperação.");
       return;
     }
     if (isRegister && !acceptedTerms) {
-      setError("É necessário aceitar os termos para criar a conta.");
+      toast.error("É necessário aceitar os termos para criar a conta.");
       return;
     }
 
@@ -79,6 +93,7 @@ export function AuthForm({
               password,
             }),
           );
+          setIsSuccess(true);
           router.replace(destinationAfterLogin(result, returnTo ?? null));
           router.refresh();
         } else if (mode === "register") {
@@ -90,12 +105,15 @@ export function AuthForm({
               acceptedTerms: true,
             }),
           );
+          setIsSuccess(true);
           router.push(`/verify-email?email=${encodeURIComponent(email)}`);
         } else if (mode === "forgot-password") {
           unwrapActionResult(await forgotPasswordAction({ email }));
-          setMessage(
-            "Se o e-mail estiver cadastrado, você receberá um link para redefinir a senha.",
-          );
+          setIsSuccess(true);
+          toast.success("Link enviado", {
+            description:
+              "Se o e-mail estiver cadastrado, você receberá um link para redefinir a senha.",
+          });
         } else {
           unwrapActionResult(
             await resetPasswordAction({
@@ -103,22 +121,27 @@ export function AuthForm({
               newPassword: password,
             }),
           );
-          setMessage(
-            "Senha redefinida. Suas sessões anteriores foram encerradas.",
+          setIsSuccess(true);
+          toast.success(
+            "Senha redefinida com sucesso! Entre com a nova senha.",
           );
+          router.replace("/login");
         }
       } catch (cause) {
+        setIsSuccess(false);
         if (cause instanceof Error && cause.name === "ACCOUNT_NOT_VERIFIED") {
           router.push(`/verify-email?email=${encodeURIComponent(email)}`);
         } else if (cause instanceof Error && cause.name === "INVALID_TOKEN") {
-          setError("Este link é inválido ou expirou. Solicite um novo link.");
+          toast.error(
+            "Este link é inválido ou expirou. Solicite um novo link.",
+          );
         } else if (
           cause instanceof Error &&
           cause.name === "INVALID_CREDENTIALS"
         ) {
-          setError("E-mail ou senha inválidos.");
+          toast.error("E-mail ou senha inválidos.");
         } else {
-          setError(
+          toast.error(
             cause instanceof Error
               ? cause.message
               : "Não foi possível concluir a solicitação.",
@@ -144,7 +167,9 @@ export function AuthForm({
             minLength={3}
             maxLength={120}
             className={inputClass}
+            placeholder="Seu nome completo"
             required
+            disabled={pending || isSuccess}
           />
         </div>
       )}
@@ -160,7 +185,13 @@ export function AuthForm({
             autoComplete="username"
             maxLength={254}
             className={inputClass}
+            placeholder={
+              mode === "forgot-password"
+                ? "Digite seu e-mail cadastrado"
+                : "seu@email.com"
+            }
             required
+            disabled={pending || isSuccess}
           />
         </div>
       )}
@@ -179,7 +210,15 @@ export function AuthForm({
             minLength={mode === "login" ? undefined : 8}
             maxLength={72}
             className={inputClass}
+            placeholder={
+              mode === "login"
+                ? "Digite sua senha"
+                : isReset
+                  ? "Digite sua nova senha"
+                  : "No mínimo 8 caracteres"
+            }
             required
+            disabled={pending || isSuccess}
           />
         </div>
       )}
@@ -199,7 +238,9 @@ export function AuthForm({
             minLength={8}
             maxLength={72}
             className={inputClass}
+            placeholder="Confirme sua senha"
             required
+            disabled={pending || isSuccess}
           />
         </div>
       )}
@@ -221,7 +262,7 @@ export function AuthForm({
             required
             checked={acceptedTerms}
             onCheckedChange={setAcceptedTerms}
-            disabled={pending}
+            disabled={pending || isSuccess}
           />
           <Label
             htmlFor="terms"
@@ -233,25 +274,24 @@ export function AuthForm({
           </Label>
         </div>
       )}
-      {error && (
-        <p role="alert" className="text-sm text-destructive">
-          {error}
-        </p>
-      )}
-      {message && (
-        <output className="block text-sm text-foreground">{message}</output>
-      )}
-      {isReset && message && (
-        <Link href="/login" className="block text-center text-sm underline">
-          Entrar com a nova senha
-        </Link>
-      )}
       <Button
         type="submit"
         className={buttonClass}
-        disabled={pending || (isReset && !!message)}
+        disabled={pending || isSuccess}
       >
-        {pending ? "Aguarde..." : submitLabels[mode]}
+        {pending ? (
+          <span className="flex items-center justify-center gap-2">
+            <Loader2Icon className="size-4 animate-spin" />
+            {pendingLabels[mode]}
+          </span>
+        ) : isSuccess ? (
+          <span className="flex items-center justify-center gap-2">
+            <CheckIcon className="size-4" />
+            {successLabels[mode]}
+          </span>
+        ) : (
+          submitLabels[mode]
+        )}
       </Button>
       {mode === "login" && (
         <p className="pt-1 text-center text-sm text-muted-foreground">

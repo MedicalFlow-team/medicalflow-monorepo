@@ -18,23 +18,44 @@ const Toaster = ({ ...props }: ToasterProps) => {
       theme={theme as ToasterProps["theme"]}
       className="toaster group"
       icons={{
-        success: <CircleCheckIcon className="size-4" />,
-        info: <InfoIcon className="size-4" />,
-        warning: <TriangleAlertIcon className="size-4" />,
-        error: <OctagonXIcon className="size-4" />,
-        loading: <Loader2Icon className="size-4 animate-spin" />,
+        success: <CircleCheckIcon className="size-4 shrink-0 text-white" />,
+        info: <InfoIcon className="size-4 shrink-0 text-white" />,
+        warning: <TriangleAlertIcon className="size-4 shrink-0 text-white" />,
+        error: <OctagonXIcon className="size-4 shrink-0 text-white" />,
+        loading: (
+          <Loader2Icon className="size-4 shrink-0 animate-spin text-white" />
+        ),
       }}
       style={
         {
           "--normal-bg": "var(--popover)",
           "--normal-text": "var(--popover-foreground)",
-          "--normal-border": "var(--border)",
+          "--normal-border": "transparent",
           "--border-radius": "var(--radius)",
+          "--error-bg": "#dc2626",
+          "--error-text": "#ffffff",
+          "--error-border": "transparent",
+          "--success-bg": "#16a34a",
+          "--success-text": "#ffffff",
+          "--success-border": "transparent",
+          "--info-bg": "#2563eb",
+          "--info-text": "#ffffff",
+          "--info-border": "transparent",
+          "--warning-bg": "#d97706",
+          "--warning-text": "#ffffff",
+          "--warning-border": "transparent",
         } as React.CSSProperties
       }
       toastOptions={{
         classNames: {
-          toast: "cn-toast",
+          toast: "cn-toast !border-0 !border-transparent shadow-lg",
+          error:
+            "!border-0 !border-transparent !bg-red-600 dark:!bg-red-600 !text-white [&_[data-title]]:!text-white [&_[data-description]]:!text-white/80 [&_[data-icon]]:!text-white",
+          success:
+            "!border-0 !border-transparent !bg-emerald-600 dark:!bg-emerald-600 !text-white [&_[data-title]]:!text-white [&_[data-description]]:!text-white/80 [&_[data-icon]]:!text-white",
+          info: "!border-0 !border-transparent !bg-blue-600 dark:!bg-blue-600 !text-white [&_[data-title]]:!text-white [&_[data-description]]:!text-white/80 [&_[data-icon]]:!text-white",
+          warning:
+            "!border-0 !border-transparent !bg-amber-600 dark:!bg-amber-600 !text-white [&_[data-title]]:!text-white [&_[data-description]]:!text-white/80 [&_[data-icon]]:!text-white",
         },
       }}
       {...props}

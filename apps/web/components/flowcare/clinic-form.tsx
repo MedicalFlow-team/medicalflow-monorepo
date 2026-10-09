@@ -8,6 +8,7 @@ import {
   useState,
   useTransition,
 } from "react";
+import { toast } from "sonner";
 import {
   checkSlugAction,
   createClinicAction,
@@ -26,7 +27,6 @@ export function ClinicForm() {
   const [slugStatus, setSlugStatus] = useState<
     "idle" | "checking" | "available" | "unavailable"
   >("idle");
-  const [errorMessage, setErrorMessage] = useState("");
   const [fieldErrors, setFieldErrors] = useState<{
     name?: string;
     slug?: string;
@@ -38,7 +38,6 @@ export function ClinicForm() {
     const newName = event.target.value;
     setName(newName);
     setFieldErrors((prev) => ({ ...prev, name: undefined }));
-    setErrorMessage("");
 
     if (!isCustomizingSlug) {
       const generatedSlug = slugify(newName);
@@ -52,7 +51,6 @@ export function ClinicForm() {
     const normalized = slugify(rawValue);
     setSlug(normalized);
     setFieldErrors((prev) => ({ ...prev, slug: undefined }));
-    setErrorMessage("");
   }
 
   // Verificação assíncrona com debounce da disponibilidade do slug
@@ -84,7 +82,6 @@ export function ClinicForm() {
     if (isPending) return;
 
     setFieldErrors({});
-    setErrorMessage("");
 
     const targetSlug = slug || slugify(name);
     const validation = clinicInputSchema.safeParse({ name, slug: targetSlug });
@@ -96,11 +93,16 @@ export function ClinicForm() {
         if (issue.path[0] === "slug") issues.slug = issue.message;
       }
       setFieldErrors(issues);
+      toast.error(
+        validation.error.issues[0]?.message ??
+          "Verifique os campos obrigatórios.",
+      );
       return;
     }
 
     if (slugStatus === "unavailable") {
       setFieldErrors({ slug: "Este endereço já está em uso. Escolha outro." });
+      toast.error("Este endereço já está em uso. Escolha outro.");
       return;
     }
 
@@ -113,18 +115,20 @@ export function ClinicForm() {
               slug: "Este endereço já está em uso. Escolha outro.",
             });
             setSlugStatus("unavailable");
+            toast.error("Este endereço já está em uso. Escolha outro.");
             return;
           }
-          setErrorMessage(result.error.message);
+          toast.error(result.error.message);
           return;
         }
 
+        toast.success("Clínica criada com sucesso!");
         router.replace(
           `/app/${encodeURIComponent(result.data.organization.slug)}/dashboard`,
         );
         router.refresh();
       } catch {
-        setErrorMessage("Erro ao criar a clínica. Tente novamente.");
+        toast.error("Erro ao criar a clínica. Tente novamente.");
       }
     });
   }
@@ -142,15 +146,9 @@ export function ClinicForm() {
           onChange={handleNameChange}
           placeholder="Ex.: Clínica Vida & Saúde"
           aria-invalid={!!fieldErrors.name}
-          aria-describedby={fieldErrors.name ? "name-error" : undefined}
           maxLength={120}
           required
         />
-        {fieldErrors.name && (
-          <p id="name-error" role="alert" className="text-sm text-destructive">
-            {fieldErrors.name}
-          </p>
-        )}
       </div>
 
       <div className="space-y-2">
@@ -178,7 +176,6 @@ export function ClinicForm() {
           placeholder="clinica-vida-saude"
           readOnly={!isCustomizingSlug}
           aria-invalid={!!fieldErrors.slug || slugStatus === "unavailable"}
-          aria-describedby={fieldErrors.slug ? "slug-error" : undefined}
           maxLength={60}
           className={
             !isCustomizingSlug
@@ -213,22 +210,7 @@ export function ClinicForm() {
             </span>
           )}
         </div>
-
-        {fieldErrors.slug && (
-          <p id="slug-error" role="alert" className="text-sm text-destructive">
-            {fieldErrors.slug}
-          </p>
-        )}
       </div>
-
-      {errorMessage && (
-        <div
-          role="alert"
-          className="rounded-lg border border-destructive p-4 text-sm text-destructive"
-        >
-          {errorMessage}
-        </div>
-      )}
 
       <Button
         type="submit"
