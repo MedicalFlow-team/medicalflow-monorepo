@@ -30,7 +30,7 @@ COPY --from=deps /app/node_modules /app/node_modules
 COPY --from=deps /app/apps/api/node_modules ./node_modules
 COPY --from=build /app/apps/api/src/generated ./src/generated
 COPY apps/api/package.json ./
-COPY apps/api/src ./src
+COPY apps/api/src ./src`nCOPY apps/api/prisma ./prisma`nCOPY apps/api/prisma.config.ts ./
 USER bun
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
