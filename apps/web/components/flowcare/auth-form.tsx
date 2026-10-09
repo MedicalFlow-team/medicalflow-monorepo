@@ -1,5 +1,6 @@
 "use client";
 
+import { CheckIcon, Loader2Icon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { FormEvent } from "react";
@@ -26,6 +27,20 @@ const submitLabels: Record<AuthMode, string> = {
   "reset-password": "Alterar",
 };
 
+const pendingLabels: Record<AuthMode, string> = {
+  login: "Entrando...",
+  register: "Cadastrando...",
+  "forgot-password": "Enviando...",
+  "reset-password": "Alterando...",
+};
+
+const successLabels: Record<AuthMode, string> = {
+  login: "Entrando...",
+  register: "Cadastrado!",
+  "forgot-password": "Link enviado",
+  "reset-password": "Senha alterada!",
+};
+
 export function AuthForm({
   mode,
   token,
@@ -37,8 +52,8 @@ export function AuthForm({
 }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
-  const [message, setMessage] = useState("");
   const isReset = mode === "reset-password";
   const isRegister = mode === "register";
   const showPassword = mode !== "forgot-password";
@@ -49,12 +64,11 @@ export function AuthForm({
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (pending) return;
+    if (pending || isSuccess) return;
     const data = new FormData(event.currentTarget);
     const email = String(data.get("email") ?? "").trim();
     const password = String(data.get("password") ?? "");
     const confirmation = String(data.get("confirmation") ?? "");
-    setMessage("");
 
     if ((isReset || isRegister) && password !== confirmation) {
       toast.error("As senhas precisam ser iguais.");
@@ -79,6 +93,7 @@ export function AuthForm({
               password,
             }),
           );
+          setIsSuccess(true);
           router.replace(destinationAfterLogin(result, returnTo ?? null));
           router.refresh();
         } else if (mode === "register") {
@@ -90,13 +105,15 @@ export function AuthForm({
               acceptedTerms: true,
             }),
           );
+          setIsSuccess(true);
           router.push(`/verify-email?email=${encodeURIComponent(email)}`);
         } else if (mode === "forgot-password") {
           unwrapActionResult(await forgotPasswordAction({ email }));
-          const successMsg =
-            "Se o e-mail estiver cadastrado, você receberá um link para redefinir a senha.";
-          setMessage(successMsg);
-          toast.info(successMsg);
+          setIsSuccess(true);
+          toast.success("Link enviado", {
+            description:
+              "Se o e-mail estiver cadastrado, você receberá um link para redefinir a senha.",
+          });
         } else {
           unwrapActionResult(
             await resetPasswordAction({
@@ -104,12 +121,14 @@ export function AuthForm({
               newPassword: password,
             }),
           );
-          const successMsg =
-            "Senha redefinida com sucesso. Suas sessões anteriores foram encerradas.";
-          setMessage(successMsg);
-          toast.info(successMsg);
+          setIsSuccess(true);
+          toast.success(
+            "Senha redefinida com sucesso! Entre com a nova senha.",
+          );
+          router.replace("/login");
         }
       } catch (cause) {
+        setIsSuccess(false);
         if (cause instanceof Error && cause.name === "ACCOUNT_NOT_VERIFIED") {
           router.push(`/verify-email?email=${encodeURIComponent(email)}`);
         } else if (cause instanceof Error && cause.name === "INVALID_TOKEN") {
@@ -150,6 +169,7 @@ export function AuthForm({
             className={inputClass}
             placeholder="Seu nome completo"
             required
+            disabled={pending || isSuccess}
           />
         </div>
       )}
@@ -171,6 +191,7 @@ export function AuthForm({
                 : "seu@email.com"
             }
             required
+            disabled={pending || isSuccess}
           />
         </div>
       )}
@@ -197,6 +218,7 @@ export function AuthForm({
                   : "No mínimo 8 caracteres"
             }
             required
+            disabled={pending || isSuccess}
           />
         </div>
       )}
@@ -218,6 +240,7 @@ export function AuthForm({
             className={inputClass}
             placeholder="Confirme sua senha"
             required
+            disabled={pending || isSuccess}
           />
         </div>
       )}
@@ -239,7 +262,7 @@ export function AuthForm({
             required
             checked={acceptedTerms}
             onCheckedChange={setAcceptedTerms}
-            disabled={pending}
+            disabled={pending || isSuccess}
           />
           <Label
             htmlFor="terms"
@@ -251,20 +274,24 @@ export function AuthForm({
           </Label>
         </div>
       )}
-      {message && (
-        <output className="block text-sm text-foreground">{message}</output>
-      )}
-      {isReset && message && (
-        <Link href="/login" className="block text-center text-sm underline">
-          Entrar com a nova senha
-        </Link>
-      )}
       <Button
         type="submit"
         className={buttonClass}
-        disabled={pending || (isReset && !!message)}
+        disabled={pending || isSuccess}
       >
-        {pending ? "Aguarde..." : submitLabels[mode]}
+        {pending ? (
+          <span className="flex items-center justify-center gap-2">
+            <Loader2Icon className="size-4 animate-spin" />
+            {pendingLabels[mode]}
+          </span>
+        ) : isSuccess ? (
+          <span className="flex items-center justify-center gap-2">
+            <CheckIcon className="size-4" />
+            {successLabels[mode]}
+          </span>
+        ) : (
+          submitLabels[mode]
+        )}
       </Button>
       {mode === "login" && (
         <p className="pt-1 text-center text-sm text-muted-foreground">
