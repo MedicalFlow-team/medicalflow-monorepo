@@ -1,4 +1,4 @@
-import { Elysia } from "elysia";
+import { Elysia, t } from "elysia";
 import { authPlugin } from "../../plugins/auth";
 import * as m from "./model";
 import type { OnboardingDeps } from "./service";
@@ -37,6 +37,14 @@ export function onboardingModule(deps: OnboardingDeps) {
           {
             body: m.profileDraftBody,
             response: { 200: m.profileResponse },
+          },
+        )
+        .get(
+          "/check-slug",
+          ({ query }) => service.checkSlugAvailability(query.slug),
+          {
+            query: t.Object({ slug: t.String() }),
+            response: { 200: m.slugAvailabilityResponse },
           },
         )
         .post(

@@ -71,7 +71,13 @@ export const organizationCreatedResponse = t.Object({
   }),
 });
 
+export const slugAvailabilityResponse = t.Object({
+  available: t.Boolean(),
+  slug: t.String(),
+});
+
 export type CreateOrganizationBody = typeof createOrganizationBody.static;
 export type ProgressResponse = typeof progressResponse.static;
 export type ProfileBody = typeof profileBody.static;
 export type ProfileDraftBody = typeof profileDraftBody.static;
+export type SlugAvailabilityResponse = typeof slugAvailabilityResponse.static;

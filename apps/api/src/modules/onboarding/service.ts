@@ -6,6 +6,7 @@ import type {
   CreateOrganizationBody,
   ProfileBody,
   ProfileDraftBody,
+  SlugAvailabilityResponse,
 } from "./model";
 
 /**
@@ -211,5 +212,19 @@ export class OnboardingService {
         isOwner: true,
       },
     };
+  }
+
+  async checkSlugAvailability(
+    rawSlug: string,
+  ): Promise<SlugAvailabilityResponse> {
+    const slug = slugify(rawSlug);
+    if (!slug) {
+      return { available: false, slug: "" };
+    }
+    const existing = await this.deps.prisma.organization.findUnique({
+      where: { slug },
+      select: { id: true },
+    });
+    return { available: !existing, slug };
   }
 }
