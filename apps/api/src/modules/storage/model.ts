@@ -4,7 +4,11 @@ export const uploadBody = t.Object({
   fileName: t.String({ minLength: 1, maxLength: 255 }),
   contentType: t.String({ minLength: 1, maxLength: 100 }),
   sizeBytes: t.Integer({ minimum: 1 }),
-  category: t.Union([t.Literal("audio"), t.Literal("attachment"), t.Literal("pdf")]),
+  category: t.Union([
+    t.Literal("audio"),
+    t.Literal("attachment"),
+    t.Literal("pdf"),
+  ]),
 });
 
 export const storageResponse = t.Object({

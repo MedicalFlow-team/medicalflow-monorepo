@@ -61,11 +61,19 @@ export function loadEnv(): Env {
   const storageEndpoint = process.env.STORAGE_ENDPOINT?.trim() || null;
   const storageBucket = process.env.STORAGE_BUCKET?.trim() || null;
   const storageAccessKeyId = process.env.STORAGE_ACCESS_KEY_ID?.trim() || null;
-  const storageSecretAccessKey = process.env.STORAGE_SECRET_ACCESS_KEY?.trim() || null;
+  const storageSecretAccessKey =
+    process.env.STORAGE_SECRET_ACCESS_KEY?.trim() || null;
   const storageRegion = optional("STORAGE_REGION", "auto");
-  const storageValues = [storageEndpoint, storageBucket, storageAccessKeyId, storageSecretAccessKey];
+  const storageValues = [
+    storageEndpoint,
+    storageBucket,
+    storageAccessKeyId,
+    storageSecretAccessKey,
+  ];
   if (storageValues.some(Boolean) && storageValues.some((value) => !value)) {
-    throw new Error("[boot] STORAGE_ENDPOINT, STORAGE_BUCKET, STORAGE_ACCESS_KEY_ID e STORAGE_SECRET_ACCESS_KEY devem ser configurados juntos.");
+    throw new Error(
+      "[boot] STORAGE_ENDPOINT, STORAGE_BUCKET, STORAGE_ACCESS_KEY_ID e STORAGE_SECRET_ACCESS_KEY devem ser configurados juntos.",
+    );
   }
   const mailProvider = optional(
     "MAIL_PROVIDER",
