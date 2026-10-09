@@ -12,7 +12,7 @@ RPO esperado enquanto o host e o R2 estão disponíveis: até dez minutos (cinco
 
 ## Preparação no servidor
 
-1. Use um bucket R2 **privado e exclusivo para backups**, sem domínio público nem `r2.dev`. O R2 [criptografa os objetos em repouso e usa TLS em trânsito](https://developers.cloudflare.com/r2/reference/data-security/).
+1. Use o bucket R2 privado `flowcare`, sem domínio público nem `r2.dev`. Reserve o prefixo `flowcare/postgres/` para backups do banco. O R2 [criptografa os objetos em repouso e usa TLS em trânsito](https://developers.cloudflare.com/r2/reference/data-security/).
 2. Configure no prefixo `flowcare/postgres/` uma [Bucket Lock](https://developers.cloudflare.com/r2/buckets/bucket-locks/) de **35 dias** e uma [regra de lifecycle](https://developers.cloudflare.com/r2/buckets/object-lifecycles/) de expiração em **40 dias**. A regra de lock impede exclusão ou sobrescrita antes do prazo. Verifique as regras no painel ou com `wrangler r2 bucket lock list` e `wrangler r2 bucket lifecycle list`. Guarde a evidência operacional fora do repositório.
 3. Crie uma credencial R2 limitada somente a esse bucket. Ela fica **apenas no host de backup**, em `/root/flowcare/backup.env` (`chmod 600`); não a passe à stack/API/web. O R2 S3 API usa permissão Object Read & Write, portanto a Bucket Lock é necessária para impedir exclusão prematura.
 4. Instale AWS CLI v2, Docker, `flock`, `tar`, `sha256sum`, Python 3 e `curl` no host. O AWS CLI acessa a [API S3 compatível do R2](https://developers.cloudflare.com/r2/examples/aws/aws-cli/), com região `auto`. Não use opções SSE-KMS: o R2 não as aceita.
@@ -28,7 +28,7 @@ Conteúdo de `/root/flowcare/backup.env` (substitua valores no servidor; nunca f
 
 ```bash
 R2_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com
-R2_BUCKET=<bucket-privado>
+R2_BUCKET=flowcare
 AWS_ACCESS_KEY_ID=<id>
 AWS_SECRET_ACCESS_KEY=<segredo>
 R2_PREFIX=flowcare/postgres
@@ -71,4 +71,4 @@ Meça o tempo total, guarde as contagens e compare com um snapshot de referênci
 3. Provisione um novo volume/instância PostgreSQL. Restaure a cópia física e os WAL usando o mesmo procedimento, escolhendo `recovery_target_time` quando necessário.
 4. Aponte a aplicação para a instância recuperada apenas após validação e autorização operacional. Não execute `DROP DATABASE` na instância original como primeiro passo.
 
-Sem credenciais do bucket, acesso ao VPS e um restore drill real, a rotina **não está ativada nem validada em produção**. O R2 aplica criptografia gerenciada pela Cloudflare; a credencial de backup não deve ter acesso pela aplicação.
+A rotina só está validada após um backup remoto e um restore drill bem-sucedido. O R2 aplica criptografia gerenciada pela Cloudflare; a credencial de backup não deve ter acesso pela aplicação.

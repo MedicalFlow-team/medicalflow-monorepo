@@ -9,7 +9,7 @@ stamp="${1:?uso: restore-drill.sh <timestamp UTC do backup> [alvo PITR UTC]}"
 [[ "$stamp" =~ ^[0-9]{8}T[0-9]{6}Z$ ]] || { echo "Timestamp inválido" >&2; exit 1; }
 target="${2:-}"
 if [ -n "$target" ]; then
-  [[ "$target" =~ ^[0-9TZ: .+-]+$ ]] || { echo "Alvo PITR inválido" >&2; exit 1; }
+  [[ "$target" =~ ^[-0-9TZ:.+[:space:]]+$ ]] || { echo "Alvo PITR inválido" >&2; exit 1; }
 fi
 
 mkdir -p "$BACKUP_DIR"
