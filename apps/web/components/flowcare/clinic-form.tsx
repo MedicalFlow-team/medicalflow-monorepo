@@ -104,6 +104,7 @@ export function ClinicForm() {
     }
 
     if (slugStatus === "unavailable") {
+      setIsCustomizingSlug(true);
       setFieldErrors({ slug: "Este endereço já está em uso. Escolha outro." });
       toast.error("Este endereço já está em uso. Escolha outro.");
       return;
@@ -114,6 +115,7 @@ export function ClinicForm() {
         const result = await createClinicAction(validation.data);
         if (!result.ok) {
           if (result.error.code === "ALREADY_EXISTS") {
+            setIsCustomizingSlug(true);
             setFieldErrors({
               slug: "Este endereço já está em uso. Escolha outro.",
             });
@@ -156,63 +158,67 @@ export function ClinicForm() {
         />
       </div>
 
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <Label htmlFor="clinic-slug" className="required">
-            Endereço no Flowcare
-          </Label>
+      <div className="space-y-3 text-sm">
+        <p className="text-muted-foreground">
+          Sua equipe acessará a clínica em{" "}
+          <span className="font-mono font-medium text-foreground">
+            app/{slug || "sua-clinica"}
+          </span>
+          .
+        </p>
+        {!isCustomizingSlug ? (
           <button
             type="button"
-            onClick={() => {
-              setIsCustomizingSlug((prev) => !prev);
-              if (isCustomizingSlug) {
-                setSlug(slugify(name));
-              }
-            }}
-            className="text-xs text-primary hover:underline font-normal"
+            onClick={() => setIsCustomizingSlug(true)}
+            className="text-primary hover:underline"
           >
-            {isCustomizingSlug ? "Gerar do nome" : "Personalizar endereço"}
+            Editar endereço
           </button>
-        </div>
-
-        <Input
-          id="clinic-slug"
-          name="slug"
-          value={slug}
-          onChange={handleSlugChange}
-          placeholder="clinica-vida-saude"
-          readOnly={!isCustomizingSlug}
-          aria-invalid={!!fieldErrors.slug || slugStatus === "unavailable"}
-          maxLength={60}
-          className={`${inputClass}${!isCustomizingSlug ? " cursor-pointer" : ""}`}
-          required
-        />
-
-        <div className="flex items-center justify-between text-xs min-h-[20px]">
-          <span className="text-muted-foreground font-mono">
-            app/
-            <span className="text-foreground font-medium">
-              {slug || "sua-clinica"}
-            </span>
-          </span>
-
-          {slugStatus === "checking" && (
-            <span className="flex items-center gap-1.5 text-muted-foreground">
-              <Spinner className="size-3" />
-              Verificando...
-            </span>
-          )}
-          {slugStatus === "available" && (
-            <span className="text-primary font-medium">
-              Endereço disponível
-            </span>
-          )}
-          {slugStatus === "unavailable" && (
-            <span className="text-destructive font-medium">
-              Endereço indisponível
-            </span>
-          )}
-        </div>
+        ) : (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="clinic-slug" className="required">
+                Endereço no Flowcare
+              </Label>
+              <button
+                type="button"
+                onClick={() => {
+                  setSlug(slugify(name));
+                  setFieldErrors((prev) => ({ ...prev, slug: undefined }));
+                  setIsCustomizingSlug(false);
+                }}
+                className="text-xs font-normal text-primary hover:underline"
+              >
+                Gerar do nome
+              </button>
+            </div>
+            <Input
+              id="clinic-slug"
+              name="slug"
+              value={slug}
+              onChange={handleSlugChange}
+              placeholder="clinica-vida-saude"
+              aria-invalid={!!fieldErrors.slug || slugStatus === "unavailable"}
+              maxLength={60}
+              className={inputClass}
+              required
+            />
+          </div>
+        )}
+        {(slugStatus === "checking" ||
+          slugStatus === "available" ||
+          slugStatus === "unavailable") && (
+          <p
+            className={`flex items-center gap-1.5 text-xs ${slugStatus === "unavailable" ? "text-destructive" : slugStatus === "available" ? "text-primary" : "text-muted-foreground"}`}
+          >
+            {slugStatus === "checking" && <Spinner className="size-3" />}
+            {slugStatus === "checking"
+              ? "Verificando endereço..."
+              : slugStatus === "available"
+                ? "Endereço disponível"
+                : "Endereço indisponível"}
+          </p>
+        )}
       </div>
 
       <Button
