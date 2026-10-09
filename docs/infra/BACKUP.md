@@ -42,9 +42,9 @@ O URL de alerta é opcional para a execução, mas obrigatório na operação. O
 Instale no crontab de root; `check-backup.sh` tem estado próprio e só alerta em mudança de estado. A janela de 26 horas cobre um backup às 03:00 que atrasa até duas horas.
 
 ```cron
-0 3 * * * /root/flowcare/app/infra/backup/backup-postgres.sh >> /root/flowcare/backup.log 2>&1
-*/5 * * * * /root/flowcare/app/infra/backup/sync-wal.sh >> /root/flowcare/backup.log 2>&1
-*/5 * * * * /root/flowcare/app/infra/backup/check-backup.sh >> /root/flowcare/backup-health.log 2>&1
+0 3 * * * /root/flowcare/infra/backup/backup-postgres.sh >> /root/flowcare/backup.log 2>&1
+*/5 * * * * /root/flowcare/infra/backup/sync-wal.sh >> /root/flowcare/backup.log 2>&1
+*/5 * * * * /root/flowcare/infra/backup/check-backup.sh >> /root/flowcare/backup-health.log 2>&1
 ```
 
 Após ativar o arquivamento no deploy, confira `SELECT archived_count, failed_count, last_archived_wal FROM pg_stat_archiver;` e faça o primeiro backup manual. Confirme a presença de `base/<timestamp>/base.tar.gz`, `base.sha256` e objetos `wal/` no R2. **Não trate o cron como instalado só porque aparece neste documento.**

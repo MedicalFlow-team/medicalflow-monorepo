@@ -18,6 +18,10 @@ dev.db-journal
 # Backups (gerados pelo infra/backup — nunca no repo)
 backups/
 *.sql.gz
+backup.env
+wal-spool/
+crontab.flowcare
+.health-state
 
 # Build outputs
 dist/

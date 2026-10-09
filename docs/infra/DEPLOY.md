@@ -15,7 +15,7 @@ workflow_dispatch na main
 
 ## Setup único (já feito no VPS)
 
-1. **Repo clonado** em `/root/flowcare/app`; o pipeline faz checkout do SHA exato do workflow. Configurações e backups ficam no diretório pai `/root/flowcare`.
+1. **Repo clonado** em `/root/flowcare`, com a mesma estrutura do GitHub; o pipeline faz checkout do SHA exato do workflow. `.env`, `backup.env`, backups e WAL permanecem apenas no servidor e são ignorados pelo Git.
 2. **`/root/flowcare/.env`** — variáveis de produção (ver SECRETS.md).
 3. **Rede `traefik-public`** — já existe (mesma do WAHA/traefik).
 4. **Secrets do GitHub** (Settings → Secrets and variables → Actions):
@@ -53,7 +53,7 @@ docker exec -it $(docker ps -qf name=flowcare_postgres) psql -U flowcare -d flow
 ## Deploy manual (emergência)
 
 ```bash
-cd /root/flowcare/app
+cd /root/flowcare
 git fetch origin main
 # Defina TAG com o SHA de uma imagem já publicada no GHCR.
 git checkout --force "$TAG"
