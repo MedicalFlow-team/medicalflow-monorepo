@@ -32,10 +32,10 @@ Para Telegram, troque o payload em `check-health.sh` (`{"chat_id": "...", "text"
 ## Crontab instalada no VPS
 
 ```cron
-*/5 * * * * /root/flowcare/app/infra/monitoring/check-health.sh >> /root/flowcare/health.log 2>&1
-0 3 * * *   /root/flowcare/app/infra/backup/backup-postgres.sh  >> /root/flowcare/backup.log 2>&1
-*/5 * * * * /root/flowcare/app/infra/backup/sync-wal.sh >> /root/flowcare/backup.log 2>&1
-*/5 * * * * /root/flowcare/app/infra/backup/check-backup.sh >> /root/flowcare/backup-health.log 2>&1
+*/5 * * * * /root/flowcare/infra/monitoring/check-health.sh >> /root/flowcare/health.log 2>&1
+0 3 * * *   /root/flowcare/infra/backup/backup-postgres.sh  >> /root/flowcare/backup.log 2>&1
+*/5 * * * * /root/flowcare/infra/backup/sync-wal.sh >> /root/flowcare/backup.log 2>&1
+*/5 * * * * /root/flowcare/infra/backup/check-backup.sh >> /root/flowcare/backup-health.log 2>&1
 ```
 
 ## Evolução (pós-MVP)

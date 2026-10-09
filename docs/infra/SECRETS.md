@@ -75,7 +75,7 @@ openssl rand -base64 24 # POSTGRES_PASSWORD
 ```bash
 # JWT vazado:
 vim /root/flowcare/.env            # novo valor
-cd /root/flowcare/app
+cd /root/flowcare
 # Defina TAG com o SHA da imagem já publicada no GHCR.
 bash infra/deploy.sh "$TAG"
 # (tokens antigos morrem; todos logam de novo)
