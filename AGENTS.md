@@ -29,6 +29,7 @@
 
 - Mensagens de commit, nomes de branch e títulos de PR DEVEM ser sempre em **inglês** seguindo Conventional Commits (`feat(scope): ... (#123)`).
 - Para operações com GitHub (ler tasks, PRs, comentários, issues e CI), use a skill `$github-cli` instalada em `.agents/skills/github-cli`.
+- **NUNCA faça merge de Pull Requests automaticamente**. Sempre abra o PR, aguarde a validação do CI e aguarde a análise e autorização explícita do usuário antes de realizar o merge.
 
 ## Produção & VPS
 

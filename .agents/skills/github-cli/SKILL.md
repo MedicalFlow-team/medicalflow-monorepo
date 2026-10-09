@@ -97,8 +97,14 @@ gh pr checks <pr_number> --watch
 ```bash
 # Criar PR com título e corpo
 gh pr create --title "<type>(<scope>): <description> (#<issue>)" --body "..."
+```
 
-# Fazer merge via squash e deletar branch remota
+> [!CAUTION]
+> **Aprovação Obrigatória do Usuário**:
+> NUNCA execute `gh pr merge` automaticamente. Após abrir o PR e o CI passar, informe o link do PR e o resumo das alterações ao usuário. Aguarde a análise e a solicitação explícita do usuário antes de realizar o merge.
+
+```bash
+# Fazer merge via squash e deletar branch remota (APENAS após autorização explícita do usuário)
 # (Usar --admin caso haja restrição de branch protection no repositório)
 gh pr merge <pr_number> --squash --delete-branch --admin
 ```
