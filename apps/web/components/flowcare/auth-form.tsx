@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { FormEvent } from "react";
 import { startTransition, useState } from "react";
+import { toast } from "sonner";
 import {
   forgotPasswordAction,
   loginAction,
@@ -38,7 +39,6 @@ export function AuthForm({
   const [pending, setPending] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
   const isReset = mode === "reset-password";
   const isRegister = mode === "register";
   const showPassword = mode !== "forgot-password";
@@ -53,19 +53,18 @@ export function AuthForm({
     const email = String(data.get("email") ?? "").trim();
     const password = String(data.get("password") ?? "");
     const confirmation = String(data.get("confirmation") ?? "");
-    setError("");
     setMessage("");
 
     if ((isReset || isRegister) && password !== confirmation) {
-      setError("As senhas precisam ser iguais.");
+      toast.error("As senhas precisam ser iguais.");
       return;
     }
     if (isReset && !token) {
-      setError("Link inválido. Solicite um novo link de recuperação.");
+      toast.error("Link inválido. Solicite um novo link de recuperação.");
       return;
     }
     if (isRegister && !acceptedTerms) {
-      setError("É necessário aceitar os termos para criar a conta.");
+      toast.error("É necessário aceitar os termos para criar a conta.");
       return;
     }
 
@@ -93,9 +92,10 @@ export function AuthForm({
           router.push(`/verify-email?email=${encodeURIComponent(email)}`);
         } else if (mode === "forgot-password") {
           unwrapActionResult(await forgotPasswordAction({ email }));
-          setMessage(
-            "Se o e-mail estiver cadastrado, você receberá um link para redefinir a senha.",
-          );
+          const successMsg =
+            "Se o e-mail estiver cadastrado, você receberá um link para redefinir a senha.";
+          setMessage(successMsg);
+          toast.success(successMsg);
         } else {
           unwrapActionResult(
             await resetPasswordAction({
@@ -103,22 +103,23 @@ export function AuthForm({
               newPassword: password,
             }),
           );
-          setMessage(
-            "Senha redefinida. Suas sessões anteriores foram encerradas.",
-          );
+          const successMsg =
+            "Senha redefinida. Suas sessões anteriores foram encerradas.";
+          setMessage(successMsg);
+          toast.success(successMsg);
         }
       } catch (cause) {
         if (cause instanceof Error && cause.name === "ACCOUNT_NOT_VERIFIED") {
           router.push(`/verify-email?email=${encodeURIComponent(email)}`);
         } else if (cause instanceof Error && cause.name === "INVALID_TOKEN") {
-          setError("Este link é inválido ou expirou. Solicite um novo link.");
+          toast.error("Este link é inválido ou expirou. Solicite um novo link.");
         } else if (
           cause instanceof Error &&
           cause.name === "INVALID_CREDENTIALS"
         ) {
-          setError("E-mail ou senha inválidos.");
+          toast.error("E-mail ou senha inválidos.");
         } else {
-          setError(
+          toast.error(
             cause instanceof Error
               ? cause.message
               : "Não foi possível concluir a solicitação.",

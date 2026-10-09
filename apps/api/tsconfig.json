@@ -3,12 +3,8 @@
     "target": "ES2023",
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "lib": [
-      "ES2023"
-    ],
-    "types": [
-      "bun"
-    ],
+    "lib": ["ES2023"],
+    "types": ["bun"],
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "noEmit": true,
@@ -16,9 +12,5 @@
     "verbatimModuleSyntax": true,
     "isolatedModules": true
   },
-  "include": [
-    "src",
-    "test",
-    "prisma.config.ts"
-  ]
+  "include": ["src", "test", "prisma.config.ts"]
 }
