@@ -9,7 +9,7 @@
 set -euo pipefail
 
 TAG="${1:?uso: deploy.sh <tag-da-imagem>}"
-REPO_DIR="/root/flowcare-monorepo"
+REPO_DIR="/root/flowcare/app"
 STACK="flowcare"
 ENV_FILE="/root/flowcare/.env"
 
