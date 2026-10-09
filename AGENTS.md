@@ -24,3 +24,13 @@
 
 - Se a tarefa for exclusivamente de backend, não altere o frontend em `apps/web`.
 - Antes de alterações grandes, explique brevemente o que será criado.
+
+## Git, Commits & GitHub CLI
+
+- Mensagens de commit, nomes de branch e títulos de PR DEVEM ser sempre em **inglês** seguindo Conventional Commits (`feat(scope): ... (#123)`).
+- Para operações com GitHub (ler tasks, PRs, comentários, issues e CI), use a skill `$github-cli` instalada em `.agents/skills/github-cli`.
+
+## Produção & VPS
+
+- Para qualquer operação, diagnóstico, verificação de logs ou rotina de produção, use a skill `$prod-access` instalada em `.agents/skills/prod-access`.
+- NUNCA crie workflows descartáveis do GitHub Actions para rodar comandos na VPS; use sempre o SSH direto (`ssh root@209.126.11.124`).
