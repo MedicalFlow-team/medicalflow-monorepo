@@ -58,6 +58,9 @@ services:
   api:
     image: ghcr.io/flow-care/flowcare-api:${FLOWCARE_TAG:?FLOWCARE_TAG e obrigatorio (infra/deploy.sh exporta)}
     env_file: /root/flowcare/.env
+    environment:
+      SNS_TOPIC_ARN: arn:aws:sns:us-east-1:390403879931:flowcare-ses-events
+      SES_CONFIGURATION_SET: flowcare-transactional
     healthcheck:
       test: ["CMD", "bun", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 30s

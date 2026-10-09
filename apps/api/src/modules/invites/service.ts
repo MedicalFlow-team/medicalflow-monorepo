@@ -1,6 +1,7 @@
 import type { PrismaClient } from "../../generated/prisma/client";
 import { ApiError } from "../../lib/api-error";
 import { generateToken, hashToken } from "../../lib/tokens";
+import { actionEmailHtml } from "../../services/mail-templates";
 import type { Mailer } from "../../services/mailer";
 import type { CreateInviteBody } from "./model";
 
@@ -179,6 +180,13 @@ export class InviteService {
         to,
         subject: `Convite para ${organizationName}`,
         text: `Você foi convidado para ${organizationName}: ${this.deps.webAppUrl}/invite?token=${token}`,
+        html: actionEmailHtml({
+          title: "Convite para clínica",
+          description: `Você foi convidado para ${organizationName} no Flowcare.`,
+          action: "Aceitar convite",
+          url: `${this.deps.webAppUrl}/invite?token=${token}`,
+          expiry: "O convite expira em 7 dias e pode ser usado apenas uma vez.",
+        }),
       });
     } catch {
       console.error("[invite] delivery failed");

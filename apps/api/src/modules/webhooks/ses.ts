@@ -1,76 +1,143 @@
 import { createVerify } from "node:crypto";
-import { Elysia, t } from "elysia";
+import { Elysia } from "elysia";
 
-const notification = t.Object({
-  Type: t.Optional(t.String()),
-  MessageId: t.Optional(t.String()),
-  SubscribeURL: t.Optional(t.String({ format: "uri" })),
-  Message: t.Optional(t.String()),
-  SigningCertURL: t.Optional(t.String({ format: "uri" })),
-  Signature: t.Optional(t.String()),
-  Token: t.Optional(t.String()),
-  TopicArn: t.Optional(t.String()),
-});
+type SnsMessage = Record<string, unknown>;
 
-async function verifySns(body: typeof notification.static) {
-  if (!body.SigningCertURL || !body.Signature || !body.Type) return false;
-  const certUrl = new URL(body.SigningCertURL);
-  if (
-    certUrl.protocol !== "https:" ||
-    !certUrl.hostname.endsWith(".amazonaws.com")
-  )
-    return false;
-  const fields =
-    body.Type === "Notification"
-      ? ["Message", "MessageId", "Subject", "Timestamp", "TopicArn", "Type"]
-      : [
-          "Message",
-          "MessageId",
-          "SubscribeURL",
-          "Timestamp",
-          "Token",
-          "TopicArn",
-          "Type",
-        ];
-  const source = fields
-    .filter(
-      (field) =>
-        field in body && body[field as keyof typeof body] !== undefined,
-    )
-    .map((field) => `${field}\n${body[field as keyof typeof body]}\n`)
-    .join("");
-  const cert = await (await fetch(certUrl)).text();
-  const verifier = createVerify("RSA-SHA256");
-  verifier.update(source);
-  return verifier.verify(cert, Buffer.from(body.Signature, "base64"));
+const SIGNED_FIELDS = {
+  Notification: [
+    "Message",
+    "MessageId",
+    "Subject",
+    "Timestamp",
+    "TopicArn",
+    "Type",
+  ],
+  SubscriptionConfirmation: [
+    "Message",
+    "MessageId",
+    "SubscribeURL",
+    "Timestamp",
+    "Token",
+    "TopicArn",
+    "Type",
+  ],
+} as const;
+
+function isSnsMessage(value: unknown): value is SnsMessage {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
-export const sesWebhook = new Elysia({ name: "ses-webhook" }).post(
-  "/webhooks/ses",
-  async ({ body, status }) => {
-    if (!(await verifySns(body))) return status(403, { accepted: false });
-    if (body.Type === "SubscriptionConfirmation" && body.SubscribeURL) {
-      await fetch(body.SubscribeURL);
-      return status(200, { accepted: true });
-    }
-    if (body.Type !== "Notification" || !body.Message)
-      return status(400, { accepted: false });
-    try {
-      const event = JSON.parse(body.Message) as {
-        eventType?: string;
-        mail?: { messageId?: string };
-      };
-      console.info(
-        JSON.stringify({
-          msg: "ses_event",
-          messageId: event.mail?.messageId ?? null,
-          status: event.eventType ?? "UNKNOWN",
-        }),
-      );
-      return status(204);
-    } catch {
-      return status(400, { accepted: false });
-    }
-  },
-  { body: notification },
-);
+async function verifySns(body: SnsMessage, topicArn: string): Promise<boolean> {
+  if (body.TopicArn !== topicArn || body.SignatureVersion !== "2") return false;
+  if (body.Type !== "Notification" && body.Type !== "SubscriptionConfirmation")
+    return false;
+  if (
+    typeof body.SigningCertURL !== "string" ||
+    typeof body.Signature !== "string"
+  )
+    return false;
+
+  let certUrl: URL;
+  try {
+    certUrl = new URL(body.SigningCertURL);
+  } catch {
+    return false;
+  }
+  const region = topicArn.split(":")[3];
+  if (
+    certUrl.protocol !== "https:" ||
+    certUrl.hostname !== `sns.${region}.amazonaws.com` ||
+    certUrl.port ||
+    certUrl.username ||
+    certUrl.password ||
+    certUrl.search ||
+    certUrl.hash ||
+    !/^\/SimpleNotificationService-[a-zA-Z0-9]+\.pem$/.test(certUrl.pathname)
+  )
+    return false;
+
+  const fields = SIGNED_FIELDS[body.Type];
+  if (
+    fields.some(
+      (field) => field !== "Subject" && typeof body[field] !== "string",
+    )
+  )
+    return false;
+  if (body.Subject !== undefined && typeof body.Subject !== "string")
+    return false;
+  const source = fields
+    .filter((field) => body[field] !== undefined)
+    .map((field) => `${field}\n${body[field]}\n`)
+    .join("");
+  try {
+    const response = await fetch(certUrl, {
+      signal: AbortSignal.timeout(3000),
+    });
+    if (!response.ok) return false;
+    const cert = await response.text();
+    const verifier = createVerify("RSA-SHA256");
+    verifier.update(source);
+    return verifier.verify(cert, Buffer.from(body.Signature, "base64"));
+  } catch {
+    return false;
+  }
+}
+
+export function createSesWebhook(topicArn: string | null) {
+  return new Elysia({ name: "ses-webhook" }).post(
+    "/webhooks/ses",
+    async ({ body: parsedBody, status }) => {
+      if (!topicArn) return status(503, { accepted: false });
+      let body: unknown = parsedBody;
+      try {
+        if (typeof body === "string") body = JSON.parse(body);
+      } catch {
+        return status(400, { accepted: false });
+      }
+      if (!isSnsMessage(body) || !(await verifySns(body, topicArn)))
+        return status(403, { accepted: false });
+
+      if (body.Type === "SubscriptionConfirmation") {
+        const url = new URL(body.SubscribeURL as string);
+        if (
+          url.protocol !== "https:" ||
+          url.hostname !== `sns.${topicArn.split(":")[3]}.amazonaws.com`
+        )
+          return status(403, { accepted: false });
+        try {
+          const confirmation = await fetch(url, {
+            signal: AbortSignal.timeout(3000),
+          });
+          if (!confirmation.ok) return status(502, { accepted: false });
+          return { accepted: true };
+        } catch {
+          return status(502, { accepted: false });
+        }
+      }
+
+      try {
+        const event = JSON.parse(body.Message as string) as {
+          eventType?: string;
+          mail?: { messageId?: string };
+        };
+        if (
+          !["Delivery", "Bounce", "Complaint"].includes(
+            event.eventType ?? "",
+          ) ||
+          typeof event.mail?.messageId !== "string"
+        )
+          return status(400, { accepted: false });
+        console.info(
+          JSON.stringify({
+            msg: "ses_event",
+            messageId: event.mail.messageId,
+            status: event.eventType,
+          }),
+        );
+        return status(204);
+      } catch {
+        return status(400, { accepted: false });
+      }
+    },
+  );
+}
