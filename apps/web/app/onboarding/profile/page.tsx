@@ -31,7 +31,7 @@ export default async function OnboardingProfilePage({
   if (profile?.completed && edit !== "1") redirect("/onboarding/clinic");
 
   return (
-    <main className="flex flex-1 items-center justify-center px-5">
+    <main className="flex flex-1 justify-center px-5 pt-8">
       <div className="mx-auto w-full max-w-lg">
         <div className="mb-8">
           <OnboardingStepper currentStep={1} />

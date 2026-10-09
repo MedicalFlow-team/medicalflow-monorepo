@@ -57,11 +57,7 @@ export function ClinicForm() {
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="mt-8 flex min-h-[540px] flex-col gap-5"
-      noValidate
-    >
+    <form onSubmit={handleSubmit} className="mt-8 space-y-5" noValidate>
       <div className="space-y-2">
         <Label htmlFor="clinic-name" className="required">
           Nome da clínica
@@ -83,7 +79,7 @@ export function ClinicForm() {
         />
       </div>
 
-      <div className="mt-auto flex items-center justify-between gap-4">
+      <div className="flex items-center justify-between gap-4">
         <Button
           type="button"
           variant="outline"
