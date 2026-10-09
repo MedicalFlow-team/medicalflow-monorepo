@@ -144,11 +144,11 @@ A tabela a seguir relaciona as **15 Issues Oficiais de QA** do board com seus m�
 * **`CON-08`**: Garantir limpeza dos arquivos temporários de áudio no cliente após o envio.
 
 ### 5.7. Documentos Clínicos, Versionamento, Anulação & PDF (Issue #286)
-* **`DOC-01`**: Criar rascunho de receita ou atestado.
+* **`DOC-01`**: Criar rascunhos de receita simples, atestado, laudo e pedido de exame; recusar receita controlada e documento livre no MVP.
 * **`DOC-02`**: Editar rascunho de documento enquanto estiver em status `DRAFT`.
 * **`DOC-03`**: Emitir documento gerando snapshot imutável dos dados clínicos.
-* **`DOC-04`**: Impedir qualquer edição em documento em status `ISSUED` (`422 BUSINESS_RULE_VIOLATION`).
-* **`DOC-05`**: Gerar PDF oficial a partir do snapshot e conferir layout/conteúdo.
+* **`DOC-04`**: Impedir qualquer edição em documento em status `ISSUED` ou `VOIDED` (`409 DOCUMENT_STATE_CONFLICT`).
+* **`DOC-05`**: Gerar PDF para impressão e assinatura manuscrita a partir do snapshot e conferir layout/conteúdo; não apresentar como assinado eletronicamente.
 * **`DOC-06`**: Anular documento emitido exigindo justificativa obrigatória.
 * **`DOC-07`**: Validar que documento anulado exibe tarja visual de anulação e não pode ser re-emitido.
 * **`DOC-08`**: Consultar histórico completo de versões do documento.
@@ -163,11 +163,12 @@ A tabela a seguir relaciona as **15 Issues Oficiais de QA** do board com seus m�
 
 ### 5.9. Comunicações & WhatsApp (Issue #302)
 * **`MSG-01`**: Conectar sessão do WhatsApp via provedor WAHA e monitorar transição de status.
-* **`MSG-02`**: Enviar mensagem automática de lembrete de consulta.
-* **`MSG-03`**: Processar webhook de confirmação de leitura ou resposta do paciente.
-* **`MSG-04`**: Reenviar mensagem que falhou utilizando `Idempotency-Key` para evitar múltiplos disparos.
-* **`MSG-05`**: Configurar modelos de mensagens de lembrete e confirmação.
+* **`MSG-02`**: Enfileirar confirmação de agendamento, cancelamento e lembrete de 24 horas apenas com opt-in ativo, sem bloquear o agendamento quando WAHA estiver indisponível.
+* **`MSG-03`**: Processar webhook autenticado de entrega/leitura, incluindo eventos duplicados e fora de ordem.
+* **`MSG-04`**: Reenviar apenas `FAILED` com `Idempotency-Key`; impedir nova cópia após aceite, entrega ou leitura.
+* **`MSG-05`**: Configurar textos dos três eventos, recusando variáveis desconhecidas e conteúdo clínico.
 * **`MSG-06`**: Tratar desconexão do WhatsApp alertando a equipe na interface.
+* **`MSG-07`**: Revogar opt-in, impedir novos envios e cancelar mensagens ainda enfileiradas quando possível.
 
 ### 5.10. Configurações & Horários da Clínica (Issue #313)
 * **`CFG-01`**: Atualizar dados institucionais, endereço e logotipo da clínica.

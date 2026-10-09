@@ -71,8 +71,10 @@ Em caso de falha (códigos HTTP 4xx e 5xx), a API responde com a seguinte estrut
 | **409** | `ALREADY_EXISTS` | Conflito de duplicidade de chave única (ex: e-mail já cadastrado, slug já utilizado). |
 | **409** | `SLOT_CONFLICT` | Horário de agendamento já reservado por outro paciente. |
 | **409** | `LAST_ADMIN_REQUIRED` | Tentativa de remover ou rebaixar o último administrador da organização. |
+| **409** | `MESSAGE_STATE_CONFLICT` | Tentativa de reenviar mensagem fora do estado permitido. |
+| **409** | `DOCUMENT_STATE_CONFLICT` | Tentativa de editar, emitir ou anular documento fora do estado permitido. |
 | **410** | `INVITE_EXPIRED` | O convite para a equipe expirou ou foi revogado. |
-| **422** | `BUSINESS_RULE_VIOLATION` | Violação de regra de negócio (ex: tentar alterar documento clínico já emitido). |
+| **422** | `BUSINESS_RULE_VIOLATION` | Violação de regra de negócio com estado válido (ex: campos clínicos obrigatórios ausentes para emissão). |
 | **429** | `RATE_LIMITED` | Limite de requisições excedido. |
 | **500** | `INTERNAL` | Erro interno do servidor. Não exibe stack traces nem detalhes de infraestrutura em produção. |
 
@@ -262,8 +264,10 @@ O fluxo obrigatório é:
 
 ---
 
-### Módulo 4: Equipe, Convites & RBAC Granular
+### Módulo 4: Equipe, Convites & Papéis Fixos
 *(Ref: Issues [#194](https://github.com/Flowcare-team/flowcare-monorepo/issues/194), [#314](https://github.com/Flowcare-team/flowcare-monorepo/issues/314)–[#319](https://github.com/Flowcare-team/flowcare-monorepo/issues/319))*
+
+**Decisão de produto do MVP:** a [matriz de papéis e capacidades](RBAC_MVP.md) define quatro papéis fixos: `ADMIN`, `ADMIN_PROFESSIONAL`, `PROFESSIONAL` e `RECEPTIONIST`. Papéis personalizados e `roles:manage` ficam fora do MVP. O schema atual ainda contém três papéis e precisa ser migrado antes de aplicar a matriz em produção. Habilitações específicas de ações clínicas exigem revisão por responsável clínico antes da ativação.
 
 #### `GET /organizations/:orgSlug/members`
 * **Descrição:** Lista os membros da equipe da clínica com seus respectivos papéis.
@@ -274,7 +278,7 @@ O fluxo obrigatório é:
 * **Descrição:** Envia convite por e-mail para integrar uma pessoa à equipe com um papel específico.
 * **Permissão:** `team:invite`.
 * **Cabeçalho Obrigatório:** `Idempotency-Key`
-* **Body:** `{ "email": "recepcao@exemplo.com", "roleId": "role_receptionist" }`
+* **Body:** `{ "email": "recepcao@exemplo.com", "role": "RECEPTIONIST" }`
 * **Respostas:** `201 Created` (`{ "invite": { "id": "inv_1", "email": "...", "expiresAt": "..." } }`), `409 ALREADY_EXISTS`.
 
 #### `POST /invites/:token/accept`
@@ -286,7 +290,7 @@ O fluxo obrigatório é:
 #### `PATCH /organizations/:orgSlug/members/:memberId/role`
 * **Descrição:** Altera o papel de um membro. Valida obrigatoriamente a proteção do último administrador.
 * **Permissão:** `team:manage`.
-* **Body:** `{ "roleId": "role_doctor", "version": 1 }`
+* **Body:** `{ "role": "PROFESSIONAL", "version": 1 }`
 * **Respostas:** `200 OK`, `409 LAST_ADMIN_REQUIRED`, `409 VERSION_CONFLICT`.
 
 #### `DELETE /organizations/:orgSlug/members/:memberId`
@@ -295,15 +299,11 @@ O fluxo obrigatório é:
 * **Respostas:** `200 OK`, `409 LAST_ADMIN_REQUIRED`.
 
 #### `GET /organizations/:orgSlug/roles`
-* **Descrição:** Lista os papéis padrão (Administrador, Profissional, Recepcionista) e papéis personalizados da clínica.
+* **Descrição:** Lista os quatro papéis fixos com suas capacidades e a contagem de membros da clínica em cada papel.
 * **Permissão:** `roles:read`.
 * **Respostas:** `200 OK`.
 
-#### `POST /organizations/:orgSlug/roles`
-* **Descrição:** Cria um papel personalizado de acesso atribuindo permissões granulares especificadas.
-* **Permissão:** `roles:manage`.
-* **Body:** `{ "name": "Enfermeira Chefe", "permissions": ["patients:read", "patients:write", "consultations:read"] }`
-* **Respostas:** `201 Created`.
+> `POST` e `PATCH /organizations/:orgSlug/roles` não fazem parte do MVP; criação e edição de papéis personalizados foram adiadas.
 
 ---
 
@@ -336,7 +336,7 @@ O fluxo obrigatório é:
 
 #### `POST /organizations/:orgSlug/patients/:patientId/attachments`
 * **Descrição:** Upload de arquivo/exame privado para o prontuário do paciente.
-* **Permissão:** `patients:write`.
+* **Permissão:** `patients:attachments:write`.
 * **Body:** `multipart/form-data` (`file`, `category`, `description`).
 * **Respostas:** `201 Created` (`{ "attachmentId": "att_123", "fileName": "exame_sangue.pdf" }`), `413 FILE_TOO_LARGE`.
 
@@ -415,8 +415,18 @@ O fluxo obrigatório é:
 ### Módulo 8: Documentos Clínicos, Versionamento & Anulação
 *(Ref: Issues [#195](https://github.com/Flowcare-team/flowcare-monorepo/issues/195), [#273](https://github.com/Flowcare-team/flowcare-monorepo/issues/273)–[#278](https://github.com/Flowcare-team/flowcare-monorepo/issues/278))*
 
+**Decisão do MVP:** ver [ciclo de vida e snapshot](DOCUMENTS_MVP.md). Receitas controladas e assinatura eletrônica não fazem parte do MVP. `ISSUED` indica PDF final para impressão e assinatura manuscrita, não documento eletrônico assinado. Todas as rotas deste módulo ainda são planejadas.
+
+#### `GET /organizations/:orgSlug/documents`
+* **Descrição:** Lista documentos da clínica com paginação e filtros, sem conteúdo clínico completo na listagem.
+* **Permissão:** `documents:read`.
+
+#### `GET /organizations/:orgSlug/documents/:documentId`
+* **Descrição:** Consulta detalhe, estado e vínculo de versões de um documento.
+* **Permissão:** `documents:read`.
+
 #### `POST /organizations/:orgSlug/documents`
-* **Descrição:** Cria rascunho de receita, atestado, pedido de exame ou relatório médico.
+* **Descrição:** Cria rascunho de receita simples, atestado, pedido de exame ou laudo. Receita controlada e documento livre/personalizado são recusados no MVP.
 * **Permissão:** `documents:write`.
 * **Body:** `{ "patientId": "pat_1", "type": "PRESCRIPTION", "title": "Receita Simples", "content": "..." }`
 * **Respostas:** `201 Created` (`{ "documentId": "doc_99", "status": "DRAFT", "version": 1 }`).
@@ -425,16 +435,21 @@ O fluxo obrigatório é:
 * **Descrição:** Edita o conteúdo de um documento **enquanto ele for RASCUNHO** (`DRAFT`).
 * **Permissão:** `documents:write`.
 * **Body:** `{ "content": "Novo texto...", "version": 1 }`
-* **Respostas:** `200 OK`, `422 BUSINESS_RULE_VIOLATION` (se o documento já foi assinado/emitido).
+* **Respostas:** `200 OK`, `409 DOCUMENT_STATE_CONFLICT` (se não estiver em `DRAFT`), `409 VERSION_CONFLICT`.
 
 #### `POST /organizations/:orgSlug/documents/:documentId/issue`
-* **Descrição:** Emite o documento com snapshot imutável dos dados médicos e assinatura.
+* **Descrição:** Finaliza o documento com snapshot imutável e PDF para impressão e assinatura manuscrita; não assina eletronicamente.
 * **Permissão:** `documents:issue`.
 * **Body:** `{ "version": 2 }`
-* **Respostas:** `200 OK` (`{ "status": "ISSUED", "issuedAt": "...", "snapshotHash": "sha256_..." }`).
+* **Respostas:** `200 OK` (`{ "status": "ISSUED", "issuedAt": "...", "snapshotHash": "sha256_..." }`), `409 DOCUMENT_STATE_CONFLICT`, `422 BUSINESS_RULE_VIOLATION` (campos obrigatórios ausentes). Uma falha de PDF não conclui a emissão.
+
+#### `POST /organizations/:orgSlug/documents/:documentId/rectify`
+* **Descrição:** Cria novo rascunho vinculado a um documento `ISSUED`, preservando o original. A emissão do novo rascunho recebe a próxima versão da cadeia.
+* **Permissão:** `documents:write`.
+* **Respostas:** `201 Created` (`{ "documentId": "doc_100", "status": "DRAFT", "replacesDocumentId": "doc_99" }`), `409 DOCUMENT_STATE_CONFLICT`.
 
 #### `GET /organizations/:orgSlug/documents/:documentId/pdf`
-* **Descrição:** Baixa ou visualiza o PDF oficial gerado a partir do snapshot imutável do documento emitido.
+* **Descrição:** Após autorização, transmite o PDF privado gerado a partir do snapshot imutável, identificado como arquivo para impressão e assinatura manuscrita.
 * **Permissão:** `documents:read`.
 * **Respostas:** `200 OK` (`Content-Type: application/pdf`).
 
@@ -442,12 +457,16 @@ O fluxo obrigatório é:
 * **Descrição:** Anula formalmente um documento emitido. Exige justificativa motivada e mantém histórico de versões.
 * **Permissão:** `documents:void`.
 * **Body:** `{ "reason": "Erro na dosagem do medicamento prescrevido", "version": 3 }`
-* **Respostas:** `200 OK` (`{ "status": "VOIDED", "voidedAt": "...", "voidReason": "..." }`).
+* **Respostas:** `200 OK` (`{ "status": "VOIDED", "voidedAt": "...", "voidReason": "..." }`), `409 DOCUMENT_STATE_CONFLICT`.
 
 #### `GET /organizations/:orgSlug/documents/:documentId/versions`
 * **Descrição:** Retorna a trilha de histórico de todas as alterações e snapshots do documento.
 * **Permissão:** `documents:read`.
 * **Respostas:** `200 OK` (`{ "versions": [ { "version": 1, "status": "DRAFT" }, { "version": 2, "status": "ISSUED" } ] }`).
+
+#### `GET /organizations/:orgSlug/documents/:documentId/versions/:versionId`
+* **Descrição:** Consulta um snapshot histórico imutável autorizado.
+* **Permissão:** `documents:read`.
 
 ---
 
@@ -475,21 +494,40 @@ O fluxo obrigatório é:
 ### Módulo 10: Comunicações & Integração WhatsApp (WAHA)
 *(Ref: Issues [#196](https://github.com/Flowcare-team/flowcare-monorepo/issues/196), [#295](https://github.com/Flowcare-team/flowcare-monorepo/issues/295)–[#298](https://github.com/Flowcare-team/flowcare-monorepo/issues/298))*
 
+**Decisão do MVP:** ver [catálogo, consentimento e estados de mensagens](MESSAGING_MVP.md). Apenas confirmação de agendamento, cancelamento e lembrete 24 horas antes são enviados por WhatsApp, com opt-in ativo do paciente. Mensagens de autenticação e convite usam e-mail. As rotas abaixo ainda são planejadas.
+
 #### `GET /organizations/:orgSlug/communications/whatsapp/status`
 * **Descrição:** Consulta o status da sessão do WhatsApp (conectado, desconectado, QR code pendente).
 * **Permissão:** `communications:read`.
 * **Respostas:** `200 OK` (`{ "status": "CONNECTED", "phoneNumber": "5511999998888" }`).
 
 #### `GET /organizations/:orgSlug/communications/messages`
-* **Descrição:** Lista o histórico paginado de mensagens de confirmação e lembrete enviadas.
+* **Descrição:** Lista o histórico paginado de mensagens operacionais com filtros por estado e período; telefone mascarado.
 * **Permissão:** `communications:read`.
-* **Respostas:** `200 OK`.
+* **Respostas:** `200 OK` (`{ "items": [{ "id": "msg_1", "type": "APPOINTMENT_REMINDER", "status": "QUEUED", "phoneMasked": "(11) 98765-****" }], "nextCursor": null }`). Estados: `QUEUED`, `SENT`, `DELIVERED`, `READ`, `FAILED`.
+
+#### `PATCH /organizations/:orgSlug/patients/:patientId/communication-preferences`
+* **Descrição:** Registra opt-in ou opt-out de WhatsApp informado pelo paciente, com origem, autor e horário auditáveis. Opt-out cancela disparos pendentes quando possível.
+* **Permissão:** `patients:write`.
+* **Body:** `{ "whatsappOptIn": false, "source": "PATIENT_REQUEST" }`.
+
+#### `GET /organizations/:orgSlug/communications/whatsapp/templates`
+* **Descrição:** Lista os textos de confirmação, cancelamento e lembrete, com variáveis permitidas.
+* **Permissão:** `communications:read`.
+
+#### `PUT /organizations/:orgSlug/communications/whatsapp/templates/:type`
+* **Descrição:** Atualiza um texto operacional, recusando variáveis desconhecidas. O texto deve passar por revisão da clínica antes da ativação para impedir conteúdo clínico.
+* **Permissão:** `communications:write`.
+
+#### `POST /webhooks/whatsapp/status`
+* **Descrição:** Recebe atualização de entrega do WAHA após validar segredo configurado; evento repetido é idempotente e atualização fora de ordem não regride o estado.
+* **Permissão:** segredo do webhook, sem sessão de usuário.
 
 #### `POST /organizations/:orgSlug/communications/messages/:messageId/resend`
-* **Descrição:** Solicita reenvio de mensagem com falha, utilizando proteção contra duplicação de disparos.
+* **Descrição:** Solicita reenvio apenas de mensagem `FAILED`, após verificar novamente opt-in, telefone e agendamento; registra o operador. Mensagens `SENT`, `DELIVERED` e `READ` não são reenviadas.
 * **Permissão:** `communications:write`.
 * **Cabeçalho Obrigatório:** `Idempotency-Key`
-* **Respostas:** `200 OK` (`{ "status": "QUEUED" }`).
+* **Respostas:** `200 OK` (`{ "status": "QUEUED" }`), `409 MESSAGE_STATE_CONFLICT` se não for elegível. Repetir a chave retorna o resultado original.
 
 ---
 
