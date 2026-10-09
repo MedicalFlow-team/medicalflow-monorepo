@@ -1,5 +1,6 @@
 "use client";
 
+import { ChevronDownIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
   type ChangeEvent,
@@ -26,6 +27,7 @@ export function ClinicForm() {
   const router = useRouter();
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
+  const [isEditingSlug, setIsEditingSlug] = useState(false);
   const [isCustomizingSlug, setIsCustomizingSlug] = useState(false);
   const [slugStatus, setSlugStatus] = useState<
     "idle" | "checking" | "available" | "unavailable"
@@ -52,6 +54,7 @@ export function ClinicForm() {
   function handleSlugChange(event: ChangeEvent<HTMLInputElement>) {
     const rawValue = event.target.value;
     const normalized = slugify(rawValue);
+    setIsCustomizingSlug(true);
     setSlug(normalized);
     setFieldErrors((prev) => ({ ...prev, slug: undefined }));
   }
@@ -104,7 +107,7 @@ export function ClinicForm() {
     }
 
     if (slugStatus === "unavailable") {
-      setIsCustomizingSlug(true);
+      setIsEditingSlug(true);
       setFieldErrors({ slug: "Este endereço já está em uso. Escolha outro." });
       toast.error("Este endereço já está em uso. Escolha outro.");
       return;
@@ -115,7 +118,7 @@ export function ClinicForm() {
         const result = await createClinicAction(validation.data);
         if (!result.ok) {
           if (result.error.code === "ALREADY_EXISTS") {
-            setIsCustomizingSlug(true);
+            setIsEditingSlug(true);
             setFieldErrors({
               slug: "Este endereço já está em uso. Escolha outro.",
             });
@@ -159,23 +162,25 @@ export function ClinicForm() {
       </div>
 
       <div className="space-y-3 text-sm">
-        <p className="text-muted-foreground">
-          Sua equipe acessará a clínica em{" "}
-          <span className="font-mono font-medium text-foreground">
+        <div className="flex items-center justify-between gap-3">
+          <span className="min-w-0 break-all font-mono font-medium text-foreground">
             app/{slug || "sua-clinica"}
           </span>
-          .
-        </p>
-        {!isCustomizingSlug ? (
           <button
             type="button"
-            onClick={() => setIsCustomizingSlug(true)}
-            className="text-primary hover:underline"
+            onClick={() => setIsEditingSlug((current) => !current)}
+            aria-expanded={isEditingSlug}
+            aria-controls="clinic-slug-editor"
+            className="inline-flex shrink-0 items-center gap-1 text-primary hover:underline"
           >
             Editar endereço
+            <ChevronDownIcon
+              className={`size-4 transition-transform ${isEditingSlug ? "rotate-180" : ""}`}
+            />
           </button>
-        ) : (
-          <div className="space-y-2">
+        </div>
+        {isEditingSlug && (
+          <div id="clinic-slug-editor" className="space-y-2">
             <div className="flex items-center justify-between">
               <Label htmlFor="clinic-slug" className="required">
                 Endereço no Flowcare
@@ -186,6 +191,7 @@ export function ClinicForm() {
                   setSlug(slugify(name));
                   setFieldErrors((prev) => ({ ...prev, slug: undefined }));
                   setIsCustomizingSlug(false);
+                  setIsEditingSlug(false);
                 }}
                 className="text-xs font-normal text-primary hover:underline"
               >
