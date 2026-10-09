@@ -1,0 +1,25 @@
+name: Verify SES events
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Count recent SES webhook events
+        uses: appleboy/ssh-action@v1.2.2
+        with:
+          host: ${{ secrets.FLOWCARE_VPS_HOST }}
+          username: root
+          key: ${{ secrets.FLOWCARE_VPS_SSH_KEY }}
+          script_stop: true
+          script: |
+            set -euo pipefail
+            docker service logs flowcare_api --since 30m --raw 2>&1 \
+              | grep '"msg":"ses_event"' \
+              | grep -oE '"status":"(DELIVERY|BOUNCE|COMPLAINT)"' \
+              | sort | uniq -c
