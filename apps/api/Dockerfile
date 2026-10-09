@@ -10,27 +10,19 @@ COPY apps/api/prisma.config.ts ./apps/api/
 # src/generated é gitignored: o Prisma Client nasce aqui (Bun roda TS nativo).
 RUN cd apps/api && bunx prisma generate
 
-# --- deps: somente produção do workspace api ---
-FROM oven/bun:1.4-slim AS deps
-WORKDIR /app
-COPY package.json bun.lock ./
-COPY apps/api/package.json apps/api/
-RUN bun install --frozen-lockfile --production --filter flowcare-api
-# alguns pacotes (pg, @prisma/adapter-pg) ficam em apps/api/node_modules:
-# garante que o path exista para o COPY do estágio runtime.
-RUN mkdir -p apps/api/node_modules
-
 # --- runtime ---
 # Bun executa TypeScript nativamente: sem bundle. Layout espelha o monorepo
 # para a resolução de node_modules (raiz + workspace) funcionar igual ao dev.
 FROM oven/bun:1.4-slim AS runtime
 WORKDIR /app/apps/api
 ENV NODE_ENV=production
-COPY --from=deps /app/node_modules /app/node_modules
-COPY --from=deps /app/apps/api/node_modules ./node_modules
+COPY --from=build /app/node_modules /app/node_modules
+COPY --from=build /app/apps/api/node_modules ./node_modules
 COPY --from=build /app/apps/api/src/generated ./src/generated
 COPY apps/api/package.json ./
-COPY apps/api/src ./src`nCOPY apps/api/prisma ./prisma`nCOPY apps/api/prisma.config.ts ./
+COPY apps/api/src ./src
+COPY apps/api/prisma ./prisma
+COPY apps/api/prisma.config.ts ./
 USER bun
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
