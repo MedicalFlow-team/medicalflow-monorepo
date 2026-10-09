@@ -29,5 +29,8 @@ export function accountModule(deps: AccountModuleDeps) {
       {
         response: { 200: m.sessionsResponse },
       },
-    );
+    )
+    .get("/me/profile", ({ auth }) => service.getProfile(auth.userId), {
+      response: { 200: m.profileResponse },
+    });
 }

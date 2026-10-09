@@ -17,4 +17,12 @@ export const inviteResponse = t.Object({
   expiresAt: t.String(),
 });
 export const acceptResponse = t.Object({ organizationSlug: t.String() });
+export const inviteDetailsResponse = t.Object({
+  organizationName: t.String(),
+  organizationSlug: t.String(),
+  email: t.String(),
+  role: t.String(),
+  expiresAt: t.String(),
+});
 export type CreateInviteBody = typeof createInviteBody.static;
+export type InviteDetailsResponse = typeof inviteDetailsResponse.static;

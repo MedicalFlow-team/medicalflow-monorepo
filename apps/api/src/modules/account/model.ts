@@ -38,7 +38,17 @@ export const sessionsResponse = t.Object(
   { additionalProperties: false },
 );
 
+export const profileResponse = t.Object(
+  {
+    id: t.String(),
+    fullName: t.String(),
+    email: t.String({ format: "email" }),
+  },
+  { additionalProperties: false },
+);
+
 export type ChangePasswordBody = typeof changePasswordBody.static;
 export type ChangePasswordResponse = typeof changePasswordResponse.static;
 export type SessionItem = typeof sessionItem.static;
 export type SessionsResponse = typeof sessionsResponse.static;
+export type ProfileResponse = typeof profileResponse.static;

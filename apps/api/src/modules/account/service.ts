@@ -8,6 +8,7 @@ import { InvalidCurrentPassword, UserNotFound } from "./errors";
 import type {
   ChangePasswordBody,
   ChangePasswordResponse,
+  ProfileResponse,
   SessionsResponse,
 } from "./model";
 
@@ -90,5 +91,16 @@ export class AccountService {
         lastActiveAt: s.lastActiveAt.toISOString(),
       })),
     };
+  }
+
+  async getProfile(userId: string): Promise<ProfileResponse> {
+    const user = await this.deps.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, fullName: true, email: true },
+    });
+    if (!user) {
+      throw UserNotFound();
+    }
+    return user;
   }
 }

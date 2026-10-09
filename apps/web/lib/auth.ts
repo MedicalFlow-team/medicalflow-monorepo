@@ -32,7 +32,8 @@ export function safeReturnPath(value: string | null): string | null {
       url.pathname === "/app" ||
       url.pathname.startsWith("/app/") ||
       url.pathname.startsWith("/onboarding/") ||
-      url.pathname === "/select-organization"
+      url.pathname === "/select-organization" ||
+      url.pathname.startsWith("/accept-invite/")
     ) {
       return `${url.pathname}${url.search}${url.hash}`;
     }
