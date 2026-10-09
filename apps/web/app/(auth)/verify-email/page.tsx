@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { VerifyEmail } from "@/components/flowcare/verify-email";
 
-export const metadata: Metadata = { title: "Confirmar e-mail | Flowcare" };
+export const metadata: Metadata = { title: "Confirme seu e-mail | Flowcare" };
 
 export default async function Page({
   searchParams,
@@ -15,7 +15,7 @@ export default async function Page({
         id="auth-title"
         className="mb-3 text-center text-4xl font-normal leading-[44px] tracking-[-0.04em]"
       >
-        Confirmar e-mail
+        Confirme seu e-mail
       </h1>
       <VerifyEmail token={token} initialEmail={email} />
     </section>
