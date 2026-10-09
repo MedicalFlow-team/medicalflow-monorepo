@@ -6,6 +6,9 @@ os pontos de entrada JavaScript das ferramentas para evitar os launchers
 
 Frontend Next.js do Flowcare. Os fluxos de autenticação ficam em `/login`,
 `/register`, `/verify-email`, `/forgot-password` e `/reset-password`.
+Em `/onboarding/profile`, a pessoa carrega e salva seu perfil inicial. Pode
+salvar um rascunho e retomá-lo depois; a conclusão leva à página de chegada
+da clínica, cuja configuração completa pertence à task #221.
 
 Na raiz do monorepositório, instale as dependências com `bun install` e execute
 `bun run dev:api` e `bun run dev:web` em terminais separados. As Server Actions

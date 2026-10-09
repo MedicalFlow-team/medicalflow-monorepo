@@ -2,7 +2,11 @@ import type { PrismaClient } from "../../generated/prisma/client";
 import { ApiError } from "../../lib/api-error";
 import { slugify } from "../../lib/slug";
 import { Unauthenticated } from "../auth/errors";
-import type { CreateOrganizationBody } from "./model";
+import type {
+  CreateOrganizationBody,
+  ProfileBody,
+  ProfileDraftBody,
+} from "./model";
 
 /**
  * Dependências do módulo (controller): prisma + secret para o authPlugin.
@@ -21,23 +25,124 @@ export class OnboardingService {
 
   /** #215 — progresso da própria conta; 404 sem registro é estado "novo". */
   async getProgress(userId: string) {
-    const progress = await this.deps.prisma.onboardingProgress.findUnique({
-      where: { userId },
-    });
+    const [progress, user] = await Promise.all([
+      this.deps.prisma.onboardingProgress.findUnique({ where: { userId } }),
+      this.deps.prisma.user.findUnique({
+        where: { id: userId },
+        select: { profileCompletedAt: true },
+      }),
+    ]);
+    if (!user) throw Unauthenticated();
     if (!progress) {
       return {
-        currentStep: "ORGANIZATION_SETUP",
+        currentStep: user.profileCompletedAt
+          ? "ORGANIZATION_SETUP"
+          : "PROFILE_SETUP",
         completed: false,
         draftData: {},
         version: 0,
       };
     }
     return {
-      currentStep: progress.currentStep,
+      currentStep: user.profileCompletedAt
+        ? progress.currentStep
+        : "PROFILE_SETUP",
       completed: progress.completed,
       draftData: progress.draftData as Record<string, unknown>,
       version: progress.version,
     };
+  }
+
+  async getProfile(userId: string) {
+    const user = await this.deps.prisma.user.findUnique({
+      where: { id: userId },
+      include: { onboarding: true },
+    });
+    if (!user) throw Unauthenticated();
+    const savedDraft = user.onboarding?.draftData;
+    const draft =
+      savedDraft && typeof savedDraft === "object" && !Array.isArray(savedDraft)
+        ? (savedDraft as Record<string, unknown>).profile
+        : null;
+    const profileDraft =
+      draft && typeof draft === "object" && !Array.isArray(draft)
+        ? (draft as Record<string, unknown>)
+        : null;
+    const field = (name: keyof ProfileDraftBody, fallback: string | null) =>
+      !user.profileCompletedAt && typeof profileDraft?.[name] === "string"
+        ? (profileDraft[name] as string)
+        : fallback;
+    return {
+      fullName: field("fullName", user.fullName) ?? user.fullName,
+      phone: field("phone", user.phone),
+      professionalRole: field("professionalRole", user.professionalRole),
+      professionalTitle: field("professionalTitle", user.professionalTitle),
+      registrationNumber: field("registrationNumber", user.registrationNumber),
+      completed: user.profileCompletedAt !== null,
+    };
+  }
+
+  async saveProfileDraft(userId: string, body: ProfileDraftBody) {
+    await this.deps.prisma.onboardingProgress.upsert({
+      where: { userId },
+      create: {
+        userId,
+        currentStep: "PROFILE_SETUP",
+        draftData: { profile: body },
+        version: 1,
+      },
+      update: {
+        draftData: { profile: body },
+        version: { increment: 1 },
+      },
+    });
+    return this.getProfile(userId);
+  }
+
+  async saveProfile(userId: string, body: ProfileBody) {
+    const fullName = body.fullName.trim();
+    const phone = body.phone.replace(/\D/g, "");
+    const professionalTitle = body.professionalTitle?.trim() || null;
+    const registrationNumber = body.registrationNumber?.trim() || null;
+    if (fullName.length < 3 || phone.length < 10 || phone.length > 13) {
+      throw new ApiError("VALIDATION_ERROR", 400, "Nome ou telefone inválido.");
+    }
+    if (
+      body.professionalRole === "CLINICAL" &&
+      (!professionalTitle || !registrationNumber)
+    ) {
+      throw new ApiError(
+        "VALIDATION_ERROR",
+        400,
+        "Informe a profissão e o registro profissional.",
+      );
+    }
+
+    await this.deps.prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: userId },
+        data: {
+          fullName,
+          phone,
+          professionalRole: body.professionalRole,
+          professionalTitle:
+            body.professionalRole === "CLINICAL" ? professionalTitle : null,
+          registrationNumber:
+            body.professionalRole === "CLINICAL" ? registrationNumber : null,
+          profileCompletedAt: new Date(),
+        },
+      });
+      await tx.onboardingProgress.upsert({
+        where: { userId },
+        create: { userId, currentStep: "ORGANIZATION_SETUP", version: 1 },
+        update: {
+          currentStep: "ORGANIZATION_SETUP",
+          draftData: {},
+          version: { increment: 1 },
+        },
+      });
+    });
+    return this.getProfile(userId);
   }
 
   /**

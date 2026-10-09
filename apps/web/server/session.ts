@@ -23,3 +23,8 @@ export async function clearSession() {
   const store = await cookies();
   store.set({ ...sessionOptions(), value: "", maxAge: 0 });
 }
+
+export async function getSessionToken(): Promise<string | null> {
+  const store = await cookies();
+  return store.get(sessionOptions().name)?.value ?? null;
+}

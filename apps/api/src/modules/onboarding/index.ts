@@ -20,6 +20,25 @@ export function onboardingModule(deps: OnboardingDeps) {
         .get("/progress", ({ auth }) => service.getProgress(auth.userId), {
           response: { 200: m.progressResponse },
         })
+        .get("/profile", ({ auth }) => service.getProfile(auth.userId), {
+          response: { 200: m.profileResponse },
+        })
+        .post(
+          "/profile",
+          ({ auth, body }) => service.saveProfile(auth.userId, body),
+          {
+            body: m.profileBody,
+            response: { 200: m.profileResponse },
+          },
+        )
+        .patch(
+          "/profile",
+          ({ auth, body }) => service.saveProfileDraft(auth.userId, body),
+          {
+            body: m.profileDraftBody,
+            response: { 200: m.profileResponse },
+          },
+        )
         .post(
           "/organization",
           async ({ auth, body, status }) =>

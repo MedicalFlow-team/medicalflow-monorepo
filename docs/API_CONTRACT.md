@@ -150,13 +150,24 @@ Em caso de falha (códigos HTTP 4xx e 5xx), a API responde com a seguinte estrut
 #### `GET /onboarding/progress`
 * **Descrição:** Recupera o estado atual do assistente de primeiro acesso.
 * **Permissão:** Autenticado.
-* **Respostas:** `200 OK` (`{ "currentStep": "ORGANIZATION_SETUP", "completed": false, "draftData": {}, "version": 0 }`).
+* **Respostas:** `200 OK` (`{ "currentStep": "PROFILE_SETUP" | "ORGANIZATION_SETUP", "completed": false, "draftData": { ... }, "version": 0 }`). Contas sem perfil concluído recebem `PROFILE_SETUP`.
+
+#### `GET /onboarding/profile`
+* **Descrição:** Carrega o perfil da própria conta para o primeiro acesso, sem depender de clínica ativa.
+* **Permissão:** Autenticado.
+* **Resposta:** `200 OK` com `fullName`, `phone`, `professionalRole`, `professionalTitle`, `registrationNumber` e `completed`. Campos ainda não preenchidos são `null`.
+
+#### `PATCH /onboarding/profile`
+* **Descrição:** Salva um rascunho do perfil em `OnboardingProgress.draftData.profile` sem concluir a etapa. Os valores são restaurados por `GET /onboarding/profile` após recarregar.
+* **Permissão:** Autenticado.
+* **Body:** Mesmos campos de `POST /onboarding/profile`, aceitando valores vazios; os limites de tamanho e o papel profissional continuam validados.
+* **Resposta:** `200 OK` com o DTO de `GET /onboarding/profile` e `completed: false`.
 
 #### `POST /onboarding/profile`
-* **Descrição:** Salva dados pessoais e profissionais complementares. Não bloqueia o acesso inicial à clínica; dados de registro profissional só são obrigatórios antes de ações clínicas que os exigem.
+* **Descrição:** Salva o perfil pessoal e avança o progresso para `ORGANIZATION_SETUP` numa transação. Repetir a operação atualiza a mesma conta e não cria outro progresso.
 * **Permissão:** Autenticado.
-* **Body:** `{ "professionalTitle": "Médica Cardiologista", "registrationNumber": "CRM/SP 123456" }`
-* **Respostas:** `200 OK`, `400 VALIDATION_ERROR`.
+* **Body:** `{ "fullName": "Ana Oliveira", "phone": "85999990000", "professionalRole": "CLINICAL", "professionalTitle": "Médica Cardiologista", "registrationNumber": "CRM/CE 123456" }`. `professionalRole` aceita `MANAGEMENT`, `CLINICAL` ou `RECEPTION`; título e registro são obrigatórios apenas para `CLINICAL`.
+* **Respostas:** `200 OK` com o DTO de `GET /onboarding/profile`, `400 VALIDATION_ERROR`.
 
 #### `POST /onboarding/organization`
 * **Descrição:** Cria a primeira clínica do usuário e o vincula como administrador. Cria também a assinatura da clínica (R$ 89/mês, status `PENDING_PAYMENT` até o fluxo de cobrança ativar). Clínica, vínculo e assinatura nascem na mesma transação — falha em qualquer parte não deixa clínica órfã.
