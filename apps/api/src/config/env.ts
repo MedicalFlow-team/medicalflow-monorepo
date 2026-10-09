@@ -21,6 +21,8 @@ export interface Env {
   mailProvider: "disabled" | "console" | "ses";
   sesRegion: string | null;
   mailFrom: string | null;
+  snsTopicArn?: string | null;
+  sesConfigurationSet?: string | null;
 }
 
 function required(name: string): string {
@@ -49,6 +51,8 @@ export function loadEnv(): Env {
   const nodeEnv = optional("NODE_ENV", "development");
   const sesRegion = process.env.AWS_REGION?.trim() || null;
   const mailFrom = process.env.MAIL_FROM?.trim() || null;
+  const snsTopicArn = process.env.SNS_TOPIC_ARN?.trim() || null;
+  const sesConfigurationSet = process.env.SES_CONFIGURATION_SET?.trim() || null;
   const mailProvider = optional(
     "MAIL_PROVIDER",
     nodeEnv === "production" ? "disabled" : "console",
@@ -89,5 +93,7 @@ export function loadEnv(): Env {
     mailProvider,
     sesRegion,
     mailFrom,
+    snsTopicArn,
+    sesConfigurationSet,
   };
 }

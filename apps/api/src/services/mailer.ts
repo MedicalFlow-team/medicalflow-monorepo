@@ -28,7 +28,12 @@ export function createMailer(env: Env): Mailer {
     env.sesRegion &&
     env.mailFrom
   ) {
-    return new SesMailer(env.sesRegion, env.mailFrom);
+    return new SesMailer(
+      env.sesRegion,
+      env.mailFrom,
+      undefined,
+      env.sesConfigurationSet,
+    );
   }
   throw new Error("Configuração de e-mail inválida.");
 }
@@ -56,6 +61,7 @@ export class SesMailer implements Mailer {
     region: string,
     private readonly from: string,
     sendViaSes?: SendViaSes,
+    private readonly configurationSet?: string | null,
   ) {
     if (sendViaSes) {
       this.sendViaSes = sendViaSes;
@@ -74,6 +80,9 @@ export class SesMailer implements Mailer {
     const result = await this.sendViaSes(
       new SendEmailCommand({
         FromEmailAddress: this.from,
+        ...(this.configurationSet
+          ? { ConfigurationSetName: this.configurationSet }
+          : {}),
         Destination: { ToAddresses: [params.to] },
         Content: {
           Simple: {

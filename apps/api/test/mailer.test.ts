@@ -58,3 +58,28 @@ test("SES recebe o conteúdo e o log contém somente o ID da mensagem", async ()
   expect(logs[0]).not.toContain("secret-token");
   expect(logs[0]).not.toContain("person@example.com");
 });
+
+test("SES usa configuration set para publicar eventos de entrega", async () => {
+  let command: SendEmailCommand | undefined;
+  const mailer = new SesMailer(
+    "us-east-1",
+    "Flowcare <noreply@flowcare.me>",
+    async (sent) => {
+      command = sent;
+      return { MessageId: "ses-message-456" };
+    },
+    "flowcare-transactional",
+  );
+  const originalInfo = console.info;
+  console.info = () => {};
+  try {
+    await mailer.send({
+      to: "test@example.com",
+      subject: "Test",
+      text: "Test",
+    });
+  } finally {
+    console.info = originalInfo;
+  }
+  expect(command?.input.ConfigurationSetName).toBe("flowcare-transactional");
+});
