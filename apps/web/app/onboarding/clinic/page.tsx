@@ -25,7 +25,7 @@ export default async function OnboardingClinicPage() {
   if (profile && !profile.completed) redirect("/onboarding/profile");
 
   return (
-    <main className="min-h-svh bg-background px-5 py-12 text-foreground">
+    <main className="flex min-h-svh items-center justify-center bg-background px-5 py-12 text-foreground">
       <div className="mx-auto w-full max-w-lg">
         <div className="mb-8">
           <OnboardingStepper currentStep={2} />

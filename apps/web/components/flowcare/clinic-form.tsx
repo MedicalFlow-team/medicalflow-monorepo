@@ -19,6 +19,9 @@ import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
 import { clinicInputSchema, slugify } from "@/lib/onboarding-clinic";
 
+const inputClass =
+  "h-[47px] rounded-lg bg-card px-3 text-base md:text-base border-transparent focus-visible:border-primary";
+
 export function ClinicForm() {
   const router = useRouter();
   const [name, setName] = useState("");
@@ -139,7 +142,7 @@ export function ClinicForm() {
         <Label htmlFor="clinic-name">Nome da clínica</Label>
         <Input
           id="clinic-name"
-          className="h-11 bg-card px-3"
+          className={inputClass}
           name="name"
           autoComplete="organization"
           value={name}
@@ -177,11 +180,7 @@ export function ClinicForm() {
           readOnly={!isCustomizingSlug}
           aria-invalid={!!fieldErrors.slug || slugStatus === "unavailable"}
           maxLength={60}
-          className={
-            !isCustomizingSlug
-              ? "h-11 cursor-pointer bg-card px-3"
-              : "h-11 bg-card px-3"
-          }
+          className={`${inputClass}${!isCustomizingSlug ? " cursor-pointer" : ""}`}
           required
         />
 

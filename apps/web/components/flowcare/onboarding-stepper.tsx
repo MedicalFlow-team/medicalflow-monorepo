@@ -21,10 +21,18 @@ export function OnboardingStepper({ currentStep }: { currentStep: 1 | 2 }) {
     >
       <StepperNav aria-label="Etapas do primeiro acesso">
         {steps.map((title, index) => (
-          <StepperItem key={title} step={index + 1}>
-            <StepperIndicator>{index + 1}</StepperIndicator>
-            <StepperTitle>{title}</StepperTitle>
-            {index < steps.length - 1 && <StepperSeparator />}
+          <StepperItem
+            key={title}
+            step={index + 1}
+            className="relative flex-1 items-start"
+          >
+            <div className="flex flex-col items-center gap-2.5">
+              <StepperIndicator>{index + 1}</StepperIndicator>
+              <StepperTitle>{title}</StepperTitle>
+            </div>
+            {index < steps.length - 1 && (
+              <StepperSeparator className="absolute inset-x-0 top-3 left-[calc(50%+0.875rem)] m-0 w-[calc(100%-2rem+0.225rem)] flex-none bg-border" />
+            )}
           </StepperItem>
         ))}
       </StepperNav>
