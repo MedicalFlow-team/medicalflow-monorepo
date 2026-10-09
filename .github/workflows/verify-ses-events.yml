@@ -19,7 +19,19 @@ jobs:
           script_stop: true
           script: |
             set -euo pipefail
-            docker service logs flowcare_api --since 30m --raw 2>&1 \
-              | grep '"msg":"ses_event"' \
-              | grep -oE '"status":"(DELIVERY|BOUNCE|COMPLAINT)"' \
-              | sort | uniq -c
+            docker service logs flowcare_api --since 2h --raw 2>&1 \
+              | awk '
+                  { total++ }
+                  /ses_event/ {
+                    matched++
+                    if (match($0, /"status":"(DELIVERY|BOUNCE|COMPLAINT)"/)) {
+                      status = substr($0, RSTART, RLENGTH)
+                      count[status]++
+                    }
+                  }
+                  END {
+                    print "log_lines=" total, "ses_events=" matched
+                    for (status in count) print status, count[status]
+                    if (matched == 0) exit 1
+                  }
+                '
