@@ -125,3 +125,35 @@ test("createClinicAction mapeia erro de slug já em uso (ALREADY_EXISTS)", async
     error: { code: "ALREADY_EXISTS" },
   });
 });
+
+test("createClinicAction gera outro endereço quando o nome da clínica já está em uso", async () => {
+  const submittedSlugs: string[] = [];
+  globalThis.fetch = (async (_url, init) => {
+    const body = JSON.parse(String(init?.body)) as { slug: string };
+    submittedSlugs.push(body.slug);
+    if (submittedSlugs.length === 1) {
+      return Response.json(
+        { error: { code: "ALREADY_EXISTS" } },
+        { status: 409 },
+      );
+    }
+    return Response.json(
+      {
+        organization: {
+          id: "org-2",
+          name: "Clínica Vida",
+          slug: body.slug,
+          role: "ADMIN",
+          isOwner: true,
+        },
+      },
+      { status: 201 },
+    );
+  }) as unknown as typeof fetch;
+
+  const result = await createClinicAction({ name: "Clínica Vida" });
+
+  expect(result.ok).toBe(true);
+  expect(submittedSlugs[0]).toBe("clinica-vida");
+  expect(submittedSlugs[1]).toMatch(/^clinica-vida-[a-f0-9]{8}$/);
+});

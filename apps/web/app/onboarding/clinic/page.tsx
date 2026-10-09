@@ -34,8 +34,7 @@ export default async function OnboardingClinicPage() {
           Dê um nome à sua clínica
         </h1>
         <p className="mt-3 text-sm text-muted-foreground">
-          Defina o nome da sua clínica e o endereço que sua equipe usará para
-          acessá-la no aplicativo.
+          Defina o nome da sua clínica para continuar.
         </p>
         <ClinicForm />
       </div>
