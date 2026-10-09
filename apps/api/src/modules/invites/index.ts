@@ -37,5 +37,14 @@ export function inviteModule(deps: {
       ({ auth, params }) =>
         service.revoke(auth.userId, params.orgSlug, params.inviteId),
       { params: t.Object({ orgSlug: t.String(), inviteId: t.String() }) },
+    )
+    .post(
+      "/organizations/:orgSlug/invites/:inviteId/resend",
+      ({ auth, params }) =>
+        service.resend(auth.userId, params.orgSlug, params.inviteId),
+      {
+        params: t.Object({ orgSlug: t.String(), inviteId: t.String() }),
+        response: { 200: m.inviteResponse },
+      },
     );
 }

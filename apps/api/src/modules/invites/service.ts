@@ -130,6 +130,30 @@ export class InviteService {
     return { message: "Convite revogado." };
   }
 
+  async resend(adminId: string, slug: string, inviteId: string) {
+    const organization = await this.authorizeAdmin(adminId, slug);
+    const current = await this.deps.prisma.organizationInvite.findFirst({
+      where: {
+        id: inviteId,
+        organizationId: organization.id,
+        acceptedAt: null,
+        revokedAt: null,
+      },
+    });
+    if (!current || current.expiresAt <= new Date())
+      throw new ApiError("NOT_FOUND", 404, "Convite pendente não encontrado.");
+    const token = generateToken();
+    const invite = await this.deps.prisma.organizationInvite.update({
+      where: { id: current.id },
+      data: {
+        tokenHash: hashToken(token),
+        expiresAt: new Date(Date.now() + TTL_MS),
+      },
+    });
+    void this.send(invite.email, organization.name, token);
+    return { id: invite.id, email: invite.email, expiresAt: invite.expiresAt.toISOString() };
+  }
+
   private async authorizeAdmin(userId: string, slug: string) {
     const membership = await this.deps.prisma.membership.findFirst({
       where: {
