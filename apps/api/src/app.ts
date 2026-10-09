@@ -7,9 +7,9 @@ import { accountModule } from "./modules/account";
 import { authModule } from "./modules/auth";
 import type { AuthDeps } from "./modules/auth/service";
 import { inviteModule } from "./modules/invites";
-import { sesWebhook } from "./modules/webhooks/ses";
 import { onboardingModule } from "./modules/onboarding";
 import type { OnboardingDeps } from "./modules/onboarding/service";
+import { sesWebhook } from "./modules/webhooks/ses";
 import { requestLogger } from "./plugins/request-logger";
 import type { Mailer } from "./services/mailer";
 
