@@ -62,7 +62,6 @@ export function ProfileForm({ initialProfile }: { initialProfile: Profile }) {
       if (result.ok) {
         toast.success("Perfil concluído com sucesso!");
         router.replace("/onboarding/clinic");
-        router.refresh();
         return;
       }
       setErrors(result.fieldErrors ?? {});
