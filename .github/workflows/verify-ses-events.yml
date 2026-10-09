@@ -24,7 +24,7 @@ jobs:
                   { total++ }
                   /ses_event/ {
                     matched++
-                    if (match($0, /"status":"(DELIVERY|BOUNCE|COMPLAINT)"/)) {
+                    if (match($0, /"status":"(Delivery|Bounce|Complaint)"/)) {
                       status = substr($0, RSTART, RLENGTH)
                       count[status]++
                     }
