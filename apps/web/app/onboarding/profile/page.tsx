@@ -10,7 +10,12 @@ import {
 
 export const metadata: Metadata = { title: "Complete seu perfil | Flowcare" };
 
-export default async function OnboardingProfilePage() {
+export default async function OnboardingProfilePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ edit?: string }>;
+}) {
+  const { edit } = await searchParams;
   let profile: Profile | null = null;
   let loadError = false;
   let unauthenticated = false;
@@ -23,7 +28,7 @@ export default async function OnboardingProfilePage() {
   }
 
   if (unauthenticated) redirect("/login");
-  if (profile?.completed) redirect("/onboarding/clinic");
+  if (profile?.completed && edit !== "1") redirect("/onboarding/clinic");
 
   return (
     <main className="flex flex-1 items-center justify-center px-5">

@@ -221,22 +221,35 @@ export function ClinicForm() {
         )}
       </div>
 
-      <Button
-        type="submit"
-        disabled={
-          isPending || slugStatus === "unavailable" || slugStatus === "checking"
-        }
-        className="h-[46px] w-full rounded-lg text-base font-normal"
-      >
-        {isPending ? (
-          <>
-            <Spinner className="size-4 mr-2" />
-            Criando clínica...
-          </>
-        ) : (
-          "Criar clínica e continuar"
-        )}
-      </Button>
+      <div className="flex items-center justify-between gap-4">
+        <Button
+          type="button"
+          variant="outline"
+          disabled={isPending}
+          onClick={() => router.push("/onboarding/profile?edit=1")}
+          className="h-[46px] rounded-lg px-5 text-base font-normal"
+        >
+          Voltar
+        </Button>
+        <Button
+          type="submit"
+          disabled={
+            isPending ||
+            slugStatus === "unavailable" ||
+            slugStatus === "checking"
+          }
+          className="h-[46px] rounded-lg px-5 text-base font-normal"
+        >
+          {isPending ? (
+            <>
+              <Spinner className="mr-2 size-4" />
+              Criando clínica...
+            </>
+          ) : (
+            "Continuar"
+          )}
+        </Button>
+      </div>
     </form>
   );
 }
