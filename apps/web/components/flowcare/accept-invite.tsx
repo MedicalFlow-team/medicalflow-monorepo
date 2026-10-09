@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useTransition } from "react";
+import { toast } from "sonner";
 import {
   acceptInviteAction,
   switchAccountAction,
@@ -34,26 +35,25 @@ export function AcceptInvite({
 }: AcceptInviteProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [errorMessage, setErrorMessage] = useState("");
 
   const returnTo = `/accept-invite/${token}`;
 
   function handleAccept() {
     if (isPending) return;
-    setErrorMessage("");
     startTransition(async () => {
       try {
         const result = await acceptInviteAction(token);
         if (!result.ok) {
-          setErrorMessage(result.error.message);
+          toast.error(result.error.message);
           return;
         }
+        toast.success("Convite aceito com sucesso!");
         router.push(
           `/app/${encodeURIComponent(result.data.organizationSlug)}/dashboard`,
         );
         router.refresh();
       } catch {
-        setErrorMessage(
+        toast.error(
           "Não foi possível aceitar o convite no momento. Tente novamente.",
         );
       }
@@ -252,11 +252,6 @@ export function AcceptInvite({
             <span className="text-foreground">{currentUser.email}</span>
           </div>
         </div>
-        {errorMessage && (
-          <p role="alert" className="text-sm text-destructive text-center">
-            {errorMessage}
-          </p>
-        )}
       </CardContent>
       <CardFooter className="flex flex-col gap-2 pt-2">
         <Button

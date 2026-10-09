@@ -42,7 +42,8 @@ export function AuthForm({
   const isReset = mode === "reset-password";
   const isRegister = mode === "register";
   const showPassword = mode !== "forgot-password";
-  const inputClass = "h-[47px] rounded-lg bg-card px-3 text-base md:text-base";
+  const inputClass =
+    "h-[47px] rounded-lg bg-card px-3 text-base md:text-base border-transparent focus-visible:border-primary";
   const buttonClass =
     "h-[46px] w-full cursor-pointer rounded-lg text-base font-normal";
 
@@ -95,7 +96,7 @@ export function AuthForm({
           const successMsg =
             "Se o e-mail estiver cadastrado, você receberá um link para redefinir a senha.";
           setMessage(successMsg);
-          toast.success(successMsg);
+          toast.info(successMsg);
         } else {
           unwrapActionResult(
             await resetPasswordAction({
@@ -104,15 +105,17 @@ export function AuthForm({
             }),
           );
           const successMsg =
-            "Senha redefinida. Suas sessões anteriores foram encerradas.";
+            "Senha redefinida com sucesso. Suas sessões anteriores foram encerradas.";
           setMessage(successMsg);
-          toast.success(successMsg);
+          toast.info(successMsg);
         }
       } catch (cause) {
         if (cause instanceof Error && cause.name === "ACCOUNT_NOT_VERIFIED") {
           router.push(`/verify-email?email=${encodeURIComponent(email)}`);
         } else if (cause instanceof Error && cause.name === "INVALID_TOKEN") {
-          toast.error("Este link é inválido ou expirou. Solicite um novo link.");
+          toast.error(
+            "Este link é inválido ou expirou. Solicite um novo link.",
+          );
         } else if (
           cause instanceof Error &&
           cause.name === "INVALID_CREDENTIALS"
@@ -145,6 +148,7 @@ export function AuthForm({
             minLength={3}
             maxLength={120}
             className={inputClass}
+            placeholder="Seu nome completo"
             required
           />
         </div>
@@ -161,6 +165,11 @@ export function AuthForm({
             autoComplete="username"
             maxLength={254}
             className={inputClass}
+            placeholder={
+              mode === "forgot-password"
+                ? "Digite seu e-mail cadastrado"
+                : "seu@email.com"
+            }
             required
           />
         </div>
@@ -180,6 +189,13 @@ export function AuthForm({
             minLength={mode === "login" ? undefined : 8}
             maxLength={72}
             className={inputClass}
+            placeholder={
+              mode === "login"
+                ? "Digite sua senha"
+                : isReset
+                  ? "Digite sua nova senha"
+                  : "No mínimo 8 caracteres"
+            }
             required
           />
         </div>
@@ -200,6 +216,7 @@ export function AuthForm({
             minLength={8}
             maxLength={72}
             className={inputClass}
+            placeholder="Confirme sua senha"
             required
           />
         </div>
@@ -233,11 +250,6 @@ export function AuthForm({
             <span className="underline">Política de privacidade</span>.
           </Label>
         </div>
-      )}
-      {error && (
-        <p role="alert" className="text-sm text-destructive">
-          {error}
-        </p>
       )}
       {message && (
         <output className="block text-sm text-foreground">{message}</output>
