@@ -1,20 +1,30 @@
 "use client";
 
+import { ChevronDownIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type { FormEvent } from "react";
 import { useState } from "react";
 import { toast } from "sonner";
-import {
-  saveOnboardingProfile,
-  saveOnboardingProfileDraft,
-} from "@/app/onboarding/profile/actions";
+import { saveOnboardingProfile } from "@/app/onboarding/profile/actions";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { Profile, ProfileInput } from "@/lib/onboarding-profile";
 
 const inputClass =
   "h-[47px] rounded-lg bg-card px-3 text-base md:text-base border-transparent focus-visible:border-primary";
+const professionalRoles = {
+  MANAGEMENT: "Gestão administrativa",
+  CLINICAL: "Profissional clínico",
+  RECEPTION: "Recepção",
+} as const;
 
 export function ProfileForm({ initialProfile }: { initialProfile: Profile }) {
   const router = useRouter();
@@ -66,21 +76,6 @@ export function ProfileForm({ initialProfile }: { initialProfile: Profile }) {
     }
   }
 
-  async function onSaveDraft() {
-    if (pending) return;
-    setPending(true);
-    try {
-      const result = await saveOnboardingProfileDraft(values);
-      if (result.ok) {
-        toast.success("Rascunho salvo com sucesso.");
-      } else {
-        toast.error(result.message || "Erro ao salvar rascunho.");
-      }
-    } finally {
-      setPending(false);
-    }
-  }
-
   const clinical = values.professionalRole === "CLINICAL";
 
   return (
@@ -120,24 +115,44 @@ export function ProfileForm({ initialProfile }: { initialProfile: Profile }) {
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="professionalRole">Atuação profissional</Label>
-        <select
-          id="professionalRole"
-          name="professionalRole"
-          value={values.professionalRole}
-          onChange={(event) =>
-            update(
-              "professionalRole",
-              event.target.value as ProfileInput["professionalRole"],
-            )
-          }
-          className="h-[47px] w-full rounded-lg border border-transparent bg-card px-3 text-base focus-visible:border-primary md:text-base"
-          required
-        >
-          <option value="MANAGEMENT">Gestão administrativa</option>
-          <option value="CLINICAL">Profissional clínico</option>
-          <option value="RECEPTION">Recepção</option>
-        </select>
+        <Label id="professionalRole-label" htmlFor="professionalRole">
+          Atuação profissional
+        </Label>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              id="professionalRole"
+              type="button"
+              aria-labelledby="professionalRole-label"
+              disabled={pending}
+              className="flex h-[47px] w-full items-center justify-between rounded-lg border border-transparent bg-card px-3 text-base outline-none focus-visible:border-primary disabled:opacity-50"
+            >
+              {professionalRoles[values.professionalRole]}
+              <ChevronDownIcon className="size-4 text-muted-foreground" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            <DropdownMenuRadioGroup
+              value={values.professionalRole}
+              onValueChange={(value) =>
+                update(
+                  "professionalRole",
+                  value as ProfileInput["professionalRole"],
+                )
+              }
+            >
+              <DropdownMenuRadioItem value="MANAGEMENT">
+                Gestão administrativa
+              </DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="CLINICAL">
+                Profissional clínico
+              </DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="RECEPTION">
+                Recepção
+              </DropdownMenuRadioItem>
+            </DropdownMenuRadioGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {clinical && (
@@ -178,22 +193,13 @@ export function ProfileForm({ initialProfile }: { initialProfile: Profile }) {
           </div>
         </>
       )}
-      <div className="flex flex-col gap-3 sm:flex-row">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={onSaveDraft}
-          disabled={pending}
-          className="h-[46px] rounded-lg text-base font-normal sm:flex-1"
-        >
-          Salvar rascunho
-        </Button>
+      <div>
         <Button
           type="submit"
           disabled={pending}
-          className="h-[46px] rounded-lg text-base font-normal sm:flex-1"
+          className="h-[46px] w-full rounded-lg text-base font-normal"
         >
-          {pending ? "Salvando..." : "Salvar e continuar"}
+          {pending ? "Continuando..." : "Continuar"}
         </Button>
       </div>
     </form>
