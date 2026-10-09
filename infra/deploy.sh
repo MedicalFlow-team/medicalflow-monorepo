@@ -66,14 +66,23 @@ if [ -z "${PG_CID:-}" ]; then echo "FALHA: postgres não subiu" >&2; exit 1; fi
 
 # --- Migrations (Prisma) — ativa quando apps/api/prisma/migrations existir ---
 if compgen -G "apps/api/prisma/migrations/*" > /dev/null; then
-  DB_URL="$(grep -E '^DATABASE_URL=' "$ENV_FILE" | cut -d= -f2-)"
   echo "==> prisma migrate deploy"
-  API_MIGRATION_CID="$(docker ps -qf "name=${STACK}_api" | head -1)"
+  API_MIGRATION_CID=""
+  for i in $(seq 1 30); do
+    for cid in $(docker ps -qf "name=${STACK}_api"); do
+      if [ "$(docker inspect -f '{{.Config.Image}}' "$cid")" = "ghcr.io/flow-care/flowcare-api:$TAG" ]; then
+        API_MIGRATION_CID="$cid"
+        break
+      fi
+    done
+    if [ -n "$API_MIGRATION_CID" ]; then break; fi
+    sleep 2
+  done
   if [ -z "$API_MIGRATION_CID" ]; then
-    echo "FALHA: API não subiu para migration" >&2
+    echo "FALHA: API com imagem :$TAG não subiu para migration" >&2
     exit 1
   fi
-  docker exec "$API_MIGRATION_CID" bunx prisma@7.10.0 migrate deploy
+  docker exec "$API_MIGRATION_CID" bun run db:deploy
 else
   echo "==> sem migrations ainda — pulando"
 fi
