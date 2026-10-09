@@ -60,7 +60,7 @@ jobs:
           script_stop: true
           script: |
             set -euo pipefail
-            cd /root/flowcare-monorepo
+            cd /root/flowcare/app
             # Deploy determinístico: SHA exato do push (a branch local do VPS
             # pode ser outra — git pull sozinho puxaria a branch errada).
             git fetch origin

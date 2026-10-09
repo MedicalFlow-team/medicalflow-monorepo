@@ -1,14 +1,13 @@
 # Deploy — Flowcare
 
-Pipeline GitHub → GHCR → Docker Swarm. **Commit na main = deploy em produção** (não existe staging por decisão do time).
+Pipeline GitHub → GHCR → Docker Swarm. O deploy em produção exige acionar manualmente o workflow `deploy.yml` (`workflow_dispatch`); o merge na main não publica automaticamente.
 
 ## Fluxo
 
 ```text
-push na main
-  → CI (.github/workflows/ci.yml) roda antes nos PRs
+workflow_dispatch na main
   → deploy.yml: build api+web → push GHCR (sha + latest)
-  → SSH no VPS → git pull → infra/deploy.sh <sha>
+  → SSH no VPS → git checkout --force <sha> → infra/deploy.sh <sha>
       → docker stack deploy --with-registry-auth
       → prisma migrate deploy (quando houver migrations em apps/api/prisma/migrations)
       → aguarda /api/health → falha o job se não subir
@@ -16,7 +15,7 @@ push na main
 
 ## Setup único (já feito no VPS)
 
-1. **Repo clonado** em `/root/flowcare-monorepo` (pipeline faz `git pull --ff-only`).
+1. **Repo clonado** em `/root/flowcare/app`; o pipeline faz checkout do SHA exato do workflow. Configurações e backups ficam no diretório pai `/root/flowcare`.
 2. **`/root/flowcare/.env`** — variáveis de produção (ver SECRETS.md).
 3. **Rede `traefik-public`** — já existe (mesma do WAHA/traefik).
 4. **Secrets do GitHub** (Settings → Secrets and variables → Actions):
@@ -54,9 +53,11 @@ docker exec -it $(docker ps -qf name=flowcare_postgres) psql -U flowcare -d flow
 ## Deploy manual (emergência)
 
 ```bash
-cd /root/flowcare-monorepo
-git pull --ff-only
-bash infra/deploy.sh <tag>   # tag = sha do commit (ou latest)
+cd /root/flowcare/app
+git fetch origin main
+# Defina TAG com o SHA de uma imagem já publicada no GHCR.
+git checkout --force "$TAG"
+bash infra/deploy.sh "$TAG"
 ```
 
 ## Layout
