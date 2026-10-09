@@ -1,6 +1,6 @@
 # Flowcare — Contrato da API
 
-**Status:** Contrato de planejamento vNext
+**Status:** Contrato de planejamento vNext (implementação parcial)
 **Backlog:** [Flowcare - Delivery](https://github.com/orgs/Flowcare-team/projects/2)
 **Fontes:** Issues [#191](https://github.com/Flowcare-team/flowcare-monorepo/issues/191)–[#199](https://github.com/Flowcare-team/flowcare-monorepo/issues/199) e tarefas do board
 **Base URL:** `https://<environment>/api`
@@ -25,7 +25,7 @@ Este documento é a fonte de verdade para o contrato HTTP entre a API (`apps/api
 | **Tipagem e Contrato** | Os tipos de entrada e saída são derivados estritamente dos schemas Elysia/TypeBox e OpenAPI gerados. |
 
 > [!NOTE]
-> **Pendência Arquitetural (Decisão [#192](https://github.com/Flowcare-team/flowcare-monorepo/issues/192)):** O transporte exato da sessão permanece entre cookie seguro (`HttpOnly`, `Secure`, `SameSite=Lax`) ou tokens de acesso rotativos com tempo de vida curto. É terminantemente proibido o uso de JWTs sem expiração. Toda sessão possui TTL finito e pode ser revogada individualmente ou em lote pelo usuário.
+> **Decisão #192 para o MVP:** A API usa `Authorization: Bearer <JWT>`. O JWT expira em 12 horas e exige uma `Session` ativa no banco. O Next.js guarda o token em cookie `HttpOnly`, `SameSite=Lax` e `Secure` em produção. Não há renovação automática; depois de 12 horas a pessoa faz login novamente. Logout da API e revogação manual ainda estão pendentes.
 
 ### Contexto Organizacional Ativo
 
@@ -71,8 +71,10 @@ Em caso de falha (códigos HTTP 4xx e 5xx), a API responde com a seguinte estrut
 | **409** | `ALREADY_EXISTS` | Conflito de duplicidade de chave única (ex: e-mail já cadastrado, slug já utilizado). |
 | **409** | `SLOT_CONFLICT` | Horário de agendamento já reservado por outro paciente. |
 | **409** | `LAST_ADMIN_REQUIRED` | Tentativa de remover ou rebaixar o último administrador da organização. |
+| **409** | `MESSAGE_STATE_CONFLICT` | Tentativa de reenviar mensagem fora do estado permitido. |
+| **409** | `DOCUMENT_STATE_CONFLICT` | Tentativa de editar, emitir ou anular documento fora do estado permitido. |
 | **410** | `INVITE_EXPIRED` | O convite para a equipe expirou ou foi revogado. |
-| **422** | `BUSINESS_RULE_VIOLATION` | Violação de regra de negócio (ex: tentar alterar documento clínico já emitido). |
+| **422** | `BUSINESS_RULE_VIOLATION` | Violação de regra de negócio com estado válido (ex: campos clínicos obrigatórios ausentes para emissão). |
 | **429** | `RATE_LIMITED` | Limite de requisições excedido. |
 | **500** | `INTERNAL` | Erro interno do servidor. Não exibe stack traces nem detalhes de infraestrutura em produção. |
 
@@ -84,6 +86,8 @@ Em caso de falha (códigos HTTP 4xx e 5xx), a API responde com a seguinte estrut
 
 ### Módulo 1: Autenticação & Sessões
 *(Ref: Issues [#192](https://github.com/Flowcare-team/flowcare-monorepo/issues/192), [#207](https://github.com/Flowcare-team/flowcare-monorepo/issues/207), [#208](https://github.com/Flowcare-team/flowcare-monorepo/issues/208), [#209](https://github.com/Flowcare-team/flowcare-monorepo/issues/209))*
+
+**Implementado:** JWT com `sid`/`sub` e sessão persistida, TTL de 12 horas sem renovação automática; verificação de e-mail em 24 horas, reset em 30 minutos e até 3 emissões de token de verificação por conta a cada hora (incluindo o token inicial). Senhas usam Argon2id e aceitam 8 a 72 caracteres. Tokens enviados por e-mail são de uso único e persistidos somente como SHA-256. Proteção por IP, uniformização de latência e invalidação de tokens anteriores ao reenvio estão na [#356](https://github.com/flow-care/flowcare/issues/356).
 
 #### `POST /auth/register`
 * **Descrição:** Cria uma nova conta pessoal e dispara e-mail de verificação.
@@ -134,11 +138,14 @@ Em caso de falha (códigos HTTP 4xx e 5xx), a API responde com a seguinte estrut
 * **Descrição:** Encerra a sessão ativa do usuário.
 * **Permissão:** Autenticado.
 * **Respostas:** `200 OK` (`{ "message": "Sessão encerrada." }`).
+* **Estado:** Planejado; ainda não implementado na API.
 
 ---
 
 ### Módulo 2: Onboarding & Primeira Clínica
 *(Ref: Issues [#193](https://github.com/Flowcare-team/flowcare-monorepo/issues/193), [#215](https://github.com/Flowcare-team/flowcare-monorepo/issues/215)–[#218](https://github.com/Flowcare-team/flowcare-monorepo/issues/218))*
+
+**Decisão #193 para o MVP:** Depois de confirmar o e-mail, quem cria uma clínica precisa informar apenas os dados mínimos da clínica para entrar no dashboard. Nome pessoal já vem do cadastro; telefone, título profissional e registro profissional são opcionais ou exigidos somente para a função clínica correspondente. Horários e convites podem ser configurados depois. Quem entra por convite confirma o e-mail, autentica-se com a conta do endereço convidado e aceita o convite; não cria clínica. Convites expiram após 7 dias, têm uso único, podem ser revogados e o reenvio substitui o token anterior. As rotas implementadas são `/onboarding/progress` e `/onboarding/organization`; `/onboarding/status` e `/onboarding/clinic` não foram adotadas. Perfil complementar, horários, conclusão e convites seguem planejados.
 
 #### `GET /onboarding/progress`
 * **Descrição:** Recupera o estado atual do assistente de primeiro acesso.
@@ -183,9 +190,10 @@ Em caso de falha (códigos HTTP 4xx e 5xx), a API responde com a seguinte estrut
   ```
   `slug` é opcional: ausente, é derivado do `name` (normalizado). `phone`/`address` entram com as issues de dados institucionais (#303).
 * **Respostas:** `201 Created` (`{ "organization": { "id": "org_1", "name": "...", "slug": "vida-e-saude", "role": "ADMIN", "isOwner": true } }`), `409 ALREADY_EXISTS`.
+* **Estado:** Implementado para `name` e `slug`. `phone`, `address` e `Idempotency-Key` ainda não são processados; ver #217 e #303.
 
 #### `POST /onboarding/schedule-rules`
-* **Descrição:** Configura os dias e horários padrão de atendimento da clínica durante o onboarding.
+* **Descrição:** Configura opcionalmente os dias e horários padrão de atendimento da clínica durante o onboarding ou depois dele.
 * **Permissão:** Autenticado (Administrador).
 * **Body:**
   ```json
@@ -198,7 +206,7 @@ Em caso de falha (códigos HTTP 4xx e 5xx), a API responde com a seguinte estrut
 * **Respostas:** `200 OK`.
 
 #### `POST /onboarding/complete`
-* **Descrição:** Finaliza a jornada de onboarding e marca a conta como pronta para uso.
+* **Descrição:** Finaliza a jornada de onboarding após confirmação de e-mail e criação da clínica. Perfil complementar, horários e convites não bloqueiam a conclusão.
 * **Permissão:** Autenticado.
 * **Respostas:** `200 OK` (`{ "redirectUrl": "/app/vida-e-saude/dashboard" }`).
 
@@ -273,8 +281,10 @@ O fluxo obrigatório é:
 
 ---
 
-### Módulo 4: Equipe, Convites & RBAC Granular
+### Módulo 4: Equipe, Convites & Papéis Fixos
 *(Ref: Issues [#194](https://github.com/Flowcare-team/flowcare-monorepo/issues/194), [#314](https://github.com/Flowcare-team/flowcare-monorepo/issues/314)–[#319](https://github.com/Flowcare-team/flowcare-monorepo/issues/319))*
+
+**Decisão de produto do MVP:** a [matriz de papéis e capacidades](RBAC_MVP.md) define quatro papéis fixos: `ADMIN`, `ADMIN_PROFESSIONAL`, `PROFESSIONAL` e `RECEPTIONIST`. Papéis personalizados e `roles:manage` ficam fora do MVP. O schema atual ainda contém três papéis e precisa ser migrado antes de aplicar a matriz em produção. Habilitações específicas de ações clínicas exigem revisão por responsável clínico antes da ativação.
 
 #### `GET /organizations/:orgSlug/members`
 * **Descrição:** Lista os membros da equipe da clínica com seus respectivos papéis.
@@ -285,19 +295,20 @@ O fluxo obrigatório é:
 * **Descrição:** Envia convite por e-mail para integrar uma pessoa à equipe com um papel específico.
 * **Permissão:** `team:invite`.
 * **Cabeçalho Obrigatório:** `Idempotency-Key`
-* **Body:** `{ "email": "recepcao@exemplo.com", "roleId": "role_receptionist" }`
+* **Body:** `{ "email": "recepcao@exemplo.com", "role": "RECEPTIONIST" }`
 * **Respostas:** `201 Created` (`{ "invite": { "id": "inv_1", "email": "...", "expiresAt": "..." } }`), `409 ALREADY_EXISTS`.
 
 #### `POST /invites/:token/accept`
 * **Descrição:** Aceita um convite de equipe enviado por e-mail e cria o vínculo de Membership na clínica.
-* **Permissão:** Autenticado.
+* **Permissão:** Autenticado, e-mail verificado e igual ao destinatário do convite.
 * **Body:** `{ "token": "inv_token_999" }`
 * **Respostas:** `200 OK` (`{ "organizationSlug": "vida-e-saude" }`), `410 INVITE_EXPIRED`.
+* **Regras:** Convite válido por 7 dias, uso único e vinculado a e-mail, clínica e papel. Revogação ou reenvio invalidam o token anterior. Aceite repetido não cria outro vínculo.
 
 #### `PATCH /organizations/:orgSlug/members/:memberId/role`
 * **Descrição:** Altera o papel de um membro. Valida obrigatoriamente a proteção do último administrador.
 * **Permissão:** `team:manage`.
-* **Body:** `{ "roleId": "role_doctor", "version": 1 }`
+* **Body:** `{ "role": "PROFESSIONAL", "version": 1 }`
 * **Respostas:** `200 OK`, `409 LAST_ADMIN_REQUIRED`, `409 VERSION_CONFLICT`.
 
 #### `DELETE /organizations/:orgSlug/members/:memberId`
@@ -306,15 +317,11 @@ O fluxo obrigatório é:
 * **Respostas:** `200 OK`, `409 LAST_ADMIN_REQUIRED`.
 
 #### `GET /organizations/:orgSlug/roles`
-* **Descrição:** Lista os papéis padrão (Administrador, Profissional, Recepcionista) e papéis personalizados da clínica.
+* **Descrição:** Lista os quatro papéis fixos com suas capacidades e a contagem de membros da clínica em cada papel.
 * **Permissão:** `roles:read`.
 * **Respostas:** `200 OK`.
 
-#### `POST /organizations/:orgSlug/roles`
-* **Descrição:** Cria um papel personalizado de acesso atribuindo permissões granulares especificadas.
-* **Permissão:** `roles:manage`.
-* **Body:** `{ "name": "Enfermeira Chefe", "permissions": ["patients:read", "patients:write", "consultations:read"] }`
-* **Respostas:** `201 Created`.
+> `POST` e `PATCH /organizations/:orgSlug/roles` não fazem parte do MVP; criação e edição de papéis personalizados foram adiadas.
 
 ---
 
@@ -347,7 +354,7 @@ O fluxo obrigatório é:
 
 #### `POST /organizations/:orgSlug/patients/:patientId/attachments`
 * **Descrição:** Upload de arquivo/exame privado para o prontuário do paciente.
-* **Permissão:** `patients:write`.
+* **Permissão:** `patients:attachments:write`.
 * **Body:** `multipart/form-data` (`file`, `category`, `description`).
 * **Respostas:** `201 Created` (`{ "attachmentId": "att_123", "fileName": "exame_sangue.pdf" }`), `413 FILE_TOO_LARGE`.
 
@@ -426,8 +433,18 @@ O fluxo obrigatório é:
 ### Módulo 8: Documentos Clínicos, Versionamento & Anulação
 *(Ref: Issues [#195](https://github.com/Flowcare-team/flowcare-monorepo/issues/195), [#273](https://github.com/Flowcare-team/flowcare-monorepo/issues/273)–[#278](https://github.com/Flowcare-team/flowcare-monorepo/issues/278))*
 
+**Decisão do MVP:** ver [ciclo de vida e snapshot](DOCUMENTS_MVP.md). Receitas controladas e assinatura eletrônica não fazem parte do MVP. `ISSUED` indica PDF final para impressão e assinatura manuscrita, não documento eletrônico assinado. Todas as rotas deste módulo ainda são planejadas.
+
+#### `GET /organizations/:orgSlug/documents`
+* **Descrição:** Lista documentos da clínica com paginação e filtros, sem conteúdo clínico completo na listagem.
+* **Permissão:** `documents:read`.
+
+#### `GET /organizations/:orgSlug/documents/:documentId`
+* **Descrição:** Consulta detalhe, estado e vínculo de versões de um documento.
+* **Permissão:** `documents:read`.
+
 #### `POST /organizations/:orgSlug/documents`
-* **Descrição:** Cria rascunho de receita, atestado, pedido de exame ou relatório médico.
+* **Descrição:** Cria rascunho de receita simples, atestado, pedido de exame ou laudo. Receita controlada e documento livre/personalizado são recusados no MVP.
 * **Permissão:** `documents:write`.
 * **Body:** `{ "patientId": "pat_1", "type": "PRESCRIPTION", "title": "Receita Simples", "content": "..." }`
 * **Respostas:** `201 Created` (`{ "documentId": "doc_99", "status": "DRAFT", "version": 1 }`).
@@ -436,16 +453,21 @@ O fluxo obrigatório é:
 * **Descrição:** Edita o conteúdo de um documento **enquanto ele for RASCUNHO** (`DRAFT`).
 * **Permissão:** `documents:write`.
 * **Body:** `{ "content": "Novo texto...", "version": 1 }`
-* **Respostas:** `200 OK`, `422 BUSINESS_RULE_VIOLATION` (se o documento já foi assinado/emitido).
+* **Respostas:** `200 OK`, `409 DOCUMENT_STATE_CONFLICT` (se não estiver em `DRAFT`), `409 VERSION_CONFLICT`.
 
 #### `POST /organizations/:orgSlug/documents/:documentId/issue`
-* **Descrição:** Emite o documento com snapshot imutável dos dados médicos e assinatura.
+* **Descrição:** Finaliza o documento com snapshot imutável e PDF para impressão e assinatura manuscrita; não assina eletronicamente.
 * **Permissão:** `documents:issue`.
 * **Body:** `{ "version": 2 }`
-* **Respostas:** `200 OK` (`{ "status": "ISSUED", "issuedAt": "...", "snapshotHash": "sha256_..." }`).
+* **Respostas:** `200 OK` (`{ "status": "ISSUED", "issuedAt": "...", "snapshotHash": "sha256_..." }`), `409 DOCUMENT_STATE_CONFLICT`, `422 BUSINESS_RULE_VIOLATION` (campos obrigatórios ausentes). Uma falha de PDF não conclui a emissão.
+
+#### `POST /organizations/:orgSlug/documents/:documentId/rectify`
+* **Descrição:** Cria novo rascunho vinculado a um documento `ISSUED`, preservando o original. A emissão do novo rascunho recebe a próxima versão da cadeia.
+* **Permissão:** `documents:write`.
+* **Respostas:** `201 Created` (`{ "documentId": "doc_100", "status": "DRAFT", "replacesDocumentId": "doc_99" }`), `409 DOCUMENT_STATE_CONFLICT`.
 
 #### `GET /organizations/:orgSlug/documents/:documentId/pdf`
-* **Descrição:** Baixa ou visualiza o PDF oficial gerado a partir do snapshot imutável do documento emitido.
+* **Descrição:** Após autorização, transmite o PDF privado gerado a partir do snapshot imutável, identificado como arquivo para impressão e assinatura manuscrita.
 * **Permissão:** `documents:read`.
 * **Respostas:** `200 OK` (`Content-Type: application/pdf`).
 
@@ -453,12 +475,16 @@ O fluxo obrigatório é:
 * **Descrição:** Anula formalmente um documento emitido. Exige justificativa motivada e mantém histórico de versões.
 * **Permissão:** `documents:void`.
 * **Body:** `{ "reason": "Erro na dosagem do medicamento prescrevido", "version": 3 }`
-* **Respostas:** `200 OK` (`{ "status": "VOIDED", "voidedAt": "...", "voidReason": "..." }`).
+* **Respostas:** `200 OK` (`{ "status": "VOIDED", "voidedAt": "...", "voidReason": "..." }`), `409 DOCUMENT_STATE_CONFLICT`.
 
 #### `GET /organizations/:orgSlug/documents/:documentId/versions`
 * **Descrição:** Retorna a trilha de histórico de todas as alterações e snapshots do documento.
 * **Permissão:** `documents:read`.
 * **Respostas:** `200 OK` (`{ "versions": [ { "version": 1, "status": "DRAFT" }, { "version": 2, "status": "ISSUED" } ] }`).
+
+#### `GET /organizations/:orgSlug/documents/:documentId/versions/:versionId`
+* **Descrição:** Consulta um snapshot histórico imutável autorizado.
+* **Permissão:** `documents:read`.
 
 ---
 
@@ -486,37 +512,59 @@ O fluxo obrigatório é:
 ### Módulo 10: Comunicações & Integração WhatsApp (WAHA)
 *(Ref: Issues [#196](https://github.com/Flowcare-team/flowcare-monorepo/issues/196), [#295](https://github.com/Flowcare-team/flowcare-monorepo/issues/295)–[#298](https://github.com/Flowcare-team/flowcare-monorepo/issues/298))*
 
+**Decisão do MVP:** ver [catálogo, consentimento e estados de mensagens](MESSAGING_MVP.md). Apenas confirmação de agendamento, cancelamento e lembrete 24 horas antes são enviados por WhatsApp, com opt-in ativo do paciente. Mensagens de autenticação e convite usam e-mail. As rotas abaixo ainda são planejadas.
+
 #### `GET /organizations/:orgSlug/communications/whatsapp/status`
 * **Descrição:** Consulta o status da sessão do WhatsApp (conectado, desconectado, QR code pendente).
 * **Permissão:** `communications:read`.
 * **Respostas:** `200 OK` (`{ "status": "CONNECTED", "phoneNumber": "5511999998888" }`).
 
 #### `GET /organizations/:orgSlug/communications/messages`
-* **Descrição:** Lista o histórico paginado de mensagens de confirmação e lembrete enviadas.
+* **Descrição:** Lista o histórico paginado de mensagens operacionais com filtros por estado e período; telefone mascarado.
 * **Permissão:** `communications:read`.
-* **Respostas:** `200 OK`.
+* **Respostas:** `200 OK` (`{ "items": [{ "id": "msg_1", "type": "APPOINTMENT_REMINDER", "status": "QUEUED", "phoneMasked": "(11) 98765-****" }], "nextCursor": null }`). Estados: `QUEUED`, `SENT`, `DELIVERED`, `READ`, `FAILED`.
+
+#### `PATCH /organizations/:orgSlug/patients/:patientId/communication-preferences`
+* **Descrição:** Registra opt-in ou opt-out de WhatsApp informado pelo paciente, com origem, autor e horário auditáveis. Opt-out cancela disparos pendentes quando possível.
+* **Permissão:** `patients:write`.
+* **Body:** `{ "whatsappOptIn": false, "source": "PATIENT_REQUEST" }`.
+
+#### `GET /organizations/:orgSlug/communications/whatsapp/templates`
+* **Descrição:** Lista os textos de confirmação, cancelamento e lembrete, com variáveis permitidas.
+* **Permissão:** `communications:read`.
+
+#### `PUT /organizations/:orgSlug/communications/whatsapp/templates/:type`
+* **Descrição:** Atualiza um texto operacional, recusando variáveis desconhecidas. O texto deve passar por revisão da clínica antes da ativação para impedir conteúdo clínico.
+* **Permissão:** `communications:write`.
+
+#### `POST /webhooks/whatsapp/status`
+* **Descrição:** Recebe atualização de entrega do WAHA após validar segredo configurado; evento repetido é idempotente e atualização fora de ordem não regride o estado.
+* **Permissão:** segredo do webhook, sem sessão de usuário.
 
 #### `POST /organizations/:orgSlug/communications/messages/:messageId/resend`
-* **Descrição:** Solicita reenvio de mensagem com falha, utilizando proteção contra duplicação de disparos.
+* **Descrição:** Solicita reenvio apenas de mensagem `FAILED`, após verificar novamente opt-in, telefone e agendamento; registra o operador. Mensagens `SENT`, `DELIVERED` e `READ` não são reenviadas.
 * **Permissão:** `communications:write`.
 * **Cabeçalho Obrigatório:** `Idempotency-Key`
-* **Respostas:** `200 OK` (`{ "status": "QUEUED" }`).
+* **Respostas:** `200 OK` (`{ "status": "QUEUED" }`), `409 MESSAGE_STATE_CONFLICT` se não for elegível. Repetir a chave retorna o resultado original.
 
 ---
 
 ### Módulo 11: Painel & Indicadores da Clínica
 *(Ref: Issues [#197](https://github.com/Flowcare-team/flowcare-monorepo/issues/197), [#229](https://github.com/Flowcare-team/flowcare-monorepo/issues/229), [#230](https://github.com/Flowcare-team/flowcare-monorepo/issues/230))*
 
-#### `GET /organizations/:orgSlug/dashboard/metrics`
-* **Descrição:** Retorna os indicadores operacionais da clínica (consultas no mês, faltas, taxa de confirmação).
-* **Permissão:** `dashboard:read`.
-* **Query Params:** `?period=THIS_MONTH`
-* **Respostas:** `200 OK` (`{ "totalConsultations": 142, "attendanceRate": 0.94 }`).
+**Decisão do MVP:** ver [dicionário de métricas](METRICS_MVP.md). O painel mostra contagens de agenda e taxa de faltas; consumo de transcrição mostra volume, sem custo estimado em R$ ou cota inventada. As rotas abaixo ainda são planejadas.
 
-#### `GET /organizations/:orgSlug/dashboard/usage`
-* **Descrição:** Consulta as métricas de consumo da clínica (minutos de transcrição por IA utilizados).
+#### `GET /organizations/:orgSlug/dashboard/metrics`
+* **Descrição:** Retorna indicadores operacionais da clínica no período e fuso configurados, sem cruzar organizações.
 * **Permissão:** `dashboard:read`.
-* **Respostas:** `200 OK` (`{ "transcriptionMinutesUsed": 320, "monthlyQuota": 1000 }`).
+* **Query Params:** `?period=today|week|month` ou `?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD`. Padrão: `today`.
+* **Respostas:** `200 OK` (`{ "periodStart": "...", "periodEnd": "...", "timeZone": "America/Fortaleza", "totalAppointments": 10, "scheduledAppointments": 2, "completedAppointments": 5, "cancelledAppointments": 2, "noShowAppointments": 1, "noShowRate": 0.1667 }`). `noShowRate` é `null` sem atendimentos concluídos ou faltas.
+
+#### `GET /organizations/:orgSlug/settings/usage`
+* **Descrição:** Consulta o consumo mensal de transcrição da clínica, com detalhamento por profissional e falhas sem consumo.
+* **Permissão:** `usage:read`.
+* **Query Params:** `?month=YYYY-MM`.
+* **Respostas:** `200 OK` (`{ "month": "2026-10", "timeZone": "America/Fortaleza", "processedSeconds": 120, "processedMinutes": 2, "successfulAudioCount": 2, "transcribedConsultations": 2, "failedAudioCount": 1, "byProfessional": [] }`). Sem campo de custo em R$ ou cota até aprovação da regra comercial.
 
 ---
 
@@ -568,7 +616,7 @@ O fluxo obrigatório é:
 * **Respostas:** `200 OK`.
 
 #### `POST /me/change-password`
-* **Descrição:** Altera a senha do usuário solicitando a senha atual como confirmação de segurança.
+* **Descrição:** Altera a senha do usuário solicitando a senha atual como confirmação de segurança. Revoga atomicamente as outras sessões; a sessão atual permanece ativa.
 * **Permissão:** Autenticado.
 * **Body:** `{ "currentPassword": "<senha_atual>", "newPassword": "<nova_senha>" }`
 * **Respostas:** `200 OK`.

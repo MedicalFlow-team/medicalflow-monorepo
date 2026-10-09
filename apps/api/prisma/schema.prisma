@@ -36,6 +36,23 @@ enum TokenType {
   PASSWORD_RESET
 }
 
+model OrganizationInvite {
+  id             String         @id @default(uuid()) @db.Uuid
+  organizationId String         @db.Uuid
+  email          String
+  role           MembershipRole
+  tokenHash      String         @unique
+  expiresAt      DateTime
+  acceptedAt     DateTime?
+  revokedAt      DateTime?
+  createdAt      DateTime       @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, email])
+  @@index([email, expiresAt])
+}
+
 model User {
   id            String   @id @default(uuid()) @db.Uuid
   email         String   @unique
@@ -101,6 +118,22 @@ model Organization {
   owner        User          @relation("OrganizationOwner", fields: [ownerId], references: [id], onDelete: Restrict)
   memberships  Membership[]
   subscription Subscription?
+  invites       OrganizationInvite[]
+  storageObjects StorageObject[]
+}
+
+model StorageObject {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  objectKey      String   @unique
+  contentType    String
+  sizeBytes      Int
+  category       String
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, category])
 }
 
 model Membership {

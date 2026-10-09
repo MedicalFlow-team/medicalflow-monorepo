@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
 import type { SendEmailCommand } from "@aws-sdk/client-sesv2";
+import { actionEmailHtml } from "../src/services/mail-templates";
 import { DisabledMailer, SesMailer } from "../src/services/mailer";
 
 test("envio desativado não registra destinatário nem token", async () => {
@@ -57,4 +58,42 @@ test("SES recebe o conteúdo e o log contém somente o ID da mensagem", async ()
   expect(logs[0]).toContain("ses-message-123");
   expect(logs[0]).not.toContain("secret-token");
   expect(logs[0]).not.toContain("person@example.com");
+});
+
+test("SES usa configuration set para publicar eventos de entrega", async () => {
+  let command: SendEmailCommand | undefined;
+  const mailer = new SesMailer(
+    "us-east-1",
+    "Flowcare <noreply@flowcare.me>",
+    async (sent) => {
+      command = sent;
+      return { MessageId: "ses-message-456" };
+    },
+    "flowcare-transactional",
+  );
+  const originalInfo = console.info;
+  console.info = () => {};
+  try {
+    await mailer.send({
+      to: "test@example.com",
+      subject: "Test",
+      text: "Test",
+    });
+  } finally {
+    console.info = originalInfo;
+  }
+  expect(command?.input.ConfigurationSetName).toBe("flowcare-transactional");
+});
+
+test("template HTML escapa conteúdo e inclui link do ambiente", () => {
+  const html = actionEmailHtml({
+    title: "Convite",
+    description: "Clínica <privada>",
+    action: "Aceitar",
+    url: "https://flowcare.me/invite?token=abc&next=home",
+    expiry: "7 dias",
+  });
+  expect(html).toContain("Clínica &lt;privada&gt;");
+  expect(html).toContain("https://flowcare.me/invite?token=abc&amp;next=home");
+  expect(html).not.toContain("<privada>");
 });

@@ -4,6 +4,7 @@ import { ApiError } from "../../lib/api-error";
 import type { SessionMetadata } from "../../lib/session-metadata";
 import { normalizeEmail } from "../../lib/slug";
 import { generateToken, hashToken } from "../../lib/tokens";
+import { actionEmailHtml } from "../../services/mail-templates";
 import type { Mailer } from "../../services/mailer";
 import { signSessionToken } from "../../services/session-token";
 import {
@@ -67,6 +68,7 @@ export class AuthService {
             to: email,
             subject: "Flowcare — confirmação de cadastro",
             text: this.verificationText(token),
+            html: this.verificationHtml(token),
           });
         } catch (error) {
           if (!(error instanceof ApiError && error.code === "RATE_LIMITED")) {
@@ -91,6 +93,7 @@ export class AuthService {
       to: email,
       subject: "Flowcare — confirmação de cadastro",
       text: this.verificationText(token),
+      html: this.verificationHtml(token),
     });
 
     return { message: GENERIC_REGISTER_MESSAGE };
@@ -146,6 +149,7 @@ export class AuthService {
           to: email,
           subject: "Flowcare — confirmação de cadastro",
           text: this.verificationText(token),
+          html: this.verificationHtml(token),
         });
       } catch (error) {
         // O limite por conta não pode revelar se o endereço existe.
@@ -238,6 +242,7 @@ export class AuthService {
         to: email,
         subject: "Flowcare — redefinição de senha",
         text: this.resetText(token),
+        html: this.resetHtml(token),
       });
     }
     return { message: GENERIC_RESET_MESSAGE };
@@ -320,17 +325,16 @@ export class AuthService {
     return token;
   }
 
-  private async deliver(message: {
+  private deliver(message: {
     to: string;
     subject: string;
     text: string;
-  }): Promise<void> {
-    try {
-      await this.deps.mailer.send(message);
-    } catch {
+    html?: string;
+  }): void {
+    void this.deps.mailer.send(message).catch(() => {
       // A falha do provedor não deve revelar se o e-mail pertence a uma conta.
       console.error("[auth] falha ao entregar e-mail de autenticação");
-    }
+    });
   }
 
   private verificationText(token: string): string {
@@ -339,5 +343,25 @@ export class AuthService {
 
   private resetText(token: string): string {
     return `Redefina sua senha no Flowcare:\n${this.deps.config.webAppUrl}/reset-password?token=${token}\n\nO link é de uso único e expira em ${this.deps.config.passwordResetTtlMinutes}min.`;
+  }
+
+  private verificationHtml(token: string): string {
+    return actionEmailHtml({
+      title: "Confirme seu e-mail",
+      description: "Confirme seu endereço para acessar o Flowcare.",
+      action: "Confirmar e-mail",
+      url: `${this.deps.config.webAppUrl}/verify-email?token=${token}`,
+      expiry: `O link é de uso único e expira em ${this.deps.config.emailVerificationTtlHours}h.`,
+    });
+  }
+
+  private resetHtml(token: string): string {
+    return actionEmailHtml({
+      title: "Redefina sua senha",
+      description: "Use este link para criar uma nova senha no Flowcare.",
+      action: "Redefinir senha",
+      url: `${this.deps.config.webAppUrl}/reset-password?token=${token}`,
+      expiry: `O link é de uso único e expira em ${this.deps.config.passwordResetTtlMinutes}min.`,
+    });
   }
 }

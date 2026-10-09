@@ -21,6 +21,13 @@ export interface Env {
   mailProvider: "disabled" | "console" | "ses";
   sesRegion: string | null;
   mailFrom: string | null;
+  snsTopicArn?: string | null;
+  sesConfigurationSet?: string | null;
+  storageEndpoint?: string | null;
+  storageBucket?: string | null;
+  storageRegion?: string;
+  storageAccessKeyId?: string | null;
+  storageSecretAccessKey?: string | null;
 }
 
 function required(name: string): string {
@@ -49,6 +56,25 @@ export function loadEnv(): Env {
   const nodeEnv = optional("NODE_ENV", "development");
   const sesRegion = process.env.AWS_REGION?.trim() || null;
   const mailFrom = process.env.MAIL_FROM?.trim() || null;
+  const snsTopicArn = process.env.SNS_TOPIC_ARN?.trim() || null;
+  const sesConfigurationSet = process.env.SES_CONFIGURATION_SET?.trim() || null;
+  const storageEndpoint = process.env.STORAGE_ENDPOINT?.trim() || null;
+  const storageBucket = process.env.STORAGE_BUCKET?.trim() || null;
+  const storageAccessKeyId = process.env.STORAGE_ACCESS_KEY_ID?.trim() || null;
+  const storageSecretAccessKey =
+    process.env.STORAGE_SECRET_ACCESS_KEY?.trim() || null;
+  const storageRegion = optional("STORAGE_REGION", "auto");
+  const storageValues = [
+    storageEndpoint,
+    storageBucket,
+    storageAccessKeyId,
+    storageSecretAccessKey,
+  ];
+  if (storageValues.some(Boolean) && storageValues.some((value) => !value)) {
+    throw new Error(
+      "[boot] STORAGE_ENDPOINT, STORAGE_BUCKET, STORAGE_ACCESS_KEY_ID e STORAGE_SECRET_ACCESS_KEY devem ser configurados juntos.",
+    );
+  }
   const mailProvider = optional(
     "MAIL_PROVIDER",
     nodeEnv === "production" ? "disabled" : "console",
@@ -89,5 +115,12 @@ export function loadEnv(): Env {
     mailProvider,
     sesRegion,
     mailFrom,
+    snsTopicArn,
+    sesConfigurationSet,
+    storageEndpoint,
+    storageBucket,
+    storageRegion,
+    storageAccessKeyId,
+    storageSecretAccessKey,
   };
 }

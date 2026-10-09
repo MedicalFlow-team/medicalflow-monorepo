@@ -6,8 +6,11 @@ import { ApiError } from "./lib/api-error";
 import { accountModule } from "./modules/account";
 import { authModule } from "./modules/auth";
 import type { AuthDeps } from "./modules/auth/service";
+import { inviteModule } from "./modules/invites";
 import { onboardingModule } from "./modules/onboarding";
 import type { OnboardingDeps } from "./modules/onboarding/service";
+import { storageModule } from "./modules/storage";
+import { createSesWebhook } from "./modules/webhooks/ses";
 import { requestLogger } from "./plugins/request-logger";
 import type { Mailer } from "./services/mailer";
 
@@ -72,6 +75,7 @@ export function createApp(env: Env, deps: AppDeps) {
 
   const app = new Elysia({ prefix: "/api" })
     .use(requestLogger)
+    .use(createSesWebhook(env.snsTopicArn ?? null))
     .use(
       cors({
         origin: env.corsOrigin.split(",").map((o) => o.trim()),
@@ -129,7 +133,28 @@ export function createApp(env: Env, deps: AppDeps) {
     })
     .use(authModule(authDeps))
     .use(onboardingModule(onboardingDeps))
-    .use(accountModule({ prisma: deps.prisma, jwtSecret: env.jwtSecret }));
+    .use(accountModule({ prisma: deps.prisma, jwtSecret: env.jwtSecret }))
+    .use(
+      inviteModule({
+        prisma: deps.prisma,
+        jwtSecret: env.jwtSecret,
+        mailer: deps.mailer,
+        webAppUrl: env.webAppUrl,
+      }),
+    )
+    .use(
+      storageModule({
+        prisma: deps.prisma,
+        jwtSecret: env.jwtSecret,
+        config: {
+          endpoint: env.storageEndpoint ?? null,
+          bucket: env.storageBucket ?? null,
+          region: env.storageRegion ?? "auto",
+          accessKeyId: env.storageAccessKeyId ?? null,
+          secretAccessKey: env.storageSecretAccessKey ?? null,
+        },
+      }),
+    );
 
   return app;
 }

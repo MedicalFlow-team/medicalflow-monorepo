@@ -16,7 +16,8 @@ export function accountModule(deps: AccountModuleDeps) {
     .use(authPlugin({ prisma: deps.prisma, jwtSecret: deps.jwtSecret }))
     .post(
       "/me/change-password",
-      ({ auth, body }) => service.changePassword(auth.userId, body),
+      ({ auth, body }) =>
+        service.changePassword(auth.userId, auth.sessionId, body),
       {
         body: m.changePasswordBody,
         response: { 200: m.changePasswordResponse },
