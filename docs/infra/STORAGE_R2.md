@@ -4,12 +4,23 @@ O bucket de arquivos deve ser privado e não deve ter domínio público ou acess
 
 ## Regras
 
-- Chaves começam sempre com `organizations/` e incluem a categoria antes da organização: `organizations/audio/<organizationId>/...`, `organizations/pdf/<organizationId>/...` ou `organizations/attachment/<organizationId>/...`.
+- Chaves começam sempre com `organizations/<organizationId>/`, seguido da categoria: `organizations/<organizationId>/audio/...`, `organizations/<organizationId>/pdf/...` ou `organizations/<organizationId>/attachment/...`.
 - URLs de upload expiram em 10 minutos; URLs de download expiram em 15 minutos.
 - Áudios aceitos: `audio/mp4`, `audio/webm` e `audio/mpeg`, até 50 MiB.
 - PDFs e imagens JPEG/PNG aceitos até 25 MiB.
-- Áudios brutos usam o prefixo `organizations/audio/` e uma regra de lifecycle para expirar depois da transcrição e do período de retenção aprovado (30 dias, conforme decisão regulatória).
+- Áudios brutos são excluídos após 30 dias pelo job `infra/storage/expire-audio.sh`. O R2 só oferece regras de lifecycle por prefixo; uma regra em `organizations/` também excluiria PDFs e anexos. A antiga regra `organizations/audio/` não atinge as chaves novas e pode permanecer temporariamente para objetos legados.
 - PDFs emitidos não devem ter regra de expiração automática; a retenção é perene até a política regulatória definir outra coisa.
+- O tamanho declarado é incluído em `Content-Length` assinado na URL PUT. O R2 rejeita com `403` um corpo cujo tamanho difere do declarado; o backend também recusa declarações acima do limite antes de assinar.
+
+## Expiração operacional de áudio
+
+Na VPS, `infra/storage/expire-audio.sh` sem argumentos faz uma simulação: consulta áudios criados há mais de 30 dias, confere o prefixo da organização e mostra apenas contagens. Com `--apply`, exclui cada objeto do R2 e depois sua linha `StorageObject`. A exclusão do R2 é idempotente; se o banco falhar, a execução seguinte tenta novamente. Nenhum PDF ou anexo entra na consulta. Instale uma entrada diária no cron do host **depois do deploy desta versão e da configuração `STORAGE_*` na API**:
+
+```cron
+25 3 * * * /root/flowcare/infra/storage/expire-audio.sh --apply >> /root/flowcare/logs/audio-expiry.log 2>&1
+```
+
+Antes de habilitar, rode uma simulação e confira a contagem. O job usa a data do upload como início da retenção de 30 dias; a integração com o estado de conclusão da transcrição ainda não existe e deve ser incorporada quando esse fluxo for implementado.
 
 ## Verificação operacional
 
@@ -21,6 +32,6 @@ As regras de lifecycle e o bloqueio de acesso público são configuração do bu
 
 ## Evidência em 2026-10-09
 
-Foi enviado um objeto sintético sem dados clínicos para `organizations/attachment/` com uma URL assinada: PUT `200`. A leitura por URL assinada retornou GET `200` e conteúdo idêntico. GET anônimo pelo endpoint S3 retornou `400`. Uma URL de leitura de teste com validade de 1 segundo retornou GET `403` após a expiração. Os testes automatizados verificam que o backend emite upload por 600 segundos e download por 900 segundos, recusa MIME/tamanho inválidos e impede usuários sem membership ativa ou de outra organização de receber uma URL.
+Foi enviado um objeto sintético sem dados clínicos para o bucket com uma URL assinada: PUT `200`. A leitura por URL assinada retornou GET `200` e conteúdo idêntico. GET anônimo pelo endpoint S3 retornou `400`. Uma URL de leitura de teste com validade de 1 segundo retornou GET `403` após a expiração. Em novo teste, uma URL PUT com `Content-Length: 1` assinado recusou corpo de 3 bytes com `403` e aceitou corpo de 1 byte com `200`. Os testes automatizados verificam que o backend emite upload por 600 segundos e download por 900 segundos, recusa MIME/tamanho inválidos e impede usuários sem membership ativa ou de outra organização de receber uma URL.
 
 O critério literal da issue que exige `403` em acesso anônimo direto não corresponde ao comportamento do endpoint S3 privado do R2, que retorna `400`. A privacidade é sustentada pela ausência de endpoint público e pelo sucesso apenas da URL assinada. A validação acima usou credenciais de teste locais e não comprova que a API de produção já tenha as variáveis `STORAGE_*` configuradas.

@@ -78,7 +78,7 @@ export class StorageService {
         "Armazenamento indisponível.",
       );
     const safeName = body.fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
-    const objectKey = `organizations/${body.category}/${membership.organizationId}/${crypto.randomUUID()}-${safeName}`;
+    const objectKey = `organizations/${membership.organizationId}/${body.category}/${crypto.randomUUID()}-${safeName}`;
     const object = await this.deps.prisma.storageObject.create({
       data: {
         organizationId: membership.organizationId,
@@ -96,7 +96,10 @@ export class StorageService {
         ContentType: body.contentType,
         ContentLength: body.sizeBytes,
       }),
-      { expiresIn: 600 },
+      {
+        expiresIn: 600,
+        signableHeaders: new Set(["content-length", "content-type"]),
+      },
     );
     return { objectId: object.id, objectKey, uploadUrl, expiresInSeconds: 600 };
   }

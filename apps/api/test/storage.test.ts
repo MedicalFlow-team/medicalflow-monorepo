@@ -71,13 +71,16 @@ describe("private storage", () => {
   test("signs only allowed category and organization with bounded expiry", async () => {
     const { service } = setup();
     const result = await service.createUpload("user-a", "clinic-a", upload);
-    expect(result.objectKey.startsWith(`organizations/audio/${orgId}/`)).toBe(
+    expect(result.objectKey.startsWith(`organizations/${orgId}/audio/`)).toBe(
       true,
     );
     expect(result.expiresInSeconds).toBe(600);
     expect(new URL(result.uploadUrl).searchParams.get("X-Amz-Expires")).toBe(
       "600",
     );
+    expect(
+      new URL(result.uploadUrl).searchParams.get("X-Amz-SignedHeaders"),
+    ).toBe("content-length;content-type;host");
     const download = await service.createDownload(
       "user-a",
       "clinic-a",
@@ -105,7 +108,7 @@ describe("private storage", () => {
     records.push({
       id: "other-object",
       organizationId: otherOrgId,
-      objectKey: `organizations/audio/${otherOrgId}/sample`,
+      objectKey: `organizations/${otherOrgId}/audio/sample`,
     });
     await expect(
       service.createDownload("user-a", "clinic-a", "other-object"),
