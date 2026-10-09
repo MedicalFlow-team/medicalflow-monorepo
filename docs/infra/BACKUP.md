@@ -51,7 +51,7 @@ Após ativar o arquivamento no deploy, confira `SELECT archived_count, failed_co
 
 ## Restore drill isolado
 
-Em um host com Docker e credencial **somente de leitura** para o bucket, use o timestamp UTC do backup escolhido. O script baixa o backup e os WAL para um diretório temporário, verifica SHA-256 e `pg_verifybackup`, recupera até o último WAL disponível (ou até o horário UTC informado), consulta contagens das tabelas `User`, `Organization`, `Membership` e `Session` e verifica vínculos órfãos. Não publica porta nem conecta o container à rede de produção.
+Em um host com Docker e credencial **somente de leitura** para o bucket, use o timestamp UTC do backup escolhido. O script baixa o backup e os WAL para um diretório temporário, verifica SHA-256 e `pg_verifybackup`, recupera até o último WAL disponível (ou até o horário UTC informado) e inicia o banco isolado. Quando existem, consulta contagens das tabelas `User`, `Organization`, `Membership` e `Session` e verifica vínculos órfãos. Uma instalação ainda sem migrações terá essas tabelas ausentes; registre isso na evidência do drill. Não publica porta nem conecta o container à rede de produção.
 
 ```bash
 BACKUP_ENV_FILE=/root/flowcare/backup-restore.env \

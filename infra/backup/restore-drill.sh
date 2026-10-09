@@ -61,17 +61,34 @@ if [ "$ready" -ne 1 ]; then
   exit 1
 fi
 
-# Falha se as tabelas principais não existirem ou uma FK importante estiver órfã.
+# Valida o cluster restaurado. Uma instalação ainda sem migrações pode não ter
+# tabelas de aplicação; nesse caso o restore físico continua verificável.
 docker exec -i "$container" psql -X -v ON_ERROR_STOP=1 -U "$db_user" -d "$db_name" <<'SQL'
-SELECT 'User', count(*) FROM "User";
-SELECT 'Organization', count(*) FROM "Organization";
-SELECT 'Membership', count(*) FROM "Membership";
-SELECT 'Session', count(*) FROM "Session";
-DO $$ BEGIN
-  IF EXISTS (SELECT 1 FROM "Membership" m LEFT JOIN "User" u ON u.id = m."userId" WHERE u.id IS NULL)
-    OR EXISTS (SELECT 1 FROM "Membership" m LEFT JOIN "Organization" o ON o.id = m."organizationId" WHERE o.id IS NULL)
-    OR EXISTS (SELECT 1 FROM "Session" s LEFT JOIN "User" u ON u.id = s."userId" WHERE u.id IS NULL)
-  THEN RAISE EXCEPTION 'integridade referencial inválida'; END IF;
+SELECT current_database(), pg_is_in_recovery();
+DO $$
+DECLARE
+  table_name text;
+  row_count bigint;
+BEGIN
+  FOREACH table_name IN ARRAY ARRAY['User', 'Organization', 'Membership', 'Session'] LOOP
+    IF to_regclass(format('%I', table_name)) IS NULL THEN
+      RAISE NOTICE 'Tabela % ausente no backup', table_name;
+    ELSE
+      EXECUTE format('SELECT count(*) FROM %I', table_name) INTO row_count;
+      RAISE NOTICE 'Tabela %: % linhas', table_name, row_count;
+    END IF;
+  END LOOP;
+
+  IF to_regclass('"Membership"') IS NOT NULL
+    AND to_regclass('"User"') IS NOT NULL
+    AND to_regclass('"Organization"') IS NOT NULL
+    AND to_regclass('"Session"') IS NOT NULL
+  THEN
+    IF EXISTS (SELECT 1 FROM "Membership" m LEFT JOIN "User" u ON u.id = m."userId" WHERE u.id IS NULL)
+      OR EXISTS (SELECT 1 FROM "Membership" m LEFT JOIN "Organization" o ON o.id = m."organizationId" WHERE o.id IS NULL)
+      OR EXISTS (SELECT 1 FROM "Session" s LEFT JOIN "User" u ON u.id = s."userId" WHERE u.id IS NULL)
+    THEN RAISE EXCEPTION 'integridade referencial inválida'; END IF;
+  END IF;
 END $$;
 SQL
 
