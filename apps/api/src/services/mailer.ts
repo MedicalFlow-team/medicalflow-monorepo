@@ -9,7 +9,12 @@ import type { Env } from "../config/env";
  * - SesMailer: produção via API do Amazon SES.
  */
 export interface Mailer {
-  send(params: { to: string; subject: string; text: string; html?: string }): Promise<void>;
+  send(params: {
+    to: string;
+    subject: string;
+    text: string;
+    html?: string;
+  }): Promise<void>;
 }
 
 export class DisabledMailer implements Mailer {

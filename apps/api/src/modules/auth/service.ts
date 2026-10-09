@@ -370,8 +370,12 @@ export class AuthService {
     href: string,
     label: string,
   ): string {
-    const escape = (value: string) =>
-      value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
-    return `<!doctype html><html lang="pt-BR"><body style="font-family:Arial,sans-serif;color:#1f2937;line-height:1.5"><h1>${escape(title)}</h1><p>${escape(paragraph)}</p><p><a href="${escape(href)}" style="background:#0f766e;color:#fff;padding:12px 18px;border-radius:6px;text-decoration:none">${escape(label)}</a></p><p>O link é de uso único e expira conforme as regras da conta.</p></body></html>`;
+    const escapeHtml = (value: string) =>
+      value
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;");
+    return `<!doctype html><html lang="pt-BR"><body style="font-family:Arial,sans-serif;color:#1f2937;line-height:1.5"><h1>${escapeHtml(title)}</h1><p>${escapeHtml(paragraph)}</p><p><a href="${escapeHtml(href)}" style="background:#0f766e;color:#fff;padding:12px 18px;border-radius:6px;text-decoration:none">${escapeHtml(label)}</a></p><p>O link é de uso único e expira conforme as regras da conta.</p></body></html>`;
   }
 }
