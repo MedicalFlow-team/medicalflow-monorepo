@@ -88,7 +88,19 @@ if compgen -G "apps/api/prisma/migrations/*" > /dev/null; then
       --format 'update={{json .UpdateStatus}}' >&2 || true
     exit 1
   fi
-  docker exec "$API_MIGRATION_CID" bun run db:deploy
+  migration_ok="false"
+  for i in $(seq 1 30); do
+    if docker exec "$API_MIGRATION_CID" bun run db:deploy; then
+      migration_ok="true"
+      break
+    fi
+    echo "   ...aguardando PostgreSQL para migration ($i/30)"
+    sleep 5
+  done
+  if [ "$migration_ok" != "true" ]; then
+    echo "FALHA: migration não concluiu após aguardar o PostgreSQL" >&2
+    exit 1
+  fi
 else
   echo "==> sem migrations ainda — pulando"
 fi
