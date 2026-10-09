@@ -20,6 +20,11 @@ POSTGRES_USER="$(grep -E '^POSTGRES_USER=' "$ENV_FILE" | cut -d= -f2-)"
 cd "$REPO_DIR"
 export FLOWCARE_TAG="$TAG"
 
+# O archive_command roda como postgres (UID 70), mesmo quando o checkout foi
+# criado por root com umask restritiva.
+install -d -m 700 -o 70 -g 70 /root/flowcare/wal-spool
+chmod 755 "$REPO_DIR/infra/backup/archive-wal.sh"
+
 # docker stack deploy não carrega .env para interpolação como o Compose.
 # Exporta somente os endereços públicos/internos necessários, sem executar o arquivo.
 for key in API_INTERNAL_URL API_HOST WEB_HOST WEB_ALT_HOST; do
