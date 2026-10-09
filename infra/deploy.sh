@@ -73,7 +73,7 @@ if compgen -G "apps/api/prisma/migrations/*" > /dev/null; then
     echo "FALHA: API não subiu para migration" >&2
     exit 1
   fi
-  docker exec "$API_MIGRATION_CID" bunx prisma migrate deploy
+  docker exec "$API_MIGRATION_CID" bunx prisma@7.10.0 migrate deploy
 else
   echo "==> sem migrations ainda — pulando"
 fi
