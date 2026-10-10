@@ -6,9 +6,10 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { z } from "zod";
 import { loginAction } from "@/app/(auth)/actions";
+import { Field, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 import { destinationAfterLogin, unwrapActionResult } from "@/lib/auth";
 import {
-  AuthInputField,
   AuthSubmitButton,
   authLinkClass,
   emailSchema,
@@ -67,38 +68,54 @@ export function LoginForm({ returnTo }: { returnTo?: string | null }) {
     >
       <form.Field name="email">
         {(field) => (
-          <AuthInputField
-            id={field.name}
-            name={field.name}
-            label="Email"
-            type="email"
-            autoComplete="username"
-            maxLength={254}
-            placeholder="seu@email.com"
-            required
-            disabled={success}
-            value={field.state.value}
-            onBlur={field.handleBlur}
-            onChange={field.handleChange}
-          />
+          <Field className="gap-[3px]">
+            <FieldLabel
+              htmlFor={field.name}
+              className="required text-base font-normal leading-5"
+            >
+              Email
+            </FieldLabel>
+            <Input
+              id={field.name}
+              name={field.name}
+              type="email"
+              autoComplete="username"
+              maxLength={254}
+              placeholder="seu@email.com"
+              required
+              disabled={success}
+              className="h-[47px] rounded-lg bg-card px-3 text-base md:text-base border-transparent focus-visible:border-primary"
+              value={field.state.value}
+              onBlur={field.handleBlur}
+              onChange={(event) => field.handleChange(event.target.value)}
+            />
+          </Field>
         )}
       </form.Field>
       <form.Field name="password">
         {(field) => (
-          <AuthInputField
-            id={field.name}
-            name={field.name}
-            label="Senha"
-            type="password"
-            autoComplete="current-password"
-            maxLength={72}
-            placeholder="Digite sua senha"
-            required
-            disabled={success}
-            value={field.state.value}
-            onBlur={field.handleBlur}
-            onChange={field.handleChange}
-          />
+          <Field className="gap-[3px]">
+            <FieldLabel
+              htmlFor={field.name}
+              className="required text-base font-normal leading-5"
+            >
+              Senha
+            </FieldLabel>
+            <Input
+              id={field.name}
+              name={field.name}
+              type="password"
+              autoComplete="current-password"
+              maxLength={72}
+              placeholder="Digite sua senha"
+              required
+              disabled={success}
+              className="h-[47px] rounded-lg bg-card px-3 text-base md:text-base border-transparent focus-visible:border-primary"
+              value={field.state.value}
+              onBlur={field.handleBlur}
+              onChange={(event) => field.handleChange(event.target.value)}
+            />
+          </Field>
         )}
       </form.Field>
       <div className="text-right text-sm leading-5">

@@ -1,12 +1,9 @@
 "use client";
 
 import { CheckIcon, Loader2Icon } from "lucide-react";
-import type { ComponentProps } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
-import { Field, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
 
 export const emailSchema = z.email("Informe um e-mail válido.").max(254);
 export const passwordSchema = z
@@ -43,44 +40,6 @@ export function showAuthError(cause: unknown) {
         : "Não foi possível concluir a solicitação.",
     );
   }
-}
-
-type AuthInputFieldProps = Omit<
-  ComponentProps<typeof Input>,
-  "value" | "onChange" | "onBlur"
-> & {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  onBlur: () => void;
-  fieldGap?: string;
-};
-
-export function AuthInputField({
-  label,
-  value,
-  onChange,
-  onBlur,
-  fieldGap = "gap-[3px]",
-  ...inputProps
-}: AuthInputFieldProps) {
-  return (
-    <Field className={fieldGap}>
-      <FieldLabel
-        htmlFor={inputProps.id}
-        className="required text-base font-normal leading-5"
-      >
-        {label}
-      </FieldLabel>
-      <Input
-        {...inputProps}
-        className="h-[47px] rounded-lg bg-card px-3 text-base md:text-base border-transparent focus-visible:border-primary"
-        value={value}
-        onBlur={onBlur}
-        onChange={(event) => onChange(event.target.value)}
-      />
-    </Field>
-  );
 }
 
 export function AuthSubmitButton({

@@ -7,9 +7,10 @@ import { toast } from "sonner";
 import { z } from "zod";
 import { forgotPasswordAction } from "@/app/(auth)/actions";
 import { Button } from "@/components/ui/button";
+import { Field, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 import { unwrapActionResult } from "@/lib/auth";
 import {
-  AuthInputField,
   AuthSubmitButton,
   buttonClass,
   emailSchema,
@@ -61,20 +62,28 @@ export function ForgotPasswordForm() {
     >
       <form.Field name="email">
         {(field) => (
-          <AuthInputField
-            id={field.name}
-            name={field.name}
-            label="Email"
-            type="email"
-            autoComplete="username"
-            maxLength={254}
-            placeholder="Digite seu e-mail cadastrado"
-            required
-            disabled={success}
-            value={field.state.value}
-            onBlur={field.handleBlur}
-            onChange={field.handleChange}
-          />
+          <Field className="gap-[3px]">
+            <FieldLabel
+              htmlFor={field.name}
+              className="required text-base font-normal leading-5"
+            >
+              Email
+            </FieldLabel>
+            <Input
+              id={field.name}
+              name={field.name}
+              type="email"
+              autoComplete="username"
+              maxLength={254}
+              placeholder="Digite seu e-mail cadastrado"
+              required
+              disabled={success}
+              className="h-[47px] rounded-lg bg-card px-3 text-base md:text-base border-transparent focus-visible:border-primary"
+              value={field.state.value}
+              onBlur={field.handleBlur}
+              onChange={(event) => field.handleChange(event.target.value)}
+            />
+          </Field>
         )}
       </form.Field>
       <form.Subscribe selector={(state) => state.isSubmitting}>
