@@ -4,6 +4,10 @@ import type { Env } from "./config/env";
 import type { PrismaClient } from "./generated/prisma/client";
 import { ApiError } from "./lib/api-error";
 import { accountModule } from "./modules/account";
+import {
+  createProfilePhotoStore,
+  type ProfilePhotoStore,
+} from "./modules/account/service";
 import { authModule } from "./modules/auth";
 import type { AuthDeps } from "./modules/auth/service";
 import { inviteModule } from "./modules/invites";
@@ -27,6 +31,7 @@ import type { Mailer } from "./services/mailer";
 export interface AppDeps {
   prisma: PrismaClient;
   mailer: Mailer;
+  profilePhotoStore?: ProfilePhotoStore | null;
 }
 
 const WAHA_PROBE_TIMEOUT_MS = 1500;
@@ -135,7 +140,21 @@ export function createApp(env: Env, deps: AppDeps) {
     .use(authModule(authDeps))
     .use(onboardingModule(onboardingDeps))
     .use(organizationsModule({ prisma: deps.prisma, jwtSecret: env.jwtSecret }))
-    .use(accountModule({ prisma: deps.prisma, jwtSecret: env.jwtSecret }))
+    .use(
+      accountModule({
+        prisma: deps.prisma,
+        jwtSecret: env.jwtSecret,
+        photoStore:
+          deps.profilePhotoStore ??
+          createProfilePhotoStore({
+            endpoint: env.storageEndpoint ?? null,
+            bucket: env.storageBucket ?? null,
+            region: env.storageRegion ?? "auto",
+            accessKeyId: env.storageAccessKeyId ?? null,
+            secretAccessKey: env.storageSecretAccessKey ?? null,
+          }),
+      }),
+    )
     .use(
       inviteModule({
         prisma: deps.prisma,
