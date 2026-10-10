@@ -15,6 +15,9 @@ test("perfil administrativo exige nome e telefone, sem registro clínico", () =>
     false,
   );
   expect(profileInput.safeParse({ ...base, phone: "85" }).success).toBe(false);
+  expect(
+    profileInput.safeParse({ ...base, phone: "859999999999" }).success,
+  ).toBe(false);
 });
 
 test("profissional clínico precisa de profissão e registro", () => {

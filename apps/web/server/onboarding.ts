@@ -7,6 +7,7 @@ import { getSessionToken } from "./session";
 const progressSchema = z.object({
   currentStep: z.string(),
   completed: z.boolean(),
+  draftData: z.record(z.string(), z.unknown()),
 });
 
 export type OnboardingProgress = z.infer<typeof progressSchema>;

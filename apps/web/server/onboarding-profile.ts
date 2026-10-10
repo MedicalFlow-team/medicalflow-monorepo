@@ -6,14 +6,20 @@ import { getSessionToken } from "./session";
 
 export class ProfileApiError extends Error {
   constructor(
-    readonly code: "UNAUTHENTICATED" | "VALIDATION_ERROR" | "UNAVAILABLE",
+    readonly code:
+      | "UNAUTHENTICATED"
+      | "VALIDATION_ERROR"
+      | "STEP_ALREADY_COMPLETED"
+      | "UNAVAILABLE",
   ) {
     super(
       code === "UNAUTHENTICATED"
         ? "Sua sessão expirou. Entre novamente."
-        : code === "VALIDATION_ERROR"
-          ? "Confira os dados informados."
-          : "Não foi possível salvar seu perfil. Tente novamente.",
+        : code === "STEP_ALREADY_COMPLETED"
+          ? "Esta etapa já foi concluída. Continue para a próxima."
+          : code === "VALIDATION_ERROR"
+            ? "Confira os dados informados."
+            : "Não foi possível salvar seu perfil. Tente novamente.",
     );
   }
 }
@@ -39,6 +45,8 @@ export async function profileApiRequest(
     });
     if (response.status === 401) throw new ProfileApiError("UNAUTHENTICATED");
     if (response.status === 400) throw new ProfileApiError("VALIDATION_ERROR");
+    if (response.status === 409)
+      throw new ProfileApiError("STEP_ALREADY_COMPLETED");
     if (!response.ok) throw new ProfileApiError("UNAVAILABLE");
     const parsed = profileResponse.safeParse(await response.json());
     if (!parsed.success) throw new ProfileApiError("UNAVAILABLE");

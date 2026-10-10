@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { OnboardingStepper } from "@/components/flowcare/onboarding-stepper";
-import { ProfileForm } from "@/components/flowcare/profile-form";
+import { OnboardingLoadError } from "@/components/flowcare/onboarding/onboarding-load-error";
+import { OnboardingStepper } from "@/components/flowcare/onboarding/onboarding-stepper";
+import { ProfileForm } from "@/components/flowcare/onboarding/profile-form";
 import type { Profile } from "@/lib/onboarding-profile";
 import { onboardingStepPath } from "@/lib/onboarding-steps";
 import { getOnboardingProgress } from "@/server/onboarding";
@@ -12,12 +13,7 @@ import {
 
 export const metadata: Metadata = { title: "Complete seu perfil | Flowcare" };
 
-export default async function OnboardingProfilePage({
-  searchParams,
-}: {
-  searchParams: Promise<{ edit?: string }>;
-}) {
-  const { edit } = await searchParams;
+export default async function OnboardingProfilePage() {
   let profile: Profile | null = null;
   let loadError = false;
   let unauthenticated = false;
@@ -30,7 +26,7 @@ export default async function OnboardingProfilePage({
   }
 
   if (unauthenticated) redirect("/login");
-  if (profile?.completed && edit !== "1") {
+  if (profile?.completed) {
     const progress = await getOnboardingProgress();
     if (progress?.completed) redirect("/app");
     redirect(onboardingStepPath(progress?.currentStep ?? "ORGANIZATION_SETUP"));
@@ -49,13 +45,7 @@ export default async function OnboardingProfilePage({
           Confira seus dados pessoais antes de configurar a clínica.
         </p>
         {loadError ? (
-          <div
-            role="alert"
-            className="mt-8 rounded-lg border border-destructive p-4"
-          >
-            Não foi possível carregar seu perfil. Recarregue a página para
-            tentar novamente.
-          </div>
+          <OnboardingLoadError message="Não foi possível carregar seu perfil. Recarregue a página para tentar novamente." />
         ) : profile ? (
           <ProfileForm initialProfile={profile} />
         ) : null}

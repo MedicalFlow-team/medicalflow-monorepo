@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { ClinicForm } from "@/components/flowcare/clinic-form";
-import { OnboardingStepper } from "@/components/flowcare/onboarding-stepper";
+import { ClinicForm } from "@/components/flowcare/onboarding/clinic-form";
+import { OnboardingStepper } from "@/components/flowcare/onboarding/onboarding-stepper";
 import type { Profile } from "@/lib/onboarding-profile";
 import { onboardingStepPath } from "@/lib/onboarding-steps";
 import { getOnboardingProgress } from "@/server/onboarding";
