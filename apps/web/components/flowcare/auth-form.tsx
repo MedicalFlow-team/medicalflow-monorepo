@@ -1,11 +1,12 @@
 "use client";
 
+import { useForm } from "@tanstack/react-form";
 import { CheckIcon, Loader2Icon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { FormEvent } from "react";
-import { startTransition, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
+import { z } from "zod";
 import {
   forgotPasswordAction,
   loginAction,
@@ -13,8 +14,8 @@ import {
   resetPasswordAction,
 } from "@/app/(auth)/actions";
 import { Button } from "@/components/ui/button";
+import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { destinationAfterLogin, unwrapActionResult } from "@/lib/auth";
 
@@ -41,6 +42,67 @@ const successLabels: Record<AuthMode, string> = {
   "reset-password": "Senha alterada!",
 };
 
+const emailSchema = z.email("Informe um e-mail válido.").max(254);
+const passwordSchema = z
+  .string()
+  .min(8, "A senha precisa ter no mínimo 8 caracteres.")
+  .max(72);
+const confirmationSchema = z.string().min(1, "Confirme sua senha.").max(72);
+
+function validateAuthForm(
+  mode: AuthMode,
+  value: {
+    fullName: string;
+    email: string;
+    password: string;
+    confirmation: string;
+    acceptedTerms: boolean;
+  },
+): string | undefined {
+  const fields = {
+    fullName: value.fullName.trim(),
+    email: value.email.trim(),
+    password: value.password,
+    confirmation: value.confirmation,
+    acceptedTerms: value.acceptedTerms,
+  };
+  const schema =
+    mode === "login"
+      ? z.object({
+          email: emailSchema,
+          password: z.string().min(1, "Informe sua senha.").max(72),
+        })
+      : mode === "forgot-password"
+        ? z.object({ email: emailSchema })
+        : mode === "register"
+          ? z.object({
+              fullName: z
+                .string()
+                .min(3, "Informe seu nome completo.")
+                .max(120),
+              email: emailSchema,
+              password: passwordSchema,
+              confirmation: confirmationSchema,
+              acceptedTerms: z.literal(
+                true,
+                "É necessário aceitar os termos para criar a conta.",
+              ),
+            })
+          : z.object({
+              password: passwordSchema,
+              confirmation: confirmationSchema,
+            });
+  const result = schema.safeParse(fields);
+  if (!result.success) return result.error.issues[0]?.message;
+  if (
+    (mode === "register" || mode === "reset-password") &&
+    fields.password !== fields.confirmation
+  ) {
+    return "As senhas precisam ser iguais.";
+  }
+  return undefined;
+}
+
 export function AuthForm({
   mode,
   token,
@@ -51,9 +113,7 @@ export function AuthForm({
   returnTo?: string | null;
 }) {
   const router = useRouter();
-  const [pending, setPending] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
-  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const isReset = mode === "reset-password";
   const isRegister = mode === "register";
   const showPassword = mode !== "forgot-password";
@@ -61,37 +121,36 @@ export function AuthForm({
     "h-[47px] rounded-lg bg-card px-3 text-base md:text-base border-transparent focus-visible:border-primary";
   const buttonClass =
     "h-[46px] w-full cursor-pointer rounded-lg text-base font-normal";
+  const labelClass = "required text-base font-normal leading-5";
 
-  function onSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (pending || isSuccess) return;
-    const data = new FormData(event.currentTarget);
-    const email = String(data.get("email") ?? "").trim();
-    const password = String(data.get("password") ?? "");
-    const confirmation = String(data.get("confirmation") ?? "");
-
-    if ((isReset || isRegister) && password !== confirmation) {
-      toast.error("As senhas precisam ser iguais.");
-      return;
-    }
-    if (isReset && !token) {
-      toast.error("Link inválido. Solicite um novo link de recuperação.");
-      return;
-    }
-    if (isRegister && !acceptedTerms) {
-      toast.error("É necessário aceitar os termos para criar a conta.");
-      return;
-    }
-
-    setPending(true);
-    startTransition(async () => {
+  const form = useForm({
+    defaultValues: {
+      fullName: "",
+      email: "",
+      password: "",
+      confirmation: "",
+      acceptedTerms: false,
+    },
+    validators: {
+      onSubmit: ({ value }) => validateAuthForm(mode, value),
+    },
+    onSubmitInvalid: ({ value }) => {
+      toast.error(
+        validateAuthForm(mode, value) ?? "Verifique os dados informados.",
+      );
+    },
+    onSubmit: async ({ value }) => {
+      if (isSuccess) return;
+      if (isReset && !token) {
+        toast.error("Link inválido. Solicite um novo link de recuperação.");
+        return;
+      }
+      const email = value.email.trim();
+      const password = value.password;
       try {
         if (mode === "login") {
           const result = unwrapActionResult(
-            await loginAction({
-              email,
-              password,
-            }),
+            await loginAction({ email, password }),
           );
           setIsSuccess(true);
           router.replace(destinationAfterLogin(result, returnTo ?? null));
@@ -99,7 +158,7 @@ export function AuthForm({
         } else if (mode === "register") {
           unwrapActionResult(
             await registerAction({
-              fullName: String(data.get("fullName") ?? "").trim(),
+              fullName: value.fullName.trim(),
               email,
               password,
               acceptedTerms: true,
@@ -147,111 +206,133 @@ export function AuthForm({
               : "Não foi possível concluir a solicitação.",
           );
         }
-      } finally {
-        setPending(false);
       }
-    });
-  }
+    },
+  });
 
   return (
-    <form className="space-y-[11px]" onSubmit={onSubmit}>
+    <form
+      className="space-y-[11px]"
+      noValidate
+      onSubmit={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        void form.handleSubmit();
+      }}
+    >
       {isRegister && (
-        <div className="space-y-[3px]">
-          <Label
-            htmlFor="fullName"
-            className="required text-base font-normal leading-5"
-          >
-            Nome completo
-          </Label>
-          <Input
-            id="fullName"
-            name="fullName"
-            autoComplete="name"
-            minLength={3}
-            maxLength={120}
-            className={inputClass}
-            placeholder="Seu nome completo"
-            required
-            disabled={pending || isSuccess}
-          />
-        </div>
+        <form.Field name="fullName">
+          {(field) => (
+            <Field className="gap-[3px]">
+              <FieldLabel htmlFor={field.name} className={labelClass}>
+                Nome completo
+              </FieldLabel>
+              <Input
+                id={field.name}
+                name={field.name}
+                autoComplete="name"
+                minLength={3}
+                maxLength={120}
+                className={inputClass}
+                placeholder="Seu nome completo"
+                required
+                value={field.state.value}
+                onBlur={field.handleBlur}
+                onChange={(event) => field.handleChange(event.target.value)}
+                disabled={isSuccess}
+              />
+            </Field>
+          )}
+        </form.Field>
       )}
       {!isReset && (
-        <div className="space-y-[3px]">
-          <Label
-            htmlFor="email"
-            className="required text-base font-normal leading-5"
-          >
-            Email
-          </Label>
-          <Input
-            id="email"
-            name="email"
-            type="email"
-            autoComplete="username"
-            maxLength={254}
-            className={inputClass}
-            placeholder={
-              mode === "forgot-password"
-                ? "Digite seu e-mail cadastrado"
-                : "seu@email.com"
-            }
-            required
-            disabled={pending || isSuccess}
-          />
-        </div>
+        <form.Field name="email">
+          {(field) => (
+            <Field className="gap-[3px]">
+              <FieldLabel htmlFor={field.name} className={labelClass}>
+                Email
+              </FieldLabel>
+              <Input
+                id={field.name}
+                name={field.name}
+                type="email"
+                autoComplete="username"
+                maxLength={254}
+                className={inputClass}
+                placeholder={
+                  mode === "forgot-password"
+                    ? "Digite seu e-mail cadastrado"
+                    : "seu@email.com"
+                }
+                required
+                value={field.state.value}
+                onBlur={field.handleBlur}
+                onChange={(event) => field.handleChange(event.target.value)}
+                disabled={isSuccess}
+              />
+            </Field>
+          )}
+        </form.Field>
       )}
       {showPassword && (
-        <div className="space-y-[3px]">
-          <Label
-            htmlFor="password"
-            className="required text-base font-normal leading-5"
-          >
-            Senha
-          </Label>
-          <Input
-            id="password"
-            name="password"
-            type="password"
-            autoComplete={
-              mode === "login" ? "current-password" : "new-password"
-            }
-            minLength={mode === "login" ? undefined : 8}
-            maxLength={72}
-            className={inputClass}
-            placeholder={
-              mode === "login"
-                ? "Digite sua senha"
-                : isReset
-                  ? "Digite sua nova senha"
-                  : "No mínimo 8 caracteres"
-            }
-            required
-            disabled={pending || isSuccess}
-          />
-        </div>
+        <form.Field name="password">
+          {(field) => (
+            <Field className="gap-[3px]">
+              <FieldLabel htmlFor={field.name} className={labelClass}>
+                Senha
+              </FieldLabel>
+              <Input
+                id={field.name}
+                name={field.name}
+                type="password"
+                autoComplete={
+                  mode === "login" ? "current-password" : "new-password"
+                }
+                minLength={mode === "login" ? undefined : 8}
+                maxLength={72}
+                className={inputClass}
+                placeholder={
+                  mode === "login"
+                    ? "Digite sua senha"
+                    : isReset
+                      ? "Digite sua nova senha"
+                      : "No mínimo 8 caracteres"
+                }
+                required
+                value={field.state.value}
+                onBlur={field.handleBlur}
+                onChange={(event) => field.handleChange(event.target.value)}
+                disabled={isSuccess}
+              />
+            </Field>
+          )}
+        </form.Field>
       )}
       {(isReset || isRegister) && (
-        <div className="space-y-[11px]">
-          <Label
-            htmlFor="confirmation"
-            className="required text-base font-normal leading-5"
-          >
-            Confirmar senha
-          </Label>
-          <Input
-            id="confirmation"
-            name="confirmation"
-            type="password"
-            autoComplete="new-password"
-            minLength={8}
-            maxLength={72}
-            className={inputClass}
-            placeholder="Confirme sua senha"
-            required
-            disabled={pending || isSuccess}
-          />
-        </div>
+        <form.Field name="confirmation">
+          {(field) => (
+            <Field className="gap-[11px]">
+              <FieldLabel htmlFor={field.name} className={labelClass}>
+                Confirmar senha
+              </FieldLabel>
+              <Input
+                id={field.name}
+                name={field.name}
+                type="password"
+                autoComplete="new-password"
+                minLength={8}
+                maxLength={72}
+                className={inputClass}
+                placeholder="Confirme sua senha"
+                required
+                value={field.state.value}
+                onBlur={field.handleBlur}
+                onChange={(event) => field.handleChange(event.target.value)}
+                disabled={isSuccess}
+              />
+            </Field>
+          )}
+        </form.Field>
       )}
       {mode === "login" && (
         <div className="text-right text-sm leading-5">
@@ -264,44 +345,52 @@ export function AuthForm({
         </div>
       )}
       {isRegister && (
-        <div className="flex items-center gap-3 py-1">
-          <Switch
-            id="terms"
-            name="terms"
-            required
-            checked={acceptedTerms}
-            onCheckedChange={setAcceptedTerms}
-            disabled={pending || isSuccess}
-          />
-          <Label
-            htmlFor="terms"
-            className="required block cursor-pointer text-xs font-normal leading-4"
-          >
-            Ao continuar, você concorda com nossos{" "}
-            <span className="underline">Termos de serviço</span> e{" "}
-            <span className="underline">Política de privacidade</span>.
-          </Label>
-        </div>
+        <form.Field name="acceptedTerms">
+          {(field) => (
+            <Field orientation="horizontal" className="gap-3 py-1">
+              <Switch
+                id="terms"
+                name={field.name}
+                required
+                checked={field.state.value}
+                onCheckedChange={field.handleChange}
+                disabled={isSuccess}
+              />
+              <FieldLabel
+                htmlFor="terms"
+                className="required block cursor-pointer text-xs font-normal leading-4"
+              >
+                Ao continuar, você concorda com nossos{" "}
+                <span className="underline">Termos de serviço</span> e{" "}
+                <span className="underline">Política de privacidade</span>.
+              </FieldLabel>
+            </Field>
+          )}
+        </form.Field>
       )}
-      <Button
-        type="submit"
-        className={buttonClass}
-        disabled={pending || isSuccess}
-      >
-        {pending ? (
-          <span className="flex items-center justify-center gap-2">
-            <Loader2Icon className="size-4 animate-spin" />
-            {pendingLabels[mode]}
-          </span>
-        ) : isSuccess ? (
-          <span className="flex items-center justify-center gap-2">
-            <CheckIcon className="size-4" />
-            {successLabels[mode]}
-          </span>
-        ) : (
-          submitLabels[mode]
+      <form.Subscribe selector={(state) => state.isSubmitting}>
+        {(pending) => (
+          <Button
+            type="submit"
+            className={buttonClass}
+            disabled={pending || isSuccess}
+          >
+            {pending ? (
+              <span className="flex items-center justify-center gap-2">
+                <Loader2Icon className="size-4 animate-spin" />
+                {pendingLabels[mode]}
+              </span>
+            ) : isSuccess ? (
+              <span className="flex items-center justify-center gap-2">
+                <CheckIcon className="size-4" />
+                {successLabels[mode]}
+              </span>
+            ) : (
+              submitLabels[mode]
+            )}
+          </Button>
         )}
-      </Button>
+      </form.Subscribe>
       {mode === "login" && (
         <p className="pt-1 text-center text-sm text-muted-foreground">
           Não tem uma conta?{" "}
