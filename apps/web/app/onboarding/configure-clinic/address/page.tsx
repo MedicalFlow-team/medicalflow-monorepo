@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { ConfigureClinicForm } from "@/components/flowcare/configure-clinic-form";
-import { OnboardingLoadError } from "@/components/flowcare/onboarding-load-error";
-import { OnboardingStepper } from "@/components/flowcare/onboarding-stepper";
+import { ConfigureClinicForm } from "@/components/flowcare/onboarding/configure-clinic-form";
+import { OnboardingLoadError } from "@/components/flowcare/onboarding/onboarding-load-error";
+import { OnboardingStepper } from "@/components/flowcare/onboarding/onboarding-stepper";
 import { onboardingStepPath } from "@/lib/onboarding-steps";
 import { clinicDetailsRequest } from "@/server/clinic-details";
 import { getOnboardingProgress } from "@/server/onboarding";

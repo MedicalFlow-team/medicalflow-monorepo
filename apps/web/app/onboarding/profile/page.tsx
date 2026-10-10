@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { OnboardingLoadError } from "@/components/flowcare/onboarding-load-error";
-import { OnboardingStepper } from "@/components/flowcare/onboarding-stepper";
-import { ProfileForm } from "@/components/flowcare/profile-form";
+import { OnboardingLoadError } from "@/components/flowcare/onboarding/onboarding-load-error";
+import { OnboardingStepper } from "@/components/flowcare/onboarding/onboarding-stepper";
+import { ProfileForm } from "@/components/flowcare/onboarding/profile-form";
 import type { Profile } from "@/lib/onboarding-profile";
 import { onboardingStepPath } from "@/lib/onboarding-steps";
 import { getOnboardingProgress } from "@/server/onboarding";
