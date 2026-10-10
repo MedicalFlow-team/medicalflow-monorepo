@@ -13,6 +13,7 @@ export function accountModule(deps: AccountModuleDeps) {
   const service = new AccountService({ prisma: deps.prisma });
 
   return new Elysia({ name: "account" })
+    .model(m.accountModels)
     .use(authPlugin({ prisma: deps.prisma, jwtSecret: deps.jwtSecret }))
     .post(
       "/me/change-password",
@@ -40,7 +41,7 @@ export function accountModule(deps: AccountModuleDeps) {
       ({ auth, params }) =>
         service.revokeSession(auth.userId, auth.sessionId, params.sessionId),
       {
-        params: m.revokeSessionParams,
+        params: m.sessionIdParams,
         response: { 200: m.revokeSessionResponse },
       },
     )
