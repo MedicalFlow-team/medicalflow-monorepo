@@ -93,6 +93,7 @@ test("lists only own active clinics, with a bounded and minimal response", async
       role: true,
       organization: { select: { id: true, name: true, slug: true } },
     },
+    orderBy: { createdAt: "asc" },
     take: 100,
   });
   expect(result).toEqual({
@@ -122,7 +123,7 @@ test("returns an empty list for an account without active clinics", async () => 
   });
 });
 
-test("organization route derives account identity from the session", async () => {
+test("organization route derives account identity from the session and rejects unauthenticated requests", async () => {
   const { prisma, queries } = organizationPrisma();
   const sessionPrisma = Object.assign(prisma, {
     session: {
@@ -133,6 +134,12 @@ test("organization route derives account identity from the session", async () =>
     prisma: sessionPrisma,
     jwtSecret: "test-secret",
   });
+  const unauthenticated = await api.handle(
+    new Request("http://localhost/organizations"),
+  );
+  expect(unauthenticated.status).toBe(500);
+  expect(queries).toHaveLength(0);
+
   const token = signSessionToken(
     { sid: "session-1", sub: "user-2" },
     "test-secret",
