@@ -3,6 +3,7 @@ import {
   clinicContactSchema,
   clinicDetailsResponseSchema,
   clinicDetailsSchema,
+  formatCnpj,
   validCnpj,
 } from "../lib/clinic-details";
 
@@ -20,6 +21,13 @@ const valid = {
   streetNumber: "10",
   addressComplement: "",
 };
+
+test("formats CNPJ while typing and caps pasted values at fourteen digits", () => {
+  expect(formatCnpj("112")).toBe("11.2");
+  expect(formatCnpj("11222333")).toBe("11.222.333");
+  expect(formatCnpj("11.222.333/0001-81")).toBe("11.222.333/0001-81");
+  expect(formatCnpj("11.222.333/0001-8199")).toBe("11.222.333/0001-81");
+});
 
 test("validates clinic legal, contact and address fields", () => {
   expect(validCnpj(valid.taxId)).toBe(true);

@@ -16,6 +16,7 @@ import {
   type ClinicDetailsInput,
   clinicAddressSchema,
   clinicContactSchema,
+  formatCnpj,
 } from "@/lib/clinic-details";
 import { formatPhoneWithAreaCode } from "@/lib/phone";
 
@@ -92,7 +93,7 @@ export function ConfigureClinicForm({
     defaultValues: {
       version: initial.version,
       legalName: initial.legalName,
-      taxId: initial.taxId,
+      taxId: formatCnpj(initial.taxId),
       contactEmail: initial.contactEmail,
       contactPhone: formatPhoneWithAreaCode(initial.contactPhone),
       postalCode: initial.postalCode,
@@ -142,7 +143,9 @@ export function ConfigureClinicForm({
       values[field.key] !==
       (field.key === "contactPhone"
         ? formatPhoneWithAreaCode(initial.contactPhone)
-        : initial[field.key]),
+        : field.key === "taxId"
+          ? formatCnpj(initial.taxId)
+          : initial[field.key]),
   );
 
   useEffect(() => {
@@ -188,9 +191,17 @@ export function ConfigureClinicForm({
                   name={control.name}
                   type={field.type ?? "text"}
                   inputMode={
-                    field.key === "contactPhone" ? "numeric" : undefined
+                    field.key === "contactPhone" || field.key === "taxId"
+                      ? "numeric"
+                      : undefined
                   }
-                  maxLength={field.key === "contactPhone" ? 15 : undefined}
+                  maxLength={
+                    field.key === "contactPhone"
+                      ? 15
+                      : field.key === "taxId"
+                        ? 18
+                        : undefined
+                  }
                   placeholder={field.placeholder}
                   value={control.state.value}
                   required={field.required}
@@ -201,7 +212,9 @@ export function ConfigureClinicForm({
                     control.handleChange(
                       field.key === "contactPhone"
                         ? formatPhoneWithAreaCode(event.target.value)
-                        : event.target.value,
+                        : field.key === "taxId"
+                          ? formatCnpj(event.target.value)
+                          : event.target.value,
                     )
                   }
                 />
