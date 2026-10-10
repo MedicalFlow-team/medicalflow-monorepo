@@ -20,6 +20,7 @@ import {
   type ProfileInput,
   profileInput,
 } from "@/lib/onboarding-profile";
+import { formatPhoneWithAreaCode } from "@/lib/phone";
 
 const inputClass =
   "h-[47px] rounded-lg bg-card px-3 text-base md:text-base border-transparent focus-visible:border-primary";
@@ -35,7 +36,7 @@ export function ProfileForm({ initialProfile }: { initialProfile: Profile }) {
   const form = useForm({
     defaultValues: {
       fullName: initialProfile.fullName,
-      phone: initialProfile.phone ?? "",
+      phone: formatPhoneWithAreaCode(initialProfile.phone ?? ""),
       professionalRole:
         initialProfile.professionalRole === "CLINICAL" ||
         initialProfile.professionalRole === "RECEPTION"
@@ -113,12 +114,14 @@ export function ProfileForm({ initialProfile }: { initialProfile: Profile }) {
               name={field.name}
               type="tel"
               autoComplete="tel"
-              inputMode="tel"
+              inputMode="numeric"
               value={field.state.value}
               onBlur={field.handleBlur}
-              onChange={(event) => field.handleChange(event.target.value)}
+              onChange={(event) =>
+                field.handleChange(formatPhoneWithAreaCode(event.target.value))
+              }
               aria-invalid={!field.state.meta.isValid}
-              maxLength={20}
+              maxLength={15}
               required
             />
           </Field>

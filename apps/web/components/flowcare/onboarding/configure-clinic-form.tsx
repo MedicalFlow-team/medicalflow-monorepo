@@ -17,6 +17,7 @@ import {
   clinicAddressSchema,
   clinicContactSchema,
 } from "@/lib/clinic-details";
+import { formatPhoneWithAreaCode } from "@/lib/phone";
 
 type ClinicField = {
   key: Exclude<keyof ClinicDetailsInput, "version">;
@@ -93,7 +94,7 @@ export function ConfigureClinicForm({
       legalName: initial.legalName,
       taxId: initial.taxId,
       contactEmail: initial.contactEmail,
-      contactPhone: initial.contactPhone,
+      contactPhone: formatPhoneWithAreaCode(initial.contactPhone),
       postalCode: initial.postalCode,
       state: initial.state,
       city: initial.city,
@@ -137,7 +138,11 @@ export function ConfigureClinicForm({
   });
   const values = useStore(form.store, (state) => state.values);
   const dirty = fields.some(
-    (field) => values[field.key] !== initial[field.key],
+    (field) =>
+      values[field.key] !==
+      (field.key === "contactPhone"
+        ? formatPhoneWithAreaCode(initial.contactPhone)
+        : initial[field.key]),
   );
 
   useEffect(() => {
@@ -187,13 +192,23 @@ export function ConfigureClinicForm({
                   id={field.key}
                   name={control.name}
                   type={field.type ?? "text"}
+                  inputMode={
+                    field.key === "contactPhone" ? "numeric" : undefined
+                  }
+                  maxLength={field.key === "contactPhone" ? 15 : undefined}
                   placeholder={field.placeholder}
                   value={control.state.value}
                   required={field.required}
                   aria-invalid={!control.state.meta.isValid}
                   disabled={conflict}
                   onBlur={control.handleBlur}
-                  onChange={(event) => control.handleChange(event.target.value)}
+                  onChange={(event) =>
+                    control.handleChange(
+                      field.key === "contactPhone"
+                        ? formatPhoneWithAreaCode(event.target.value)
+                        : event.target.value,
+                    )
+                  }
                 />
               </Field>
             )}

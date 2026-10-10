@@ -25,6 +25,10 @@ test("validates clinic legal, contact and address fields", () => {
   expect(validCnpj(valid.taxId)).toBe(true);
   expect(clinicDetailsSchema.safeParse(valid).success).toBe(true);
   expect(
+    clinicContactSchema.safeParse({ ...valid, contactPhone: "859999999999" })
+      .success,
+  ).toBe(false);
+  expect(
     clinicDetailsSchema.safeParse({ ...valid, taxId: "11.222.333/0001-80" })
       .success,
   ).toBe(false);

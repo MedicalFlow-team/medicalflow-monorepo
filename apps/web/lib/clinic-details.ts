@@ -26,7 +26,7 @@ export const clinicDetailsSchema = z.object({
   contactEmail: z.email("Informe um e-mail válido."),
   contactPhone: z.string().refine((v) => {
     const n = v.replace(/\D/g, "").length;
-    return n >= 10 && n <= 13;
+    return n >= 10 && n <= 11;
   }, "Informe um telefone com DDD."),
   postalCode: z.string().regex(/^\d{8}$/, "Informe um CEP com 8 dígitos."),
   state: z.string().regex(/^[A-Za-z]{2}$/, "Informe a sigla do estado."),
