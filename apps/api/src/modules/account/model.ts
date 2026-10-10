@@ -38,6 +38,16 @@ export const sessionsResponse = t.Object(
   { additionalProperties: false },
 );
 
+export const revokeSessionParams = t.Object(
+  { sessionId: t.String({ minLength: 1, maxLength: 200 }) },
+  { additionalProperties: false },
+);
+
+export const revokeSessionResponse = t.Object(
+  { revokedCount: t.Number({ minimum: 0 }) },
+  { additionalProperties: false },
+);
+
 export const profileResponse = t.Object(
   {
     id: t.String(),
@@ -51,4 +61,5 @@ export type ChangePasswordBody = typeof changePasswordBody.static;
 export type ChangePasswordResponse = typeof changePasswordResponse.static;
 export type SessionItem = typeof sessionItem.static;
 export type SessionsResponse = typeof sessionsResponse.static;
+export type RevokeSessionResponse = typeof revokeSessionResponse.static;
 export type ProfileResponse = typeof profileResponse.static;

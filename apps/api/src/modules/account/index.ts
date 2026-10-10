@@ -30,6 +30,20 @@ export function accountModule(deps: AccountModuleDeps) {
         response: { 200: m.sessionsResponse },
       },
     )
+    .delete(
+      "/me/sessions/other",
+      ({ auth }) => service.revokeOtherSessions(auth.userId, auth.sessionId),
+      { response: { 200: m.revokeSessionResponse } },
+    )
+    .delete(
+      "/me/sessions/:sessionId",
+      ({ auth, params }) =>
+        service.revokeSession(auth.userId, auth.sessionId, params.sessionId),
+      {
+        params: m.revokeSessionParams,
+        response: { 200: m.revokeSessionResponse },
+      },
+    )
     .get("/me/profile", ({ auth }) => service.getProfile(auth.userId), {
       response: { 200: m.profileResponse },
     });

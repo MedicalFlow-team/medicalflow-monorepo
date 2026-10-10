@@ -4,11 +4,16 @@ import {
   safeSessionIpAddress,
   summarizeUserAgent,
 } from "../../lib/session-metadata";
-import { InvalidCurrentPassword, UserNotFound } from "./errors";
+import {
+  InvalidCurrentPassword,
+  SessionNotFound,
+  UserNotFound,
+} from "./errors";
 import type {
   ChangePasswordBody,
   ChangePasswordResponse,
   ProfileResponse,
+  RevokeSessionResponse,
   SessionsResponse,
 } from "./model";
 
@@ -91,6 +96,61 @@ export class AccountService {
         lastActiveAt: s.lastActiveAt.toISOString(),
       })),
     };
+  }
+
+  async revokeSession(
+    userId: string,
+    actorSessionId: string,
+    targetSessionId: string,
+  ): Promise<RevokeSessionResponse> {
+    return this.deps.prisma.$transaction(async (tx) => {
+      const result = await tx.session.updateMany({
+        where: {
+          id: targetSessionId,
+          userId,
+          revokedAt: null,
+          expiresAt: { gt: new Date() },
+        },
+        data: { revokedAt: new Date() },
+      });
+      if (result.count === 0) throw SessionNotFound();
+      await tx.sessionRevocationAudit.create({
+        data: {
+          userId,
+          actorSessionId,
+          targetSessionId,
+          action: "SINGLE",
+          revokedCount: result.count,
+        },
+      });
+      return { revokedCount: result.count };
+    });
+  }
+
+  async revokeOtherSessions(
+    userId: string,
+    currentSessionId: string,
+  ): Promise<RevokeSessionResponse> {
+    return this.deps.prisma.$transaction(async (tx) => {
+      const result = await tx.session.updateMany({
+        where: {
+          userId,
+          id: { not: currentSessionId },
+          revokedAt: null,
+          expiresAt: { gt: new Date() },
+        },
+        data: { revokedAt: new Date() },
+      });
+      await tx.sessionRevocationAudit.create({
+        data: {
+          userId,
+          actorSessionId: currentSessionId,
+          action: "OTHER",
+          revokedCount: result.count,
+        },
+      });
+      return { revokedCount: result.count };
+    });
   }
 
   async getProfile(userId: string): Promise<ProfileResponse> {
