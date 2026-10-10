@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import type { FormEvent } from "react";
 import { useState } from "react";
+import { toast } from "sonner";
 import {
   saveOnboardingProfile,
   saveOnboardingProfileDraft,
@@ -28,9 +29,7 @@ export function ProfileForm({ initialProfile }: { initialProfile: Profile }) {
   const [errors, setErrors] = useState<
     Partial<Record<keyof ProfileInput, string>>
   >({});
-  const [message, setMessage] = useState("");
   const [pending, setPending] = useState(false);
-  const [draftSaved, setDraftSaved] = useState(false);
 
   function update<K extends keyof ProfileInput>(
     key: K,
@@ -38,8 +37,6 @@ export function ProfileForm({ initialProfile }: { initialProfile: Profile }) {
   ) {
     setValues((current) => ({ ...current, [key]: value }));
     setErrors((current) => ({ ...current, [key]: undefined }));
-    setMessage("");
-    setDraftSaved(false);
   }
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
@@ -47,16 +44,20 @@ export function ProfileForm({ initialProfile }: { initialProfile: Profile }) {
     if (pending) return;
     setPending(true);
     setErrors({});
-    setMessage("");
     try {
       const result = await saveOnboardingProfile(values);
       if (result.ok) {
+        toast.success("Perfil concluído com sucesso!");
         router.replace("/onboarding/clinic");
         router.refresh();
         return;
       }
       setErrors(result.fieldErrors ?? {});
-      setMessage(result.message);
+      const firstError =
+        result.fieldErrors && Object.values(result.fieldErrors)[0];
+      toast.error(
+        firstError || result.message || "Verifique os dados informados.",
+      );
     } finally {
       setPending(false);
     }
@@ -65,11 +66,13 @@ export function ProfileForm({ initialProfile }: { initialProfile: Profile }) {
   async function onSaveDraft() {
     if (pending) return;
     setPending(true);
-    setMessage("");
     try {
       const result = await saveOnboardingProfileDraft(values);
-      setDraftSaved(result.ok);
-      if (!result.ok) setMessage(result.message);
+      if (result.ok) {
+        toast.success("Rascunho salvo com sucesso.");
+      } else {
+        toast.error(result.message || "Erro ao salvar rascunho.");
+      }
     } finally {
       setPending(false);
     }
@@ -88,15 +91,9 @@ export function ProfileForm({ initialProfile }: { initialProfile: Profile }) {
           value={values.fullName}
           onChange={(event) => update("fullName", event.target.value)}
           aria-invalid={!!errors.fullName}
-          aria-describedby={errors.fullName ? "fullName-error" : undefined}
           maxLength={120}
           required
         />
-        {errors.fullName && (
-          <p id="fullName-error" className="text-sm text-destructive">
-            {errors.fullName}
-          </p>
-        )}
       </div>
 
       <div className="space-y-2">
@@ -110,15 +107,9 @@ export function ProfileForm({ initialProfile }: { initialProfile: Profile }) {
           value={values.phone}
           onChange={(event) => update("phone", event.target.value)}
           aria-invalid={!!errors.phone}
-          aria-describedby={errors.phone ? "phone-error" : undefined}
           maxLength={20}
           required
         />
-        {errors.phone && (
-          <p id="phone-error" className="text-sm text-destructive">
-            {errors.phone}
-          </p>
-        )}
       </div>
 
       <div className="space-y-2">
@@ -156,20 +147,9 @@ export function ProfileForm({ initialProfile }: { initialProfile: Profile }) {
                 update("professionalTitle", event.target.value)
               }
               aria-invalid={!!errors.professionalTitle}
-              aria-describedby={
-                errors.professionalTitle ? "professionalTitle-error" : undefined
-              }
               maxLength={120}
               required
             />
-            {errors.professionalTitle && (
-              <p
-                id="professionalTitle-error"
-                className="text-sm text-destructive"
-              >
-                {errors.professionalTitle}
-              </p>
-            )}
           </div>
           <div className="space-y-2">
             <Label htmlFor="registrationNumber">Registro profissional</Label>
@@ -182,33 +162,11 @@ export function ProfileForm({ initialProfile }: { initialProfile: Profile }) {
                 update("registrationNumber", event.target.value)
               }
               aria-invalid={!!errors.registrationNumber}
-              aria-describedby={
-                errors.registrationNumber
-                  ? "registrationNumber-error"
-                  : undefined
-              }
               maxLength={80}
               required
             />
-            {errors.registrationNumber && (
-              <p
-                id="registrationNumber-error"
-                className="text-sm text-destructive"
-              >
-                {errors.registrationNumber}
-              </p>
-            )}
           </div>
         </>
-      )}
-
-      {message && (
-        <p role="alert" className="text-sm text-destructive">
-          {message}
-        </p>
-      )}
-      {draftSaved && (
-        <output className="text-sm text-primary">Rascunho salvo.</output>
       )}
       <div className="flex flex-col gap-3 sm:flex-row">
         <Button

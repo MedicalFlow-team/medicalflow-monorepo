@@ -26,20 +26,26 @@ export class OnboardingService {
 
   /** #215 — progresso da própria conta; 404 sem registro é estado "novo". */
   async getProgress(userId: string) {
-    const [progress, user] = await Promise.all([
+    const [progress, user, membershipCount] = await Promise.all([
       this.deps.prisma.onboardingProgress.findUnique({ where: { userId } }),
       this.deps.prisma.user.findUnique({
         where: { id: userId },
         select: { profileCompletedAt: true },
       }),
+      this.deps.prisma.membership.count({
+        where: { userId, status: "ACTIVE" },
+      }),
     ]);
     if (!user) throw Unauthenticated();
+    const isCompleted = (progress?.completed ?? false) || membershipCount > 0;
     if (!progress) {
       return {
-        currentStep: user.profileCompletedAt
+        currentStep: isCompleted
           ? "ORGANIZATION_SETUP"
-          : "PROFILE_SETUP",
-        completed: false,
+          : user.profileCompletedAt
+            ? "ORGANIZATION_SETUP"
+            : "PROFILE_SETUP",
+        completed: isCompleted,
         draftData: {},
         version: 0,
       };
@@ -48,7 +54,7 @@ export class OnboardingService {
       currentStep: user.profileCompletedAt
         ? progress.currentStep
         : "PROFILE_SETUP",
-      completed: progress.completed,
+      completed: isCompleted,
       draftData: progress.draftData as Record<string, unknown>,
       version: progress.version,
     };
@@ -197,8 +203,8 @@ export class OnboardingService {
       });
       await tx.onboardingProgress.upsert({
         where: { userId },
-        create: { userId, currentStep: "ORGANIZATION_SETUP", completed: false },
-        update: {},
+        create: { userId, currentStep: "ORGANIZATION_SETUP", completed: true },
+        update: { completed: true },
       });
       return { org, membership, subscription };
     });
