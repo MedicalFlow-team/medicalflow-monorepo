@@ -1,6 +1,16 @@
 export const onboardingSteps = [
   { id: "PROFILE_SETUP", title: "Perfil", path: "/onboarding/profile" },
   { id: "ORGANIZATION_SETUP", title: "Clínica", path: "/onboarding/clinic" },
+  {
+    id: "CLINIC_DETAILS",
+    title: "Dados e contato",
+    path: "/onboarding/configure-clinic",
+  },
+  {
+    id: "CLINIC_ADDRESS",
+    title: "Endereço",
+    path: "/onboarding/configure-clinic/address",
+  },
 ] as const;
 
 export function onboardingStepPath(currentStep: string): string {

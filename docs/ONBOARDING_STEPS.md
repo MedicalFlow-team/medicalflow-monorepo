@@ -6,6 +6,11 @@ usam o mesmo cálculo. O frontend encaminha para a rota correspondente em
 `apps/web/lib/onboarding-steps.ts`; as páginas em `/app` exigem o onboarding
 concluído.
 
+A etapa `CLINIC_DETAILS` da issue #222 vem após a criação da clínica. O formulário
+salva dados institucionais e endereço, e a API marca essa etapa como concluída.
+O identificador da clínica criada fica no progresso para selecionar a clínica
+correta quando a pessoa administra mais de uma.
+
 ## Adicionar uma etapa obrigatória
 
 1. Adicione o identificador após a etapa anterior na lista do backend.

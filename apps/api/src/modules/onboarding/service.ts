@@ -87,6 +87,18 @@ export class OnboardingService {
   }
 
   async saveProfileDraft(userId: string, body: ProfileDraftBody) {
+    const user = await this.deps.prisma.user.findUnique({
+      where: { id: userId },
+      select: { profileCompletedAt: true },
+    });
+    if (!user) throw Unauthenticated();
+    if (user.profileCompletedAt) {
+      throw new ApiError(
+        "STEP_ALREADY_COMPLETED",
+        409,
+        "Esta etapa já foi concluída.",
+      );
+    }
     await this.deps.prisma.onboardingProgress.upsert({
       where: { userId },
       create: {
@@ -104,6 +116,18 @@ export class OnboardingService {
   }
 
   async saveProfile(userId: string, body: ProfileBody) {
+    const user = await this.deps.prisma.user.findUnique({
+      where: { id: userId },
+      select: { profileCompletedAt: true },
+    });
+    if (!user) throw Unauthenticated();
+    if (user.profileCompletedAt) {
+      throw new ApiError(
+        "STEP_ALREADY_COMPLETED",
+        409,
+        "Esta etapa já foi concluída.",
+      );
+    }
     const fullName = body.fullName.trim();
     const phone = body.phone.replace(/\D/g, "");
     const professionalTitle = body.professionalTitle?.trim() || null;
@@ -123,8 +147,8 @@ export class OnboardingService {
     }
 
     await this.deps.prisma.$transaction(async (tx) => {
-      await tx.user.update({
-        where: { id: userId },
+      const saved = await tx.user.updateMany({
+        where: { id: userId, profileCompletedAt: null },
         data: {
           fullName,
           phone,
@@ -136,6 +160,13 @@ export class OnboardingService {
           profileCompletedAt: new Date(),
         },
       });
+      if (!saved.count) {
+        throw new ApiError(
+          "STEP_ALREADY_COMPLETED",
+          409,
+          "Esta etapa já foi concluída.",
+        );
+      }
       const savedProgress = await tx.onboardingProgress.findUnique({
         where: { userId },
         select: { currentStep: true },
@@ -206,8 +237,13 @@ export class OnboardingService {
       });
       await tx.onboardingProgress.upsert({
         where: { userId },
-        create: { userId, currentStep: "ORGANIZATION_SETUP", completed: true },
-        update: { completed: true },
+        create: {
+          userId,
+          currentStep: "ORGANIZATION_SETUP",
+          completed: true,
+          draftData: { organizationId: org.id },
+        },
+        update: { completed: true, draftData: { organizationId: org.id } },
       });
       return { org, membership, subscription };
     });

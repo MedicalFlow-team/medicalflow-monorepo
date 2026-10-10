@@ -8,7 +8,7 @@ export const profileInput = z
       .trim()
       .refine((value) => {
         const digits = value.replace(/\D/g, "");
-        return digits.length >= 10 && digits.length <= 13;
+        return digits.length >= 10 && digits.length <= 11;
       }, "Informe um telefone válido com DDD."),
     professionalRole: z.enum(["MANAGEMENT", "CLINICAL", "RECEPTION"]),
     professionalTitle: z.string().trim().max(120),
