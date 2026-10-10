@@ -1,4 +1,8 @@
-export const onboardingSteps = ["PROFILE_SETUP", "ORGANIZATION_SETUP"] as const;
+export const onboardingSteps = [
+  "PROFILE_SETUP",
+  "ORGANIZATION_SETUP",
+  "CLINIC_DETAILS",
+] as const;
 
 type SavedProgress = {
   currentStep: string;

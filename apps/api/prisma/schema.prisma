@@ -114,6 +114,19 @@ model Organization {
   ownerId   String   @db.Uuid
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  legalName String?
+  taxId String?
+  contactEmail String?
+  contactPhone String?
+  postalCode String?
+  state String?
+  city String?
+  district String?
+  street String?
+  streetNumber String?
+  addressComplement String?
+  detailsVersion Int @default(0)
+  detailsCompletedAt DateTime?
 
   owner        User          @relation("OrganizationOwner", fields: [ownerId], references: [id], onDelete: Restrict)
   memberships  Membership[]

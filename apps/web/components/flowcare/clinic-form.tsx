@@ -47,7 +47,7 @@ export function ClinicForm() {
         }
 
         toast.success("Clínica criada com sucesso!");
-        router.replace("/");
+        router.replace("/onboarding/configure-clinic");
       } catch {
         toast.error("Erro ao criar a clínica. Tente novamente.");
       }

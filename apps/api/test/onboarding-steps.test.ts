@@ -1,9 +1,34 @@
 import { expect, test } from "bun:test";
 import type { PrismaClient } from "../src/generated/prisma/client";
 import { OnboardingService } from "../src/modules/onboarding/service";
-import { resolveOnboardingState } from "../src/modules/onboarding/steps";
+import {
+  onboardingSteps,
+  resolveOnboardingState,
+} from "../src/modules/onboarding/steps";
 
 const steps = ["PROFILE_SETUP", "ORGANIZATION_SETUP", "SCHEDULE_SETUP"];
+
+test("existing clinics resume at clinic details and complete after saving it", () => {
+  const input = { profileCompleted: true, hasOrganization: true };
+  expect(
+    resolveOnboardingState(
+      {
+        ...input,
+        savedProgress: { currentStep: "ORGANIZATION_SETUP", completed: true },
+      },
+      onboardingSteps,
+    ),
+  ).toEqual({ currentStep: "CLINIC_DETAILS", completed: false });
+  expect(
+    resolveOnboardingState(
+      {
+        ...input,
+        savedProgress: { currentStep: "CLINIC_DETAILS", completed: true },
+      },
+      onboardingSteps,
+    ),
+  ).toEqual({ currentStep: "CLINIC_DETAILS", completed: true });
+});
 
 test("routes a new account to the profile", () => {
   expect(

@@ -188,7 +188,7 @@ Em caso de falha (códigos HTTP 4xx e 5xx), a API responde com a seguinte estrut
     }
   }
   ```
-  `slug` é opcional: ausente, é derivado do `name` (normalizado). `phone`/`address` entram com as issues de dados institucionais (#303).
+  `slug` é opcional: ausente, é derivado do `name` (normalizado). Os dados institucionais e o endereço são salvos na etapa #222.
 * **Respostas:** `201 Created` (`{ "organization": { "id": "org_1", "name": "...", "slug": "vida-e-saude", "role": "ADMIN", "isOwner": true } }`), `409 ALREADY_EXISTS`.
 * **Estado:** Implementado para `name` e `slug`. `phone`, `address` e `Idempotency-Key` ainda não são processados; ver #217 e #303.
 
@@ -227,6 +227,16 @@ Em caso de falha (códigos HTTP 4xx e 5xx), a API responde com a seguinte estrut
 * **Descrição:** Obtém os dados e preferências da clínica especificada pelo slug.
 * **Permissão:** Autenticado + Pertencer à clínica (`organizations:read`).
 * **Respostas:** `200 OK`, `401 UNAUTHENTICATED`, `403 MEMBERSHIP_INACTIVE`, `403 PERMISSION_DENIED`, `404 NOT_FOUND`.
+
+#### `GET /organizations/:orgSlug/onboarding-details`
+* **Descrição:** Carrega dados legais, contato, endereço, versão e estado de conclusão da clínica para a etapa #222.
+* **Permissão:** `Membership` ativo com papel `ADMIN` na clínica indicada pelo slug.
+* **Respostas:** `200 OK` com `name`, `slug`, `version`, `completed`, `legalName`, `taxId`, `contactEmail`, `contactPhone`, `postalCode`, `state`, `city`, `district`, `street`, `streetNumber` e `addressComplement`; `404 NOT_FOUND` para vínculo inexistente ou sem permissão.
+
+#### `PUT /organizations/:orgSlug/onboarding-details`
+* **Descrição:** Salva os dados institucionais e conclui `CLINIC_DETAILS` no progresso do onboarding. `version` deve corresponder à versão carregada; cada atualização a incrementa para impedir perda de alterações simultâneas.
+* **Body:** Os campos do GET, exceto `name`, `slug` e `completed`. `legalName`, e-mail, telefone e endereço são obrigatórios; `taxId` e complemento podem ficar vazios. `postalCode` contém oito dígitos e `state` contém a sigla de duas letras.
+* **Respostas:** `200 OK` com os dados atualizados, `400 VALIDATION_ERROR`, `404 NOT_FOUND`, `409 CONFLICT` quando outra sessão já salvou uma versão mais recente.
 
 #### `POST /organizations/:orgSlug/switch-context`
 * **Descrição:** Valida a seleção feita no frontend e pode registrar a última clínica escolhida como preferência de navegação. A URL continua sendo a fonte canônica do contexto e a preferência nunca autoriza acesso.

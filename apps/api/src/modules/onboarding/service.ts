@@ -206,8 +206,13 @@ export class OnboardingService {
       });
       await tx.onboardingProgress.upsert({
         where: { userId },
-        create: { userId, currentStep: "ORGANIZATION_SETUP", completed: true },
-        update: { completed: true },
+        create: {
+          userId,
+          currentStep: "ORGANIZATION_SETUP",
+          completed: true,
+          draftData: { organizationId: org.id },
+        },
+        update: { completed: true, draftData: { organizationId: org.id } },
       });
       return { org, membership, subscription };
     });
