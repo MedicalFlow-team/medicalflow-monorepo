@@ -19,6 +19,7 @@ import {
   formatCnpj,
 } from "@/lib/clinic-details";
 import { formatPhoneWithAreaCode } from "@/lib/phone";
+import { postalCodeDigits } from "@/lib/postal-code";
 
 type ClinicField = {
   key: Exclude<keyof ClinicDetailsInput, "version">;
@@ -88,6 +89,7 @@ export function ConfigureClinicForm({
 }) {
   const router = useRouter();
   const [conflict, setConflict] = useState(false);
+  const [postalCodeEdited, setPostalCodeEdited] = useState(false);
   const fields = step === "contact" ? contactFields : addressFields;
   const form = useForm({
     defaultValues: {
@@ -157,6 +159,63 @@ export function ConfigureClinicForm({
     return () => window.removeEventListener("beforeunload", warn);
   }, [dirty]);
 
+  useEffect(() => {
+    const postalCode = values.postalCode;
+    if (step !== "address" || !postalCodeEdited || postalCode.length !== 8)
+      return;
+
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
+      const before = { ...form.state.values };
+      try {
+        const response = await fetch(`/api/postal-code/${postalCode}`, {
+          signal: controller.signal,
+        });
+        if (
+          controller.signal.aborted ||
+          form.state.values.postalCode !== postalCode
+        )
+          return;
+        if (!response.ok) {
+          if (response.status === 404)
+            toast.error(
+              "CEP não encontrado. Confira o número ou preencha o endereço manualmente.",
+            );
+          else
+            toast.error(
+              "Não foi possível consultar o CEP. Preencha o endereço manualmente.",
+            );
+          return;
+        }
+        const address: {
+          state: string;
+          city: string;
+          district: string;
+          street: string;
+        } = await response.json();
+        if (
+          controller.signal.aborted ||
+          form.state.values.postalCode !== postalCode
+        )
+          return;
+        for (const key of ["state", "city", "district", "street"] as const) {
+          if (address[key] && form.state.values[key] === before[key]) {
+            form.setFieldValue(key, address[key]);
+          }
+        }
+      } catch {
+        if (!controller.signal.aborted)
+          toast.error(
+            "Não foi possível consultar o CEP. Preencha o endereço manualmente.",
+          );
+      }
+    }, 250);
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [step, postalCodeEdited, values.postalCode, form]);
+
   return (
     <form
       onSubmit={(event) => {
@@ -191,7 +250,9 @@ export function ConfigureClinicForm({
                   name={control.name}
                   type={field.type ?? "text"}
                   inputMode={
-                    field.key === "contactPhone" || field.key === "taxId"
+                    field.key === "contactPhone" ||
+                    field.key === "taxId" ||
+                    field.key === "postalCode"
                       ? "numeric"
                       : undefined
                   }
@@ -200,7 +261,9 @@ export function ConfigureClinicForm({
                       ? 15
                       : field.key === "taxId"
                         ? 18
-                        : undefined
+                        : field.key === "postalCode"
+                          ? 8
+                          : undefined
                   }
                   placeholder={field.placeholder}
                   value={control.state.value}
@@ -208,15 +271,18 @@ export function ConfigureClinicForm({
                   aria-invalid={!control.state.meta.isValid}
                   disabled={conflict}
                   onBlur={control.handleBlur}
-                  onChange={(event) =>
+                  onChange={(event) => {
+                    if (field.key === "postalCode") setPostalCodeEdited(true);
                     control.handleChange(
                       field.key === "contactPhone"
                         ? formatPhoneWithAreaCode(event.target.value)
                         : field.key === "taxId"
                           ? formatCnpj(event.target.value)
-                          : event.target.value,
-                    )
-                  }
+                          : field.key === "postalCode"
+                            ? postalCodeDigits(event.target.value)
+                            : event.target.value,
+                    );
+                  }}
                 />
               </Field>
             )}
