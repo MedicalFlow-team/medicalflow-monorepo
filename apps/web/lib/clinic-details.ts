@@ -37,10 +37,22 @@ export const clinicDetailsSchema = z.object({
   addressComplement: z.string().max(100),
 });
 
-export const clinicDetailsResponseSchema = clinicDetailsSchema.extend({
+export const clinicDetailsResponseSchema = z.object({
   name: z.string(),
   slug: z.string(),
   completed: z.boolean(),
+  version: z.number().int().min(0),
+  legalName: z.string(),
+  taxId: z.string(),
+  contactEmail: z.string(),
+  contactPhone: z.string(),
+  postalCode: z.string(),
+  state: z.string(),
+  city: z.string(),
+  district: z.string(),
+  street: z.string(),
+  streetNumber: z.string(),
+  addressComplement: z.string(),
 });
 
 export type ClinicDetailsInput = z.infer<typeof clinicDetailsSchema>;

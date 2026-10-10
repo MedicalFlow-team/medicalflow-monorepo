@@ -1,5 +1,9 @@
 import { expect, test } from "bun:test";
-import { clinicDetailsSchema, validCnpj } from "../lib/clinic-details";
+import {
+  clinicDetailsResponseSchema,
+  clinicDetailsSchema,
+  validCnpj,
+} from "../lib/clinic-details";
 
 const valid = {
   version: 0,
@@ -27,6 +31,26 @@ test("validates clinic legal, contact and address fields", () => {
     clinicDetailsSchema.safeParse({ ...valid, postalCode: "abc" }).success,
   ).toBe(false);
   expect(clinicDetailsSchema.safeParse({ ...valid, city: "" }).success).toBe(
+    false,
+  );
+});
+
+test("loads a newly created clinic before its required details are filled", () => {
+  const empty = Object.fromEntries(
+    Object.keys(valid)
+      .filter((key) => key !== "version")
+      .map((key) => [key, ""]),
+  );
+  expect(
+    clinicDetailsResponseSchema.safeParse({
+      ...empty,
+      name: "Pet Saúde",
+      slug: "pet-saude",
+      version: 0,
+      completed: false,
+    }).success,
+  ).toBe(true);
+  expect(clinicDetailsSchema.safeParse({ ...empty, version: 0 }).success).toBe(
     false,
   );
 });
