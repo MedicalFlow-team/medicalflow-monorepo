@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
 import {
+  clinicContactSchema,
   clinicDetailsResponseSchema,
   clinicDetailsSchema,
   validCnpj,
@@ -53,4 +54,21 @@ test("loads a newly created clinic before its required details are filled", () =
   expect(clinicDetailsSchema.safeParse({ ...empty, version: 0 }).success).toBe(
     false,
   );
+});
+
+test("contact can advance to address before address fields are filled", () => {
+  const partial = {
+    legalName: valid.legalName,
+    taxId: valid.taxId,
+    contactEmail: valid.contactEmail,
+    contactPhone: valid.contactPhone,
+  };
+  expect(clinicContactSchema.safeParse(partial).success).toBe(true);
+  expect(
+    clinicDetailsSchema.safeParse({ ...valid, postalCode: "" }).success,
+  ).toBe(false);
+  expect(
+    clinicContactSchema.safeParse({ ...partial, contactEmail: "invalid" })
+      .success,
+  ).toBe(false);
 });

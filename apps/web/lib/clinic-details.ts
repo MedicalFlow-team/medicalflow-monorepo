@@ -37,6 +37,13 @@ export const clinicDetailsSchema = z.object({
   addressComplement: z.string().max(100),
 });
 
+export const clinicContactSchema = clinicDetailsSchema.pick({
+  legalName: true,
+  taxId: true,
+  contactEmail: true,
+  contactPhone: true,
+});
+
 export const clinicDetailsResponseSchema = z.object({
   name: z.string(),
   slug: z.string(),

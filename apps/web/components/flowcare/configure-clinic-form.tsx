@@ -10,16 +10,19 @@ import { Label } from "@/components/ui/label";
 import {
   type ClinicDetails,
   type ClinicDetailsInput,
+  clinicContactSchema,
   clinicDetailsSchema,
 } from "@/lib/clinic-details";
 
-const fields: {
+type Field = {
   key: Exclude<keyof ClinicDetailsInput, "version">;
   label: string;
   placeholder: string;
   required?: boolean;
   type?: string;
-}[] = [
+};
+
+const contactFields: Field[] = [
   {
     key: "legalName",
     label: "Razão social",
@@ -41,6 +44,9 @@ const fields: {
     required: true,
     type: "tel",
   },
+];
+
+const addressFields: Field[] = [
   { key: "postalCode", label: "CEP", placeholder: "00000000", required: true },
   { key: "state", label: "Estado", placeholder: "UF", required: true },
   { key: "city", label: "Cidade", placeholder: "Cidade", required: true },
@@ -63,6 +69,7 @@ const fields: {
     placeholder: "Sala, bloco ou referência",
   },
 ];
+const fields = [...contactFields, ...addressFields];
 
 export function ConfigureClinicForm({ initial }: { initial: ClinicDetails }) {
   const router = useRouter();
@@ -80,6 +87,7 @@ export function ConfigureClinicForm({ initial }: { initial: ClinicDetails }) {
   >({});
   const [pending, setPending] = useState(false);
   const [conflict, setConflict] = useState(false);
+  const [section, setSection] = useState<"contact" | "address">("contact");
   const dirty = fields.some(
     (field) => values[field.key] !== initial[field.key],
   );
@@ -96,6 +104,25 @@ export function ConfigureClinicForm({ initial }: { initial: ClinicDetails }) {
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (pending) return;
+    if (section === "contact") {
+      const contact = clinicContactSchema.safeParse(values);
+      if (!contact.success) {
+        const fieldErrors = contact.error.flatten().fieldErrors;
+        setErrors(
+          Object.fromEntries(
+            Object.entries(fieldErrors).map(([key, messages]) => [
+              key,
+              messages?.[0],
+            ]),
+          ),
+        );
+        toast.error("Confira os campos destacados.");
+        return;
+      }
+      setErrors({});
+      setSection("address");
+      return;
+    }
     const parsed = clinicDetailsSchema.safeParse(values);
     if (!parsed.success) {
       const fieldErrors = parsed.error.flatten().fieldErrors;
@@ -107,6 +134,12 @@ export function ConfigureClinicForm({ initial }: { initial: ClinicDetails }) {
           ]),
         ),
       );
+      if (
+        Object.keys(fieldErrors).some((key) =>
+          contactFields.some((field) => field.key === key),
+        )
+      )
+        setSection("contact");
       toast.error("Confira os campos destacados.");
       return;
     }
@@ -123,6 +156,13 @@ export function ConfigureClinicForm({ initial }: { initial: ClinicDetails }) {
               ]),
             ),
           );
+        if (
+          result.fieldErrors &&
+          Object.keys(result.fieldErrors).some((key) =>
+            contactFields.some((field) => field.key === key),
+          )
+        )
+          setSection("contact");
         if (result.code === "CONFLICT") setConflict(true);
         toast.error(result.message);
         return;
@@ -137,6 +177,29 @@ export function ConfigureClinicForm({ initial }: { initial: ClinicDetails }) {
   return (
     <form onSubmit={submit} noValidate className="mt-8 space-y-5">
       <p className="text-sm text-muted-foreground">{initial.name}</p>
+      <fieldset className="flex w-full rounded-lg bg-muted p-1">
+        <legend className="sr-only">Partes da configuração da clínica</legend>
+        <Button
+          type="button"
+          variant={section === "contact" ? "secondary" : "ghost"}
+          aria-pressed={section === "contact"}
+          onClick={() => setSection("contact")}
+          disabled={pending}
+          className="flex-1"
+        >
+          Dados e contato
+        </Button>
+        <Button
+          type="button"
+          variant={section === "address" ? "secondary" : "ghost"}
+          aria-pressed={section === "address"}
+          onClick={() => setSection("address")}
+          disabled={pending}
+          className="flex-1"
+        >
+          Endereço
+        </Button>
+      </fieldset>
       {dirty && !conflict && (
         <output className="text-sm text-muted-foreground">
           Alterações não salvas
@@ -149,50 +212,55 @@ export function ConfigureClinicForm({ initial }: { initial: ClinicDetails }) {
         </p>
       )}
       <div className="grid gap-5 sm:grid-cols-2">
-        {fields.map((field) => (
-          <div
-            key={field.key}
-            className={
-              field.key === "legalName" ||
-              field.key === "contactEmail" ||
-              field.key === "street"
-                ? "space-y-2 sm:col-span-2"
-                : "space-y-2"
-            }
-          >
-            <Label
-              htmlFor={field.key}
-              className={field.required ? "required" : undefined}
-            >
-              {field.label}
-            </Label>
-            <Input
-              id={field.key}
-              name={field.key}
-              type={field.type ?? "text"}
-              placeholder={field.placeholder}
-              value={values[field.key]}
-              required={field.required}
-              aria-invalid={!!errors[field.key]}
-              aria-describedby={
-                errors[field.key] ? `${field.key}-error` : undefined
+        {(section === "contact" ? contactFields : addressFields).map(
+          (field) => (
+            <div
+              key={field.key}
+              className={
+                field.key === "legalName" ||
+                field.key === "contactEmail" ||
+                field.key === "street"
+                  ? "space-y-2 sm:col-span-2"
+                  : "space-y-2"
               }
-              disabled={pending || conflict}
-              onChange={(event) => {
-                setValues((old) => ({
-                  ...old,
-                  [field.key]: event.target.value,
-                }));
-                setErrors((old) => ({ ...old, [field.key]: undefined }));
-              }}
-            />
-            {errors[field.key] && (
-              <p id={`${field.key}-error`} className="text-sm text-destructive">
-                {errors[field.key]}
-              </p>
-            )}
-          </div>
-        ))}
+            >
+              <Label
+                htmlFor={field.key}
+                className={field.required ? "required" : undefined}
+              >
+                {field.label}
+              </Label>
+              <Input
+                id={field.key}
+                name={field.key}
+                type={field.type ?? "text"}
+                placeholder={field.placeholder}
+                value={values[field.key]}
+                required={field.required}
+                aria-invalid={!!errors[field.key]}
+                aria-describedby={
+                  errors[field.key] ? `${field.key}-error` : undefined
+                }
+                disabled={pending || conflict}
+                onChange={(event) => {
+                  setValues((old) => ({
+                    ...old,
+                    [field.key]: event.target.value,
+                  }));
+                  setErrors((old) => ({ ...old, [field.key]: undefined }));
+                }}
+              />
+              {errors[field.key] && (
+                <p
+                  id={`${field.key}-error`}
+                  className="text-sm text-destructive"
+                >
+                  {errors[field.key]}
+                </p>
+              )}
+            </div>
+          ),
+        )}
       </div>
       <div className="flex items-center justify-end pt-2">
         <Button type="submit" disabled={pending || conflict}>
