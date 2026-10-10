@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { AuthForm } from "@/components/flowcare/auth-form";
+import { LoginForm } from "@/components/flowcare/auth/login-form";
 
 export const metadata: Metadata = { title: "Entrar | Flowcare" };
 
@@ -17,7 +17,7 @@ export default async function Page({
       >
         Entrar
       </h1>
-      <AuthForm mode="login" returnTo={returnTo} />
+      <LoginForm returnTo={returnTo} />
     </section>
   );
 }

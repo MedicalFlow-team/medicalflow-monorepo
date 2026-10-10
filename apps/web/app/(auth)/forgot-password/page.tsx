@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { AuthForm } from "@/components/flowcare/auth-form";
+import { ForgotPasswordForm } from "@/components/flowcare/auth/forgot-password-form";
 
 export const metadata: Metadata = { title: "Recuperar Senha | Flowcare" };
 
@@ -12,7 +12,7 @@ export default function Page() {
       >
         Recuperar Senha
       </h1>
-      <AuthForm mode="forgot-password" />
+      <ForgotPasswordForm />
     </section>
   );
 }

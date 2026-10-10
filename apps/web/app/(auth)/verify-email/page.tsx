@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { VerifyEmail } from "@/components/flowcare/verify-email";
+import { VerifyEmail } from "@/components/flowcare/auth/verify-email";
 
 export const metadata: Metadata = { title: "Confirme seu e-mail | Flowcare" };
 

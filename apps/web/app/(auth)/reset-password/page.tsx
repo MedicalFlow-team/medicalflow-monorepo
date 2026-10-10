@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { AuthForm } from "@/components/flowcare/auth-form";
+import { ResetPasswordForm } from "@/components/flowcare/auth/reset-password-form";
 
 export const metadata: Metadata = { title: "Nova senha | Flowcare" };
 
@@ -17,7 +17,7 @@ export default async function Page({
       >
         Nova senha
       </h1>
-      <AuthForm mode="reset-password" token={token} />
+      <ResetPasswordForm token={token} />
     </section>
   );
 }
