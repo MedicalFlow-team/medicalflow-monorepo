@@ -163,11 +163,6 @@ export function ConfigureClinicForm({
       noValidate
       className="mt-8 space-y-5"
     >
-      {dirty && !conflict && (
-        <output className="text-sm text-muted-foreground">
-          Alterações não salvas
-        </output>
-      )}
       <div className="grid gap-5 sm:grid-cols-2">
         {fields.map((field) => (
           <form.Field name={field.key} key={field.key}>
