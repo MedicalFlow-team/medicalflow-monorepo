@@ -1,4 +1,4 @@
-import { Elysia, t } from "elysia";
+import { Elysia } from "elysia";
 import { authPlugin } from "../../plugins/auth";
 import * as m from "./model";
 import type { OnboardingDeps } from "./service";
@@ -43,7 +43,7 @@ export function onboardingModule(deps: OnboardingDeps) {
           "/check-slug",
           ({ query }) => service.checkSlugAvailability(query.slug),
           {
-            query: t.Object({ slug: t.String() }),
+            query: m.checkSlugQuery,
             response: { 200: m.slugAvailabilityResponse },
           },
         )
@@ -59,7 +59,10 @@ export function onboardingModule(deps: OnboardingDeps) {
         .post(
           "/schedule-rules",
           ({ auth, body }) => service.saveScheduleRules(auth.userId, body),
-          { body: m.scheduleRulesBody, response: { 200: m.scheduleRulesBody } },
+          {
+            body: m.scheduleRulesBody,
+            response: { 200: m.scheduleRulesResponse },
+          },
         )
         .post("/complete", ({ auth }) => service.complete(auth.userId), {
           response: { 200: m.completeResponse },

@@ -9,7 +9,13 @@ import type {
   ScheduleRulesBody,
   SlugAvailabilityResponse,
 } from "./model";
-import { resolveOnboardingState } from "./steps";
+import { finalOnboardingStep, resolveOnboardingState } from "./steps";
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
 
 /**
  * Dependências do módulo (controller): prisma + secret para o authPlugin.
@@ -42,11 +48,7 @@ export class OnboardingService {
         "Confirme seu e-mail primeiro.",
       );
     }
-    const draft = progress?.draftData;
-    const organizationId =
-      draft && typeof draft === "object" && !Array.isArray(draft)
-        ? (draft as Record<string, unknown>).organizationId
-        : null;
+    const organizationId = asRecord(progress?.draftData)?.organizationId;
     if (typeof organizationId !== "string") {
       throw new ApiError(
         "ONBOARDING_INCOMPLETE",
@@ -130,12 +132,12 @@ export class OnboardingService {
           userId,
           OR: [
             { completed: false },
-            { currentStep: { not: "CLINIC_ADDRESS" } },
+            { currentStep: { not: finalOnboardingStep } },
           ],
         },
         data: {
           completed: true,
-          currentStep: "CLINIC_ADDRESS",
+          currentStep: finalOnboardingStep,
           version: { increment: 1 },
         },
       });
@@ -161,17 +163,10 @@ export class OnboardingService {
       hasOrganization: membershipCount > 0,
       savedProgress: progress,
     });
-    if (!progress) {
-      return {
-        ...state,
-        draftData: {},
-        version: 0,
-      };
-    }
     return {
       ...state,
-      draftData: progress.draftData as Record<string, unknown>,
-      version: progress.version,
+      draftData: asRecord(progress?.draftData) ?? {},
+      version: progress?.version ?? 0,
     };
   }
 
@@ -181,15 +176,9 @@ export class OnboardingService {
       include: { onboarding: true },
     });
     if (!user) throw Unauthenticated();
-    const savedDraft = user.onboarding?.draftData;
-    const draft =
-      savedDraft && typeof savedDraft === "object" && !Array.isArray(savedDraft)
-        ? (savedDraft as Record<string, unknown>).profile
-        : null;
-    const profileDraft =
-      draft && typeof draft === "object" && !Array.isArray(draft)
-        ? (draft as Record<string, unknown>)
-        : null;
+    const profileDraft = asRecord(
+      asRecord(user.onboarding?.draftData)?.profile,
+    );
     const field = (name: keyof ProfileDraftBody, fallback: string | null) =>
       !user.profileCompletedAt && typeof profileDraft?.[name] === "string"
         ? (profileDraft[name] as string)
@@ -250,9 +239,6 @@ export class OnboardingService {
     const phone = body.phone.replace(/\D/g, "");
     const professionalTitle = body.professionalTitle?.trim() || null;
     const registrationNumber = body.registrationNumber?.trim() || null;
-    if (fullName.length < 3 || phone.length < 10 || phone.length > 13) {
-      throw new ApiError("VALIDATION_ERROR", 400, "Nome ou telefone inválido.");
-    }
     if (
       body.professionalRole === "CLINICAL" &&
       (!professionalTitle || !registrationNumber)
@@ -317,14 +303,6 @@ export class OnboardingService {
     if (!user) throw Unauthenticated();
 
     const slug = slugify(body.slug ?? body.name);
-    if (!slug) {
-      throw new ApiError(
-        "VALIDATION_ERROR",
-        400,
-        "Slug inválido: informe um nome com letras ou números.",
-      );
-    }
-
     const existing = await this.deps.prisma.organization.findUnique({
       where: { slug },
     });

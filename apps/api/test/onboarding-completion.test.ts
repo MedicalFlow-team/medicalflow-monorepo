@@ -1,6 +1,26 @@
 import { describe, expect, test } from "bun:test";
+import { createApp } from "../src/app";
+import type { Env } from "../src/config/env";
 import type { PrismaClient } from "../src/generated/prisma/client";
 import { OnboardingService } from "../src/modules/onboarding/service";
+import { finalOnboardingStep } from "../src/modules/onboarding/steps";
+import { signSessionToken } from "../src/services/session-token";
+
+const testEnv: Env = {
+  port: 0,
+  nodeEnv: "test",
+  version: "test",
+  jwtSecret: "onboarding-test-secret",
+  databaseUrl: "postgresql://unused",
+  corsOrigin: "http://localhost:3000",
+  trustProxy: false,
+  wahaBaseUrl: "http://127.0.0.1:1",
+  wahaApiKey: null,
+  webAppUrl: "http://localhost:3000",
+  sesRegion: null,
+  mailProvider: "disabled",
+  mailFrom: null,
+};
 
 function fixture(
   options: {
@@ -11,10 +31,17 @@ function fixture(
 ) {
   let savedRules: unknown[] = [];
   let completed = false;
-  let currentStep = "ORGANIZATION_SETUP";
+  let currentStep: string = "ORGANIZATION_SETUP";
   let version = 1;
   let writes = 0;
   const db = {
+    session: {
+      findFirst: async () => ({
+        id: "sess-1",
+        lastActiveAt: new Date(),
+      }),
+      updateMany: async () => ({ count: 1 }),
+    },
     user: {
       findUnique: async () => ({ emailVerified: options.verified ?? true }),
     },
@@ -26,9 +53,9 @@ function fixture(
             : { organizationId: options.organizationId ?? "org-1" },
       }),
       updateMany: async () => {
-        if (!completed || currentStep !== "CLINIC_ADDRESS") {
+        if (!completed || currentStep !== finalOnboardingStep) {
           completed = true;
-          currentStep = "CLINIC_ADDRESS";
+          currentStep = finalOnboardingStep;
           version += 1;
           writes += 1;
           return { count: 1 };
@@ -55,8 +82,19 @@ function fixture(
     ...db,
     $transaction: async <T>(fn: (tx: typeof db) => Promise<T>) => fn(db),
   } as unknown as PrismaClient;
+  const app = createApp(testEnv, {
+    prisma,
+    mailer: { send: async () => {} },
+  });
+  const token = signSessionToken(
+    { sid: "sess-1", sub: "user-1" },
+    testEnv.jwtSecret,
+    3600,
+  );
   return {
     service: new OnboardingService({ prisma }),
+    app,
+    token,
     rules: () => savedRules,
     writes: () => writes,
     version: () => version,
@@ -99,6 +137,106 @@ describe("onboarding schedule and completion (#218)", () => {
       ).rejects.toMatchObject({ code: "VALIDATION_ERROR", httpStatus: 400 });
     }
     expect(state.rules()).toHaveLength(0);
+  });
+
+  test("enforces declarative TypeBox schemas at HTTP boundary for schedule, profile and organization", async () => {
+    const state = fixture();
+    const postJson = (path: string, body: unknown) =>
+      state.app.handle(
+        new Request(`http://localhost/api${path}`, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            authorization: `Bearer ${state.token}`,
+          },
+          body: JSON.stringify(body),
+        }),
+      );
+
+    for (const invalidRule of [
+      {
+        dayOfWeek: "MONDAY",
+        startTime: "24:00",
+        endTime: "12:00",
+        slotDurationMinutes: 30,
+      },
+      {
+        dayOfWeek: "MONDAY",
+        startTime: "8:00",
+        endTime: "12:00",
+        slotDurationMinutes: 30,
+      },
+      {
+        dayOfWeek: "MONDAY",
+        startTime: "08:00",
+        endTime: "12:60",
+        slotDurationMinutes: 30,
+      },
+      {
+        dayOfWeek: "MONDAY",
+        startTime: "08:00",
+        endTime: "12:00",
+        slotDurationMinutes: 0,
+      },
+    ]) {
+      const res = await postJson("/onboarding/schedule-rules", {
+        weeklySchedule: [invalidRule],
+      });
+      expect(res.status).toBe(400);
+      expect(await res.json()).toMatchObject({
+        error: { code: "VALIDATION_ERROR" },
+      });
+    }
+
+    for (const invalidProfile of [
+      {
+        fullName: "   ",
+        phone: "85999990000",
+        professionalRole: "MANAGEMENT",
+      },
+      {
+        fullName: "Dra. Maria",
+        phone: "abcdefghij",
+        professionalRole: "MANAGEMENT",
+      },
+      {
+        fullName: "Dra. Maria",
+        phone: "12345678901234",
+        professionalRole: "MANAGEMENT",
+      },
+    ]) {
+      const res = await postJson("/onboarding/profile", invalidProfile);
+      expect(res.status).toBe(400);
+      expect(await res.json()).toMatchObject({
+        error: { code: "VALIDATION_ERROR" },
+      });
+    }
+
+    const invalidOrg = await postJson("/onboarding/organization", {
+      name: "---",
+    });
+    expect(invalidOrg.status).toBe(400);
+    expect(await invalidOrg.json()).toMatchObject({
+      error: { code: "VALIDATION_ERROR" },
+    });
+
+    const validSchedule = await postJson("/onboarding/schedule-rules", {
+      weeklySchedule: [
+        {
+          dayOfWeek: "MONDAY",
+          startTime: "08:00",
+          endTime: "12:00",
+          slotDurationMinutes: 30,
+        },
+      ],
+    });
+    expect(validSchedule.status).toBe(200);
+
+    const completed = await postJson("/onboarding/complete", {});
+    expect(completed.status).toBe(200);
+    expect(await completed.json()).toEqual({
+      redirectUrl: "/app/clinica-alfa/dashboard",
+    });
   });
 
   test("completion is idempotent without schedule or invitations", async () => {
