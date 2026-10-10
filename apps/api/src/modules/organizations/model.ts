@@ -11,6 +11,7 @@ export const organizationsResponse = t.Object({
         t.Literal("PROFESSIONAL"),
         t.Literal("RECEPTIONIST"),
       ]),
+      status: t.Literal("ACTIVE"),
     }),
   ),
 });

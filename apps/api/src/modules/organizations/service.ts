@@ -33,12 +33,16 @@ export class OrganizationsService {
         },
       },
       orderBy: { createdAt: "asc" },
+      take: 100,
     });
 
     return {
       data: memberships.map(({ role, organization }) => ({
-        ...organization,
+        id: organization.id,
+        name: organization.name,
+        slug: organization.slug,
         role,
+        status: "ACTIVE" as const,
       })),
     };
   }
