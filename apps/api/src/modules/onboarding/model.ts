@@ -2,8 +2,7 @@ import { t } from "elysia";
 
 /**
  * Contrato do módulo onboarding (docs/API_CONTRACT.md §3 Módulo 2).
- * Escopo do PR: progresso (#215) e criação da primeira clínica (#216).
- * Profile/hours/complete entram nas issues seguintes — sem overengineering.
+ * Progresso, perfil, criação da clínica, horários opcionais e conclusão.
  */
 
 export const createOrganizationBody = t.Object({
@@ -76,8 +75,30 @@ export const slugAvailabilityResponse = t.Object({
   slug: t.String(),
 });
 
+export const weeklyScheduleRule = t.Object({
+  dayOfWeek: t.Union([
+    t.Literal("MONDAY"),
+    t.Literal("TUESDAY"),
+    t.Literal("WEDNESDAY"),
+    t.Literal("THURSDAY"),
+    t.Literal("FRIDAY"),
+    t.Literal("SATURDAY"),
+    t.Literal("SUNDAY"),
+  ]),
+  startTime: t.String({ pattern: "^(?:[01]\\d|2[0-3]):[0-5]\\d$" }),
+  endTime: t.String({ pattern: "^(?:[01]\\d|2[0-3]):[0-5]\\d$" }),
+  slotDurationMinutes: t.Integer({ minimum: 1, maximum: 1440 }),
+});
+
+export const scheduleRulesBody = t.Object({
+  weeklySchedule: t.Array(weeklyScheduleRule, { maxItems: 100 }),
+});
+
+export const completeResponse = t.Object({ redirectUrl: t.String() });
+
 export type CreateOrganizationBody = typeof createOrganizationBody.static;
 export type ProgressResponse = typeof progressResponse.static;
 export type ProfileBody = typeof profileBody.static;
 export type ProfileDraftBody = typeof profileDraftBody.static;
 export type SlugAvailabilityResponse = typeof slugAvailabilityResponse.static;
+export type ScheduleRulesBody = typeof scheduleRulesBody.static;
