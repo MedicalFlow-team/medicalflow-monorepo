@@ -77,16 +77,7 @@ export function ClinicForm() {
         />
       </div>
 
-      <div className="flex items-center justify-between gap-4">
-        <Button
-          type="button"
-          variant="outline"
-          disabled={isPending}
-          onClick={() => router.push("/onboarding/profile?edit=1")}
-          className="h-[46px] rounded-lg px-5 text-base font-normal"
-        >
-          Voltar
-        </Button>
+      <div className="flex items-center justify-end gap-4">
         <Button
           type="submit"
           disabled={isPending}

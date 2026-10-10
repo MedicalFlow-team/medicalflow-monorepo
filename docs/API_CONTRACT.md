@@ -161,13 +161,13 @@ Em caso de falha (códigos HTTP 4xx e 5xx), a API responde com a seguinte estrut
 * **Descrição:** Salva um rascunho do perfil em `OnboardingProgress.draftData.profile` sem concluir a etapa. Os valores são restaurados por `GET /onboarding/profile` após recarregar.
 * **Permissão:** Autenticado.
 * **Body:** Mesmos campos de `POST /onboarding/profile`, aceitando valores vazios; os limites de tamanho e o papel profissional continuam validados.
-* **Resposta:** `200 OK` com o DTO de `GET /onboarding/profile` e `completed: false`.
+* **Resposta:** `200 OK` com o DTO de `GET /onboarding/profile` e `completed: false`; `409 STEP_ALREADY_COMPLETED` se a etapa já foi concluída.
 
 #### `POST /onboarding/profile`
 * **Descrição:** Salva o perfil pessoal e avança o progresso para `ORGANIZATION_SETUP` numa transação. Repetir a operação atualiza a mesma conta e não cria outro progresso.
 * **Permissão:** Autenticado.
 * **Body:** `{ "fullName": "Ana Oliveira", "phone": "85999990000", "professionalRole": "CLINICAL", "professionalTitle": "Médica Cardiologista", "registrationNumber": "CRM/CE 123456" }`. `professionalRole` aceita `MANAGEMENT`, `CLINICAL` ou `RECEPTION`; título e registro são obrigatórios apenas para `CLINICAL`.
-* **Respostas:** `200 OK` com o DTO de `GET /onboarding/profile`, `400 VALIDATION_ERROR`.
+* **Respostas:** `200 OK` com o DTO de `GET /onboarding/profile`, `400 VALIDATION_ERROR`, `409 STEP_ALREADY_COMPLETED` se a etapa já foi concluída.
 
 #### `POST /onboarding/organization`
 * **Descrição:** Cria a primeira clínica do usuário e o vincula como administrador. Cria também a assinatura da clínica (R$ 89/mês, status `PENDING_PAYMENT` até o fluxo de cobrança ativar). Clínica, vínculo e assinatura nascem na mesma transação — falha em qualquer parte não deixa clínica órfã.

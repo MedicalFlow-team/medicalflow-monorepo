@@ -103,14 +103,20 @@ test("does not bypass an unrecognized pending stage", () => {
   ).toEqual({ currentStep: "NEW_SETUP", completed: false });
 });
 
-test("editing the profile preserves progress in a later stage", async () => {
+test("profile completion advances to clinic creation", async () => {
   let savedStep: string | undefined;
+  let profileCompleted = false;
   const prisma = {
     $transaction: async (operation: (tx: unknown) => Promise<unknown>) =>
       operation({
-        user: { update: async () => ({}) },
+        user: {
+          updateMany: async () => {
+            profileCompleted = true;
+            return { count: 1 };
+          },
+        },
         onboardingProgress: {
-          findUnique: async () => ({ currentStep: "SCHEDULE_SETUP" }),
+          findUnique: async () => ({ currentStep: "PROFILE_SETUP" }),
           upsert: async ({ update }: { update: { currentStep: string } }) => {
             savedStep = update.currentStep;
           },
@@ -123,7 +129,7 @@ test("editing the profile preserves progress in a later stage", async () => {
         professionalRole: "MANAGEMENT",
         professionalTitle: null,
         registrationNumber: null,
-        profileCompletedAt: new Date(),
+        profileCompletedAt: profileCompleted ? new Date() : null,
         onboarding: { draftData: {} },
       }),
     },
@@ -135,5 +141,58 @@ test("editing the profile preserves progress in a later stage", async () => {
     professionalRole: "MANAGEMENT",
   });
 
-  expect(savedStep).toBe("SCHEDULE_SETUP");
+  expect(savedStep).toBe("ORGANIZATION_SETUP");
+});
+
+test("completed profile cannot be edited through save or draft endpoints", async () => {
+  const prisma = {
+    user: { findUnique: async () => ({ profileCompletedAt: new Date() }) },
+    onboardingProgress: {
+      upsert: async () => {
+        throw new Error("Unexpected write");
+      },
+    },
+    $transaction: async () => {
+      throw new Error("Unexpected transaction");
+    },
+  } as unknown as PrismaClient;
+  const service = new OnboardingService({ prisma });
+  await expect(
+    service.saveProfile("user-1", {
+      fullName: "Ana Silva",
+      phone: "85999999999",
+      professionalRole: "MANAGEMENT",
+    }),
+  ).rejects.toMatchObject({ code: "STEP_ALREADY_COMPLETED", httpStatus: 409 });
+  await expect(
+    service.saveProfileDraft("user-1", {
+      fullName: "Ana Silva",
+      phone: "85999999999",
+      professionalRole: "MANAGEMENT",
+      professionalTitle: "",
+      registrationNumber: "",
+    }),
+  ).rejects.toMatchObject({ code: "STEP_ALREADY_COMPLETED", httpStatus: 409 });
+});
+
+test("simultaneous profile completion cannot overwrite the first save", async () => {
+  const prisma = {
+    user: { findUnique: async () => ({ profileCompletedAt: null }) },
+    $transaction: async (operation: (tx: unknown) => Promise<unknown>) =>
+      operation({
+        user: { updateMany: async () => ({ count: 0 }) },
+        onboardingProgress: {
+          upsert: async () => {
+            throw new Error("Unexpected progress write");
+          },
+        },
+      }),
+  } as unknown as PrismaClient;
+  await expect(
+    new OnboardingService({ prisma }).saveProfile("user-1", {
+      fullName: "Ana Silva",
+      phone: "85999999999",
+      professionalRole: "MANAGEMENT",
+    }),
+  ).rejects.toMatchObject({ code: "STEP_ALREADY_COMPLETED", httpStatus: 409 });
 });

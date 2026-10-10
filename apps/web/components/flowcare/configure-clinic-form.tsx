@@ -176,7 +176,6 @@ export function ConfigureClinicForm({ initial }: { initial: ClinicDetails }) {
 
   return (
     <form onSubmit={submit} noValidate className="mt-8 space-y-5">
-      <p className="text-sm text-muted-foreground">{initial.name}</p>
       <fieldset className="flex w-full rounded-lg bg-muted p-1">
         <legend className="sr-only">Partes da configuração da clínica</legend>
         <Button
