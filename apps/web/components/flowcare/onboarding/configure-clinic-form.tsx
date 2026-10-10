@@ -20,7 +20,7 @@ import {
   formatCnpj,
 } from "@/lib/clinic-details";
 import { formatPhoneWithAreaCode } from "@/lib/phone";
-import { postalCodeDigits } from "@/lib/postal-code";
+import { formatPostalCode, postalCodeDigits } from "@/lib/postal-code";
 
 type ClinicField = {
   key: Exclude<keyof ClinicDetailsInput, "version">;
@@ -55,7 +55,7 @@ const contactFields: ClinicField[] = [
 ];
 
 const addressFields: ClinicField[] = [
-  { key: "postalCode", label: "CEP", placeholder: "00000000", required: true },
+  { key: "postalCode", label: "CEP", placeholder: "00000-000", required: true },
   { key: "state", label: "Estado", placeholder: "UF", required: true },
   { key: "city", label: "Cidade", placeholder: "Cidade", required: true },
   { key: "district", label: "Bairro", placeholder: "Bairro", required: true },
@@ -279,10 +279,19 @@ export function ConfigureClinicForm({
                           : undefined
                     }
                     placeholder={field.placeholder}
-                    value={control.state.value}
+                    value={
+                      field.key === "postalCode"
+                        ? formatPostalCode(control.state.value)
+                        : control.state.value
+                    }
                     required={field.required}
                     aria-invalid={!control.state.meta.isValid}
-                    disabled={conflict}
+                    disabled={
+                      conflict ||
+                      (field.key === "postalCode" &&
+                        control.state.value.length === 8 &&
+                        lookingUpPostalCode === control.state.value)
+                    }
                     onBlur={control.handleBlur}
                     onChange={(event) => {
                       if (field.key === "postalCode") {

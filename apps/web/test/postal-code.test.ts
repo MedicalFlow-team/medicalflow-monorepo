@@ -1,9 +1,19 @@
 import { expect, test } from "bun:test";
-import { parsePostalCodeAddress, postalCodeDigits } from "../lib/postal-code";
+import {
+  formatPostalCode,
+  parsePostalCodeAddress,
+  postalCodeDigits,
+} from "../lib/postal-code";
 
 test("accepts only eight CEP digits", () => {
   expect(postalCodeDigits("01001-000")).toBe("01001000");
   expect(postalCodeDigits("01001-000999")).toBe("01001000");
+});
+
+test("formats CEP as five digits, hyphen, three digits", () => {
+  expect(formatPostalCode("01001")).toBe("01001");
+  expect(formatPostalCode("010010")).toBe("01001-0");
+  expect(formatPostalCode("01001-000999")).toBe("01001-000");
 });
 
 test("maps ViaCEP address fields without number or complement", () => {
