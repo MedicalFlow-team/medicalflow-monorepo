@@ -100,7 +100,7 @@ export function createApp(env: Env, deps: AppDeps) {
         }),
       },
     )
-    .onError(({ code, error, request, status }) => {
+    .onError(({ code, error, status }) => {
       // Erros de domínio (ApiError) → envelope §2, num ponto único de tradução.
       // Registrado ANTES dos módulos: eventos do Elysia valem para rotas
       // registradas depois deste hook.
@@ -121,10 +121,6 @@ export function createApp(env: Env, deps: AppDeps) {
           });
         case "VALIDATION":
         case "PARSE": {
-          const isClinicForm =
-            /\/organizations\/[^/]+\/onboarding-(contact|address)$/.test(
-              new URL(request.url).pathname,
-            );
           const path =
             code === "VALIDATION" && error.type === "body"
               ? error.all.find((issue) =>
@@ -136,7 +132,7 @@ export function createApp(env: Env, deps: AppDeps) {
             error: {
               code: "VALIDATION_ERROR",
               message: "Dados inválidos.",
-              ...(isClinicForm && field ? { details: { field } } : {}),
+              ...(field ? { details: { field } } : {}),
             },
           });
         }

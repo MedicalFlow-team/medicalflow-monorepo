@@ -188,41 +188,92 @@ test("clinic steps reject stale versions and another onboarding organization", a
 });
 
 test("clinic validation names the invalid field before any write", async () => {
+  const secret = "clinic-test-secret";
+  const env = {
+    jwtSecret: secret,
+    corsOrigin: "http://localhost:3000",
+    wahaBaseUrl: "http://127.0.0.1:1",
+    version: "test",
+    webAppUrl: "http://localhost:3000",
+  } as Env;
   let writes = 0;
-  const org = { id: "org-1", detailsVersion: 0 };
-  const progress = {
-    currentStep: "ORGANIZATION_SETUP",
-    completed: true,
-    draftData: { organizationId: "org-1" },
-  };
+  let membershipReads = 0;
   const prisma = {
-    membership: { findFirst: async () => ({ organization: org }) },
-    onboardingProgress: { findUnique: async () => progress },
+    session: {
+      findFirst: async () => ({ id: "session-1", lastActiveAt: new Date() }),
+    },
+    membership: {
+      findFirst: async () => {
+        membershipReads++;
+        return { organization: { id: "org-1", detailsVersion: 0 } };
+      },
+    },
     $transaction: async () => {
       writes++;
     },
   } as unknown as PrismaClient;
-  const service = new OrganizationsService(prisma);
-  await expect(
-    service.saveClinicContact("user-1", "pet-saude", {
-      ...contact,
-      taxId: "11.111.111/1111-11",
-    }),
-  ).rejects.toMatchObject({
-    code: "VALIDATION_ERROR",
-    details: { field: "taxId" },
-  });
-  progress.currentStep = "CLINIC_DETAILS";
-  org.detailsVersion = 1;
-  await expect(
-    service.saveClinicAddress("user-1", "pet-saude", {
-      ...address,
-      city: "  ",
-    }),
-  ).rejects.toMatchObject({
-    code: "VALIDATION_ERROR",
-    details: { field: "city" },
-  });
+  const app = createApp(env, { prisma, mailer: {} as never });
+  const token = signSessionToken(
+    { sid: "session-1", sub: "user-1" },
+    secret,
+    3600,
+  );
+  const putStep = (path: string, payload: unknown) =>
+    app.handle(
+      new Request(`http://localhost/api/organizations/pet-saude/${path}`, {
+        method: "PUT",
+        headers: {
+          authorization: `Bearer ${token}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      }),
+    );
+
+  const invalidCases = [
+    {
+      path: "onboarding-contact",
+      payload: { ...contact, taxId: "11.111.111/1111-11" },
+      field: "taxId",
+    },
+    {
+      path: "onboarding-contact",
+      payload: { ...contact, taxId: "abc" },
+      field: "taxId",
+    },
+    {
+      path: "onboarding-contact",
+      payload: { ...contact, legalName: " a " },
+      field: "legalName",
+    },
+    {
+      path: "onboarding-contact",
+      payload: { ...contact, contactPhone: "123-456-789" },
+      field: "contactPhone",
+    },
+    {
+      path: "onboarding-address",
+      payload: { ...address, city: "  " },
+      field: "city",
+    },
+    {
+      path: "onboarding-address",
+      payload: { ...address, streetNumber: "   " },
+      field: "streetNumber",
+    },
+  ];
+
+  for (const item of invalidCases) {
+    const res = await putStep(item.path, item.payload);
+    expect(res.status).toBe(400);
+    await expect(res.json()).resolves.toMatchObject({
+      error: {
+        code: "VALIDATION_ERROR",
+        details: { field: item.field },
+      },
+    });
+  }
+  expect(membershipReads).toBe(0);
   expect(writes).toBe(0);
 });
 
