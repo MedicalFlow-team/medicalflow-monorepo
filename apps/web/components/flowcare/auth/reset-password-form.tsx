@@ -93,7 +93,6 @@ export function ResetPasswordForm({ token }: { token?: string }) {
               placeholder="Digite sua nova senha"
               required
               disabled={success}
-              className="h-[47px] rounded-lg bg-card px-3 text-base md:text-base border-transparent focus-visible:border-primary"
               value={field.state.value}
               onBlur={field.handleBlur}
               onChange={(event) => field.handleChange(event.target.value)}
@@ -120,7 +119,6 @@ export function ResetPasswordForm({ token }: { token?: string }) {
               placeholder="Confirme sua senha"
               required
               disabled={success}
-              className="h-[47px] rounded-lg bg-card px-3 text-base md:text-base border-transparent focus-visible:border-primary"
               value={field.state.value}
               onBlur={field.handleBlur}
               onChange={(event) => field.handleChange(event.target.value)}

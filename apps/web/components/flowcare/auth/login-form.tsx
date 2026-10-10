@@ -84,7 +84,6 @@ export function LoginForm({ returnTo }: { returnTo?: string | null }) {
               placeholder="seu@email.com"
               required
               disabled={success}
-              className="h-[47px] rounded-lg bg-card px-3 text-base md:text-base border-transparent focus-visible:border-primary"
               value={field.state.value}
               onBlur={field.handleBlur}
               onChange={(event) => field.handleChange(event.target.value)}
@@ -110,7 +109,6 @@ export function LoginForm({ returnTo }: { returnTo?: string | null }) {
               placeholder="Digite sua senha"
               required
               disabled={success}
-              className="h-[47px] rounded-lg bg-card px-3 text-base md:text-base border-transparent focus-visible:border-primary"
               value={field.state.value}
               onBlur={field.handleBlur}
               onChange={(event) => field.handleChange(event.target.value)}
