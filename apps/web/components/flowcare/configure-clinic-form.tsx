@@ -1,15 +1,16 @@
 "use client";
 
+import { useForm, useStore } from "@tanstack/react-form";
 import { useRouter } from "next/navigation";
-import { type FormEvent, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
   saveClinicAddress,
   saveClinicContact,
 } from "@/app/onboarding/configure-clinic/actions";
 import { Button } from "@/components/ui/button";
+import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   type ClinicDetails,
   type ClinicDetailsInput,
@@ -17,7 +18,7 @@ import {
   clinicContactSchema,
 } from "@/lib/clinic-details";
 
-type Field = {
+type ClinicField = {
   key: Exclude<keyof ClinicDetailsInput, "version">;
   label: string;
   placeholder: string;
@@ -25,7 +26,7 @@ type Field = {
   type?: string;
 };
 
-const contactFields: Field[] = [
+const contactFields: ClinicField[] = [
   {
     key: "legalName",
     label: "Razão social",
@@ -49,7 +50,7 @@ const contactFields: Field[] = [
   },
 ];
 
-const addressFields: Field[] = [
+const addressFields: ClinicField[] = [
   { key: "postalCode", label: "CEP", placeholder: "00000000", required: true },
   { key: "state", label: "Estado", placeholder: "UF", required: true },
   { key: "city", label: "Cidade", placeholder: "Cidade", required: true },
@@ -84,21 +85,57 @@ export function ConfigureClinicForm({
   step: "contact" | "address";
 }) {
   const router = useRouter();
-  const [values, setValues] = useState<ClinicDetailsInput>(() => {
-    const {
-      name: _name,
-      slug: _slug,
-      completed: _completed,
-      ...input
-    } = initial;
-    return input;
-  });
-  const [errors, setErrors] = useState<
-    Partial<Record<keyof ClinicDetailsInput, string>>
-  >({});
-  const [pending, setPending] = useState(false);
   const [conflict, setConflict] = useState(false);
   const fields = step === "contact" ? contactFields : addressFields;
+  const form = useForm({
+    defaultValues: {
+      version: initial.version,
+      legalName: initial.legalName,
+      taxId: initial.taxId,
+      contactEmail: initial.contactEmail,
+      contactPhone: initial.contactPhone,
+      postalCode: initial.postalCode,
+      state: initial.state,
+      city: initial.city,
+      district: initial.district,
+      street: initial.street,
+      streetNumber: initial.streetNumber,
+      addressComplement: initial.addressComplement,
+    },
+    validators: {
+      onSubmit: ({ value }) => {
+        const parsed = (
+          step === "contact" ? clinicContactSchema : clinicAddressSchema
+        ).safeParse(value);
+        return parsed.success ? undefined : parsed.error.issues[0]?.message;
+      },
+    },
+    onSubmitInvalid: ({ value }) => {
+      const parsed = (
+        step === "contact" ? clinicContactSchema : clinicAddressSchema
+      ).safeParse(value);
+      toast.error(
+        parsed.success
+          ? "Confira os campos informados."
+          : parsed.error.issues[0]?.message,
+      );
+    },
+    onSubmit: async ({ value }) => {
+      const result = await (step === "contact"
+        ? saveClinicContact(initial.slug, value)
+        : saveClinicAddress(initial.slug, value));
+      if (!result.ok) {
+        if (result.code === "CONFLICT") setConflict(true);
+        toast.error(result.message);
+        return;
+      }
+      toast.success("Dados da clínica salvos.");
+      router.replace(
+        step === "contact" ? "/onboarding/configure-clinic/address" : "/",
+      );
+    },
+  });
+  const values = useStore(form.store, (state) => state.values);
   const dirty = fields.some(
     (field) => values[field.key] !== initial[field.key],
   );
@@ -112,121 +149,69 @@ export function ConfigureClinicForm({
     return () => window.removeEventListener("beforeunload", warn);
   }, [dirty]);
 
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (pending) return;
-    const parsed = (
-      step === "contact" ? clinicContactSchema : clinicAddressSchema
-    ).safeParse(values);
-    if (!parsed.success) {
-      const fieldErrors = parsed.error.flatten().fieldErrors;
-      setErrors(
-        Object.fromEntries(
-          Object.entries(fieldErrors).map(([key, messages]) => [
-            key,
-            messages?.[0],
-          ]),
-        ),
-      );
-      toast.error("Confira os campos destacados.");
-      return;
-    }
-    setPending(true);
-    try {
-      const result = await (step === "contact"
-        ? saveClinicContact(initial.slug, values)
-        : saveClinicAddress(initial.slug, values));
-      if (!result.ok) {
-        if (result.fieldErrors)
-          setErrors(
-            Object.fromEntries(
-              Object.entries(result.fieldErrors).map(([key, messages]) => [
-                key,
-                messages?.[0],
-              ]),
-            ),
-          );
-        if (result.code === "CONFLICT") setConflict(true);
-        toast.error(result.message);
-        return;
-      }
-      toast.success("Dados da clínica salvos.");
-      router.replace(
-        step === "contact" ? "/onboarding/configure-clinic/address" : "/",
-      );
-    } finally {
-      setPending(false);
-    }
-  }
-
   return (
-    <form onSubmit={submit} noValidate className="mt-8 space-y-5">
+    <form
+      onSubmit={(event) => {
+        event.preventDefault();
+        void form.handleSubmit();
+      }}
+      noValidate
+      className="mt-8 space-y-5"
+    >
       {dirty && !conflict && (
         <output className="text-sm text-muted-foreground">
           Alterações não salvas
         </output>
       )}
-      {conflict && (
-        <p role="alert" className="text-sm text-destructive">
-          Outra pessoa atualizou esta clínica. Recarregue a página antes de
-          salvar novamente.
-        </p>
-      )}
       <div className="grid gap-5 sm:grid-cols-2">
         {fields.map((field) => (
-          <div
-            key={field.key}
-            className={
-              field.key === "legalName" ||
-              field.key === "contactEmail" ||
-              field.key === "street"
-                ? "space-y-2 sm:col-span-2"
-                : "space-y-2"
-            }
-          >
-            <Label
-              htmlFor={field.key}
-              className={field.required ? "required" : undefined}
-            >
-              {field.label}
-            </Label>
-            <Input
-              className={inputClass}
-              id={field.key}
-              name={field.key}
-              type={field.type ?? "text"}
-              placeholder={field.placeholder}
-              value={values[field.key]}
-              required={field.required}
-              aria-invalid={!!errors[field.key]}
-              aria-describedby={
-                errors[field.key] ? `${field.key}-error` : undefined
-              }
-              disabled={pending || conflict}
-              onChange={(event) => {
-                setValues((old) => ({
-                  ...old,
-                  [field.key]: event.target.value,
-                }));
-                setErrors((old) => ({ ...old, [field.key]: undefined }));
-              }}
-            />
-            {errors[field.key] && (
-              <p id={`${field.key}-error`} className="text-sm text-destructive">
-                {errors[field.key]}
-              </p>
+          <form.Field name={field.key} key={field.key}>
+            {(control) => (
+              <Field
+                className={
+                  field.key === "legalName" ||
+                  field.key === "contactEmail" ||
+                  field.key === "street"
+                    ? "sm:col-span-2"
+                    : undefined
+                }
+              >
+                <FieldLabel
+                  htmlFor={field.key}
+                  className={field.required ? "required" : undefined}
+                >
+                  {field.label}
+                </FieldLabel>
+                <Input
+                  className={inputClass}
+                  id={field.key}
+                  name={control.name}
+                  type={field.type ?? "text"}
+                  placeholder={field.placeholder}
+                  value={control.state.value}
+                  required={field.required}
+                  aria-invalid={!control.state.meta.isValid}
+                  disabled={conflict}
+                  onBlur={control.handleBlur}
+                  onChange={(event) => control.handleChange(event.target.value)}
+                />
+              </Field>
             )}
-          </div>
+          </form.Field>
         ))}
       </div>
       <div className="flex items-center justify-end pt-2">
-        <Button
-          type="submit"
-          className={buttonClass}
-          disabled={pending || conflict}
-        >
-          {pending ? "Salvando..." : "Continuar"}
-        </Button>
+        <form.Subscribe selector={(state) => state.isSubmitting}>
+          {(pending) => (
+            <Button
+              type="submit"
+              className={buttonClass}
+              disabled={pending || conflict}
+            >
+              {pending ? "Salvando..." : "Continuar"}
+            </Button>
+          )}
+        </form.Subscribe>
       </div>
     </form>
   );

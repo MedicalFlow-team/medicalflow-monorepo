@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { OnboardingLoadError } from "@/components/flowcare/onboarding-load-error";
 import { OnboardingStepper } from "@/components/flowcare/onboarding-stepper";
 import { ProfileForm } from "@/components/flowcare/profile-form";
 import type { Profile } from "@/lib/onboarding-profile";
@@ -44,13 +45,7 @@ export default async function OnboardingProfilePage() {
           Confira seus dados pessoais antes de configurar a clínica.
         </p>
         {loadError ? (
-          <div
-            role="alert"
-            className="mt-8 rounded-lg border border-destructive p-4"
-          >
-            Não foi possível carregar seu perfil. Recarregue a página para
-            tentar novamente.
-          </div>
+          <OnboardingLoadError message="Não foi possível carregar seu perfil. Recarregue a página para tentar novamente." />
         ) : profile ? (
           <ProfileForm initialProfile={profile} />
         ) : null}

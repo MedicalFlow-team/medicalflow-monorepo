@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { ConfigureClinicForm } from "@/components/flowcare/configure-clinic-form";
+import { OnboardingLoadError } from "@/components/flowcare/onboarding-load-error";
 import { OnboardingStepper } from "@/components/flowcare/onboarding-stepper";
 import { onboardingStepPath } from "@/lib/onboarding-steps";
 import { clinicDetailsRequest } from "@/server/clinic-details";
@@ -49,9 +50,7 @@ export default async function ConfigureClinicPage() {
         {details ? (
           <ConfigureClinicForm initial={details} step="contact" />
         ) : (
-          <p role="alert" className="mt-8 text-destructive">
-            Não foi possível carregar os dados da clínica. Recarregue a página.
-          </p>
+          <OnboardingLoadError message="Não foi possível carregar os dados da clínica. Recarregue a página." />
         )}
       </div>
     </main>
