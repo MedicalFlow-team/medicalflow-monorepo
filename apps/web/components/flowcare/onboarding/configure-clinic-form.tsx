@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
 import {
   type ClinicDetails,
   type ClinicDetailsInput,
@@ -90,6 +91,9 @@ export function ConfigureClinicForm({
   const router = useRouter();
   const [conflict, setConflict] = useState(false);
   const [postalCodeEdited, setPostalCodeEdited] = useState(false);
+  const [lookingUpPostalCode, setLookingUpPostalCode] = useState<string | null>(
+    null,
+  );
   const fields = step === "contact" ? contactFields : addressFields;
   const form = useForm({
     defaultValues: {
@@ -208,6 +212,12 @@ export function ConfigureClinicForm({
           toast.error(
             "Não foi possível consultar o CEP. Preencha o endereço manualmente.",
           );
+      } finally {
+        if (!controller.signal.aborted) {
+          setLookingUpPostalCode((current) =>
+            current === postalCode ? null : current,
+          );
+        }
       }
     }, 250);
     return () => {
@@ -244,46 +254,65 @@ export function ConfigureClinicForm({
                 >
                   {field.label}
                 </FieldLabel>
-                <Input
-                  className={inputClass}
-                  id={field.key}
-                  name={control.name}
-                  type={field.type ?? "text"}
-                  inputMode={
-                    field.key === "contactPhone" ||
-                    field.key === "taxId" ||
-                    field.key === "postalCode"
-                      ? "numeric"
-                      : undefined
-                  }
-                  maxLength={
-                    field.key === "contactPhone"
-                      ? 15
-                      : field.key === "taxId"
-                        ? 18
-                        : field.key === "postalCode"
-                          ? 8
-                          : undefined
-                  }
-                  placeholder={field.placeholder}
-                  value={control.state.value}
-                  required={field.required}
-                  aria-invalid={!control.state.meta.isValid}
-                  disabled={conflict}
-                  onBlur={control.handleBlur}
-                  onChange={(event) => {
-                    if (field.key === "postalCode") setPostalCodeEdited(true);
-                    control.handleChange(
+                <div className="relative">
+                  <Input
+                    className={
+                      field.key === "postalCode"
+                        ? `${inputClass} pr-10`
+                        : inputClass
+                    }
+                    id={field.key}
+                    name={control.name}
+                    type={field.type ?? "text"}
+                    inputMode={
+                      field.key === "contactPhone" ||
+                      field.key === "taxId" ||
+                      field.key === "postalCode"
+                        ? "numeric"
+                        : undefined
+                    }
+                    maxLength={
                       field.key === "contactPhone"
-                        ? formatPhoneWithAreaCode(event.target.value)
+                        ? 15
                         : field.key === "taxId"
-                          ? formatCnpj(event.target.value)
-                          : field.key === "postalCode"
-                            ? postalCodeDigits(event.target.value)
-                            : event.target.value,
-                    );
-                  }}
-                />
+                          ? 18
+                          : undefined
+                    }
+                    placeholder={field.placeholder}
+                    value={control.state.value}
+                    required={field.required}
+                    aria-invalid={!control.state.meta.isValid}
+                    disabled={conflict}
+                    onBlur={control.handleBlur}
+                    onChange={(event) => {
+                      if (field.key === "postalCode") {
+                        setPostalCodeEdited(true);
+                        const postalCode = postalCodeDigits(event.target.value);
+                        if (postalCode !== control.state.value) {
+                          setLookingUpPostalCode(
+                            postalCode.length === 8 ? postalCode : null,
+                          );
+                        }
+                      }
+                      control.handleChange(
+                        field.key === "contactPhone"
+                          ? formatPhoneWithAreaCode(event.target.value)
+                          : field.key === "taxId"
+                            ? formatCnpj(event.target.value)
+                            : field.key === "postalCode"
+                              ? postalCodeDigits(event.target.value)
+                              : event.target.value,
+                      );
+                    }}
+                  />
+                  {field.key === "postalCode" &&
+                    lookingUpPostalCode === control.state.value && (
+                      <Spinner
+                        aria-label="Consultando CEP"
+                        className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                      />
+                    )}
+                </div>
               </Field>
             )}
           </form.Field>
