@@ -115,6 +115,13 @@ export class OrganizationsService {
     ) {
       throw new ApiError("NOT_FOUND", 404, "Clínica não encontrada.");
     }
+    if (body.version !== org.detailsVersion) {
+      throw new ApiError(
+        "VERSION_CONFLICT",
+        409,
+        "A clínica foi alterada em outra sessão. Recarregue os dados.",
+      );
+    }
     const canSave = (
       progress: { currentStep: string; completed: boolean } | null,
     ) =>
@@ -137,24 +144,24 @@ export class OrganizationsService {
       step === "CLINIC_ADDRESS" ? (body as ClinicAddressBody) : null;
     const taxId = contact?.taxId.replace(/\D/g, "") ?? "";
     const phone = contact?.contactPhone.replace(/\D/g, "") ?? "";
-    if (
-      contact
-        ? !validCnpj(taxId) ||
-          phone.length < 10 ||
-          phone.length > 13 ||
-          contact.legalName.trim().length < 2
-        : !address ||
-          ![address.city, address.district, address.street].every(
-            (value) => value.trim().length >= 2,
-          ) ||
-          !address.streetNumber.trim() ||
-          !/^\d{8}$/.test(address.postalCode)
-    ) {
+    const invalid = (field: string) => {
       throw new ApiError(
         "VALIDATION_ERROR",
         400,
         "Confira os dados da clínica e o endereço.",
+        { field },
       );
+    };
+    if (contact) {
+      if (contact.legalName.trim().length < 2) invalid("legalName");
+      if (!validCnpj(taxId)) invalid("taxId");
+      if (phone.length < 10 || phone.length > 13) invalid("contactPhone");
+    } else if (address) {
+      if (!/^\d{8}$/.test(address.postalCode)) invalid("postalCode");
+      if (address.city.trim().length < 2) invalid("city");
+      if (address.district.trim().length < 2) invalid("district");
+      if (address.street.trim().length < 2) invalid("street");
+      if (!address.streetNumber.trim()) invalid("streetNumber");
     }
     const stepData = contact
       ? {
@@ -204,7 +211,7 @@ export class OrganizationsService {
       });
       if (!updated.count)
         throw new ApiError(
-          "CONFLICT",
+          "VERSION_CONFLICT",
           409,
           "A clínica foi alterada em outra sessão. Recarregue os dados.",
         );
