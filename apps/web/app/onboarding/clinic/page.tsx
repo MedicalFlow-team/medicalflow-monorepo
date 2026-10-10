@@ -14,12 +14,7 @@ import { getAvailableOrganizations } from "@/server/organizations";
 
 export const metadata: Metadata = { title: "Criar clínica | Flowcare" };
 
-export default async function OnboardingClinicPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ review?: string }>;
-}) {
-  const { review } = await searchParams;
+export default async function OnboardingClinicPage() {
   let profile: Profile | null = null;
   let unauthenticated = false;
 
@@ -36,34 +31,40 @@ export default async function OnboardingClinicPage({
   if (progress?.completed) redirect("/app");
   if (
     progress &&
-    progress.currentStep !== "ORGANIZATION_SETUP" &&
-    review !== "1"
+    !["ORGANIZATION_SETUP", "CLINIC_DETAILS"].includes(progress.currentStep)
   ) {
     redirect(onboardingStepPath(progress.currentStep));
   }
-  const organizations =
-    review === "1" ? await getAvailableOrganizations() : null;
+  const clinicCreated = progress?.currentStep === "CLINIC_DETAILS";
+  const organizations = clinicCreated
+    ? await getAvailableOrganizations()
+    : null;
   const clinic = organizations?.find(
     (org) =>
       org.role === "ADMIN" &&
       (typeof progress?.draftData.organizationId !== "string" ||
         org.id === progress.draftData.organizationId),
   );
-  if (review === "1" && !clinic) redirect("/onboarding/pending");
+  if (clinicCreated && !clinic) redirect("/onboarding/pending");
 
   return (
     <main className="flex flex-1 justify-center px-5 pt-8">
       <div className="mx-auto w-full max-w-lg">
         <div className="mb-8">
-          <OnboardingStepper currentStep="ORGANIZATION_SETUP" />
+          <OnboardingStepper
+            currentStep="ORGANIZATION_SETUP"
+            currentStepCompleted={clinicCreated}
+          />
         </div>
         <h1 className="text-3xl font-semibold tracking-tight">
-          Dê um nome à sua clínica
+          {clinicCreated ? "Clínica criada" : "Dê um nome à sua clínica"}
         </h1>
         <p className="mt-3 text-sm text-muted-foreground">
-          Defina o nome da sua clínica para continuar.
+          {clinicCreated
+            ? "O nome da clínica foi salvo. Continue para informar os dados institucionais."
+            : "Defina o nome da sua clínica para continuar."}
         </p>
-        {review === "1" && clinic ? (
+        {clinicCreated && clinic ? (
           <div className="mt-8 space-y-5">
             <p className="text-sm">{clinic.name}</p>
             <div className="flex justify-end">

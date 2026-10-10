@@ -195,17 +195,22 @@ export function ConfigureClinicForm({ initial }: { initial: ClinicDetails }) {
         ))}
       </div>
       <div className="flex items-center justify-between gap-4 pt-2">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => {
-            if (!dirty || window.confirm("Descartar as alterações não salvas?"))
-              router.push("/onboarding/clinic?review=1");
-          }}
-          disabled={pending}
-        >
-          Voltar
-        </Button>
+        {!initial.completed && (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              if (
+                !dirty ||
+                window.confirm("Descartar as alterações não salvas?")
+              )
+                router.push("/onboarding/clinic");
+            }}
+            disabled={pending}
+          >
+            Voltar
+          </Button>
+        )}
         <Button type="submit" disabled={pending || conflict}>
           {pending ? "Salvando..." : "Continuar"}
         </Button>

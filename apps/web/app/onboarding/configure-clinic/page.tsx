@@ -12,6 +12,7 @@ export const metadata: Metadata = { title: "Configurar clínica | Flowcare" };
 export default async function ConfigureClinicPage() {
   const progress = await getOnboardingProgress();
   if (!progress) redirect("/login");
+  if (progress.completed) redirect("/app");
   if (
     progress.currentStep === "PROFILE_SETUP" ||
     progress.currentStep === "ORGANIZATION_SETUP"
