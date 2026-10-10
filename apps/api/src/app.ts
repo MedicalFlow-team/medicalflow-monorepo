@@ -4,10 +4,6 @@ import type { Env } from "./config/env";
 import type { PrismaClient } from "./generated/prisma/client";
 import { ApiError } from "./lib/api-error";
 import { accountModule } from "./modules/account";
-import {
-  createProfilePhotoStore,
-  type ProfilePhotoStore,
-} from "./modules/account/service";
 import { authModule } from "./modules/auth";
 import type { AuthDeps } from "./modules/auth/service";
 import { inviteModule } from "./modules/invites";
@@ -18,6 +14,11 @@ import { storageModule } from "./modules/storage";
 import { createSesWebhook } from "./modules/webhooks/ses";
 import { requestLogger } from "./plugins/request-logger";
 import type { Mailer } from "./services/mailer";
+import {
+  createProfilePhotoStore,
+  PROFILE_PHOTO_MAX_BYTES,
+  type ProfilePhotoStore,
+} from "./services/profile-photo-store";
 
 /**
  * Aplicação Elysia — montada via `createApp(env, deps)` para manter o app
@@ -78,6 +79,10 @@ export function createApp(env: Env, deps: AppDeps) {
     prisma: deps.prisma,
     jwtSecret: env.jwtSecret,
   };
+  const photoStore =
+    deps.profilePhotoStore === undefined
+      ? createProfilePhotoStore(env)
+      : deps.profilePhotoStore;
 
   const app = new Elysia({ prefix: "/api" })
     .use(requestLogger)
@@ -121,6 +126,27 @@ export function createApp(env: Env, deps: AppDeps) {
             error: { code: "NOT_FOUND", message: "Recurso não encontrado." },
           });
         case "VALIDATION":
+          if (
+            error.all.some(
+              (item) =>
+                item.value instanceof Blob &&
+                item.value.size > PROFILE_PHOTO_MAX_BYTES,
+            )
+          ) {
+            return status(413, {
+              error: {
+                code: "FILE_TOO_LARGE",
+                message: "Foto deve ter no máximo 5 MiB.",
+              },
+            });
+          }
+          return status(400, {
+            error: {
+              code: "VALIDATION_ERROR",
+              message: "Dados inválidos.",
+            },
+          });
+        case "INVALID_FILE_TYPE":
         case "PARSE":
           return status(400, {
             error: {
@@ -144,15 +170,7 @@ export function createApp(env: Env, deps: AppDeps) {
       accountModule({
         prisma: deps.prisma,
         jwtSecret: env.jwtSecret,
-        photoStore:
-          deps.profilePhotoStore ??
-          createProfilePhotoStore({
-            endpoint: env.storageEndpoint ?? null,
-            bucket: env.storageBucket ?? null,
-            region: env.storageRegion ?? "auto",
-            accessKeyId: env.storageAccessKeyId ?? null,
-            secretAccessKey: env.storageSecretAccessKey ?? null,
-          }),
+        photoStore,
       }),
     )
     .use(

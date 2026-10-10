@@ -58,7 +58,11 @@ export type ProfileResponse = typeof profileResponse.static;
 
 export const updateProfileBody = t.Object(
   {
-    fullName: t.String({ minLength: 3, maxLength: 120 }),
+    fullName: t.String({
+      minLength: 3,
+      maxLength: 120,
+      pattern: "^\\s*\\S[\\s\\S]+\\S\\s*$",
+    }),
     email: t.Optional(t.Never()),
     userId: t.Optional(t.Never()),
     id: t.Optional(t.Never()),
@@ -69,10 +73,15 @@ export type UpdateProfileBody = typeof updateProfileBody.static;
 
 export const profilePhotoBody = t.Object(
   {
-    file: t.File(),
+    file: t.File({
+      type: ["image/jpeg", "image/png"],
+      minSize: 1,
+      maxSize: "5m",
+    }),
   },
   { additionalProperties: false },
 );
+export type ProfilePhotoBody = typeof profilePhotoBody.static;
 
 export const profilePhotoUrlResponse = t.Object(
   {

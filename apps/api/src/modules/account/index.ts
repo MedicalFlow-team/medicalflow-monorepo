@@ -1,8 +1,9 @@
 import { Elysia } from "elysia";
 import type { PrismaClient } from "../../generated/prisma/client";
 import { authPlugin } from "../../plugins/auth";
+import type { ProfilePhotoStore } from "../../services/profile-photo-store";
 import * as m from "./model";
-import { AccountService, type ProfilePhotoStore } from "./service";
+import { AccountService } from "./service";
 
 export interface AccountModuleDeps {
   prisma: PrismaClient;

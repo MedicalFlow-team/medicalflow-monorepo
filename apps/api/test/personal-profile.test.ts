@@ -6,7 +6,7 @@ import type {
   ProfilePhotoUrlResponse,
   ProfileResponse,
 } from "../src/modules/account/model";
-import { PROFILE_PHOTO_MAX_BYTES } from "../src/modules/account/service";
+import { PROFILE_PHOTO_MAX_BYTES } from "../src/services/profile-photo-store";
 import { signSessionToken } from "../src/services/session-token";
 
 const env: Env = {
@@ -200,9 +200,21 @@ describe("#331 personal profile", () => {
 
   test("rejects forged image and oversized upload before storage", async () => {
     const { request, bearer, put } = setup();
+    const png = new Uint8Array([
+      137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82, 0, 0, 0, 1,
+      0, 0, 0, 1,
+    ]);
     const cases: Array<{ file: File; expectedStatus: number }> = [
       {
+        file: new File([], "empty.png", { type: "image/png" }),
+        expectedStatus: 400,
+      },
+      {
         file: new File(["not a PNG"], "fake.png", { type: "image/png" }),
+        expectedStatus: 400,
+      },
+      {
+        file: new File([png], "spoofed.jpg", { type: "image/jpeg" }),
         expectedStatus: 400,
       },
       {
