@@ -11,13 +11,7 @@ import {
 } from "@/components/reui/stepper";
 import { onboardingSteps } from "@/lib/onboarding-steps";
 
-export function OnboardingStepper({
-  currentStep,
-  currentStepCompleted = false,
-}: {
-  currentStep: string;
-  currentStepCompleted?: boolean;
-}) {
+export function OnboardingStepper({ currentStep }: { currentStep: string }) {
   const activeStep =
     onboardingSteps.findIndex((step) => step.id === currentStep) + 1;
   return (
@@ -31,7 +25,6 @@ export function OnboardingStepper({
           <StepperItem
             key={step.id}
             step={index + 1}
-            completed={currentStepCompleted && step.id === currentStep}
             className="relative flex-1 items-start"
           >
             <div className="flex flex-col items-center gap-2.5">
