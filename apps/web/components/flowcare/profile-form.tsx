@@ -18,8 +18,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { Profile, ProfileInput } from "@/lib/onboarding-profile";
 
-const inputClass =
-  "h-[47px] rounded-lg bg-card px-3 text-base md:text-base border-transparent focus-visible:border-primary";
 const professionalRoles = {
   MANAGEMENT: "Gestão administrativa",
   CLINICAL: "Profissional clínico",
@@ -85,7 +83,6 @@ export function ProfileForm({ initialProfile }: { initialProfile: Profile }) {
         </Label>
         <Input
           id="fullName"
-          className={inputClass}
           placeholder="Seu nome completo"
           name="fullName"
           autoComplete="name"
@@ -103,7 +100,6 @@ export function ProfileForm({ initialProfile }: { initialProfile: Profile }) {
         </Label>
         <Input
           id="phone"
-          className={inputClass}
           placeholder="(85) 99999-9999"
           name="phone"
           type="tel"
@@ -170,7 +166,6 @@ export function ProfileForm({ initialProfile }: { initialProfile: Profile }) {
             </Label>
             <Input
               id="professionalTitle"
-              className={inputClass}
               placeholder="Ex.: Medicina"
               name="professionalTitle"
               value={values.professionalTitle}
@@ -188,7 +183,6 @@ export function ProfileForm({ initialProfile }: { initialProfile: Profile }) {
             </Label>
             <Input
               id="registrationNumber"
-              className={inputClass}
               name="registrationNumber"
               placeholder="Ex.: CRM/CE 123456"
               value={values.registrationNumber}

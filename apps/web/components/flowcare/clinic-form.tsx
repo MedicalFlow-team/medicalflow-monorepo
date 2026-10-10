@@ -10,9 +10,6 @@ import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
 import { clinicInputSchema } from "@/lib/onboarding-clinic";
 
-const inputClass =
-  "h-[47px] rounded-lg bg-card px-3 text-base md:text-base border-transparent focus-visible:border-primary";
-
 export function ClinicForm() {
   const router = useRouter();
   const [name, setName] = useState("");
@@ -62,7 +59,6 @@ export function ClinicForm() {
         </Label>
         <Input
           id="clinic-name"
-          className={inputClass}
           name="name"
           autoComplete="organization"
           value={name}
