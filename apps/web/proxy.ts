@@ -29,7 +29,7 @@ export function proxy(request: NextRequest) {
   const hasSession = hasSessionCookie(request);
 
   if (authRoutes.has(pathname) && hasSession) {
-    return NextResponse.redirect(new URL("/app", request.url));
+    return NextResponse.redirect(new URL("/", request.url));
   }
 
   if (hasSession) return NextResponse.next();

@@ -1,17 +1,30 @@
 "use client";
 
+import { ChevronDownIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type { FormEvent } from "react";
 import { useState } from "react";
 import { toast } from "sonner";
-import {
-  saveOnboardingProfile,
-  saveOnboardingProfileDraft,
-} from "@/app/onboarding/profile/actions";
+import { saveOnboardingProfile } from "@/app/onboarding/profile/actions";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { Profile, ProfileInput } from "@/lib/onboarding-profile";
+
+const inputClass =
+  "h-[47px] rounded-lg bg-card px-3 text-base md:text-base border-transparent focus-visible:border-primary";
+const professionalRoles = {
+  MANAGEMENT: "Gestão administrativa",
+  CLINICAL: "Profissional clínico",
+  RECEPTION: "Recepção",
+} as const;
 
 export function ProfileForm({ initialProfile }: { initialProfile: Profile }) {
   const router = useRouter();
@@ -49,7 +62,6 @@ export function ProfileForm({ initialProfile }: { initialProfile: Profile }) {
       if (result.ok) {
         toast.success("Perfil concluído com sucesso!");
         router.replace("/onboarding/clinic");
-        router.refresh();
         return;
       }
       setErrors(result.fieldErrors ?? {});
@@ -63,29 +75,18 @@ export function ProfileForm({ initialProfile }: { initialProfile: Profile }) {
     }
   }
 
-  async function onSaveDraft() {
-    if (pending) return;
-    setPending(true);
-    try {
-      const result = await saveOnboardingProfileDraft(values);
-      if (result.ok) {
-        toast.success("Rascunho salvo com sucesso.");
-      } else {
-        toast.error(result.message || "Erro ao salvar rascunho.");
-      }
-    } finally {
-      setPending(false);
-    }
-  }
-
   const clinical = values.professionalRole === "CLINICAL";
 
   return (
     <form className="mt-8 space-y-5" onSubmit={onSubmit} noValidate>
       <div className="space-y-2">
-        <Label htmlFor="fullName">Nome completo</Label>
+        <Label htmlFor="fullName" className="required">
+          Nome completo
+        </Label>
         <Input
           id="fullName"
+          className={inputClass}
+          placeholder="Seu nome completo"
           name="fullName"
           autoComplete="name"
           value={values.fullName}
@@ -97,9 +98,13 @@ export function ProfileForm({ initialProfile }: { initialProfile: Profile }) {
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="phone">Telefone com DDD</Label>
+        <Label htmlFor="phone" className="required">
+          Telefone com DDD
+        </Label>
         <Input
           id="phone"
+          className={inputClass}
+          placeholder="(85) 99999-9999"
           name="phone"
           type="tel"
           autoComplete="tel"
@@ -113,34 +118,60 @@ export function ProfileForm({ initialProfile }: { initialProfile: Profile }) {
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="professionalRole">Atuação profissional</Label>
-        <select
-          id="professionalRole"
-          name="professionalRole"
-          value={values.professionalRole}
-          onChange={(event) =>
-            update(
-              "professionalRole",
-              event.target.value as ProfileInput["professionalRole"],
-            )
-          }
-          className="flex h-9 w-full rounded-md border border-input bg-card px-3 text-sm"
-          required
+        <Label
+          id="professionalRole-label"
+          htmlFor="professionalRole"
+          className="required"
         >
-          <option value="MANAGEMENT">Gestão administrativa</option>
-          <option value="CLINICAL">Profissional clínico</option>
-          <option value="RECEPTION">Recepção</option>
-        </select>
+          Atuação profissional
+        </Label>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              id="professionalRole"
+              type="button"
+              aria-labelledby="professionalRole-label"
+              disabled={pending}
+              className="flex h-[47px] w-full items-center justify-between rounded-lg border border-transparent bg-card px-3 text-base outline-none focus-visible:border-primary disabled:opacity-50"
+            >
+              {professionalRoles[values.professionalRole]}
+              <ChevronDownIcon className="size-4 text-muted-foreground" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            <DropdownMenuRadioGroup
+              value={values.professionalRole}
+              onValueChange={(value) =>
+                update(
+                  "professionalRole",
+                  value as ProfileInput["professionalRole"],
+                )
+              }
+            >
+              <DropdownMenuRadioItem value="MANAGEMENT">
+                Gestão administrativa
+              </DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="CLINICAL">
+                Profissional clínico
+              </DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="RECEPTION">
+                Recepção
+              </DropdownMenuRadioItem>
+            </DropdownMenuRadioGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {clinical && (
         <>
           <div className="space-y-2">
-            <Label htmlFor="professionalTitle">
+            <Label htmlFor="professionalTitle" className="required">
               Profissão ou especialidade
             </Label>
             <Input
               id="professionalTitle"
+              className={inputClass}
+              placeholder="Ex.: Medicina"
               name="professionalTitle"
               value={values.professionalTitle}
               onChange={(event) =>
@@ -152,9 +183,12 @@ export function ProfileForm({ initialProfile }: { initialProfile: Profile }) {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="registrationNumber">Registro profissional</Label>
+            <Label htmlFor="registrationNumber" className="required">
+              Registro profissional
+            </Label>
             <Input
               id="registrationNumber"
+              className={inputClass}
               name="registrationNumber"
               placeholder="Ex.: CRM/CE 123456"
               value={values.registrationNumber}
@@ -168,18 +202,13 @@ export function ProfileForm({ initialProfile }: { initialProfile: Profile }) {
           </div>
         </>
       )}
-      <div className="flex flex-col gap-3 sm:flex-row">
+      <div className="flex justify-end">
         <Button
-          type="button"
-          variant="outline"
-          onClick={onSaveDraft}
+          type="submit"
           disabled={pending}
-          className="sm:flex-1"
+          className="h-[46px] rounded-lg px-5 text-base font-normal"
         >
-          Salvar rascunho
-        </Button>
-        <Button type="submit" disabled={pending} className="sm:flex-1">
-          {pending ? "Salvando..." : "Salvar e continuar"}
+          {pending ? "Continuando..." : "Continuar"}
         </Button>
       </div>
     </form>

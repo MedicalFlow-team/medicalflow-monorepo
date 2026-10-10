@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { OnboardingStepper } from "@/components/flowcare/onboarding-stepper";
 import { ProfileForm } from "@/components/flowcare/profile-form";
 import type { Profile } from "@/lib/onboarding-profile";
+import { onboardingStepPath } from "@/lib/onboarding-steps";
+import { getOnboardingProgress } from "@/server/onboarding";
 import {
   ProfileApiError,
   profileApiRequest,
@@ -9,7 +12,12 @@ import {
 
 export const metadata: Metadata = { title: "Complete seu perfil | Flowcare" };
 
-export default async function OnboardingProfilePage() {
+export default async function OnboardingProfilePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ edit?: string }>;
+}) {
+  const { edit } = await searchParams;
   let profile: Profile | null = null;
   let loadError = false;
   let unauthenticated = false;
@@ -22,12 +30,18 @@ export default async function OnboardingProfilePage() {
   }
 
   if (unauthenticated) redirect("/login");
-  if (profile?.completed) redirect("/onboarding/clinic");
+  if (profile?.completed && edit !== "1") {
+    const progress = await getOnboardingProgress();
+    if (progress?.completed) redirect("/app");
+    redirect(onboardingStepPath(progress?.currentStep ?? "ORGANIZATION_SETUP"));
+  }
 
   return (
-    <main className="min-h-svh bg-background px-5 py-12 text-foreground">
+    <main className="flex flex-1 justify-center px-5 pt-8">
       <div className="mx-auto w-full max-w-lg">
-        <p className="mb-5 text-sm font-medium text-primary">Primeiro acesso</p>
+        <div className="mb-8">
+          <OnboardingStepper currentStep="PROFILE_SETUP" />
+        </div>
         <h1 className="text-3xl font-semibold tracking-tight">
           Complete seu perfil
         </h1>

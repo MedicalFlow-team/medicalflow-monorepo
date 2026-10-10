@@ -142,6 +142,13 @@
     @apply font-sans;
   }
 }
+
+@layer components {
+  .required::after {
+    content: " *";
+    color: var(--destructive);
+  }
+}
 /* Remove elevation while preserving keyboard focus rings. */
 *,
 ::before,

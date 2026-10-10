@@ -1,3 +1,5 @@
+import { onboardingStepPath } from "./onboarding-steps";
+
 export type OrganizationSummary = {
   id: string;
   name: string;
@@ -10,6 +12,7 @@ export type LoginResult = {
   user: { id: string; email: string; fullName: string };
   availableOrganizations: OrganizationSummary[];
   onboardingCompleted: boolean;
+  onboardingCurrentStep: string;
 };
 
 export type LoginInput = { email: string; password: string };
@@ -47,9 +50,11 @@ export function destinationAfterLogin(
   result: LoginResult,
   returnTo: string | null,
 ): string {
+  if (!result.onboardingCompleted) {
+    return onboardingStepPath(result.onboardingCurrentStep);
+  }
   const safeReturnTo = safeReturnPath(returnTo);
   if (safeReturnTo) return safeReturnTo;
-  if (!result.onboardingCompleted) return "/onboarding/profile";
   if (result.availableOrganizations.length === 1) {
     return `/app/${encodeURIComponent(result.availableOrganizations[0].slug)}/dashboard`;
   }

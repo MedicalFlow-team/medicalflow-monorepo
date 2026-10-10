@@ -9,6 +9,7 @@ import type { AuthDeps } from "./modules/auth/service";
 import { inviteModule } from "./modules/invites";
 import { onboardingModule } from "./modules/onboarding";
 import type { OnboardingDeps } from "./modules/onboarding/service";
+import { organizationsModule } from "./modules/organizations";
 import { storageModule } from "./modules/storage";
 import { createSesWebhook } from "./modules/webhooks/ses";
 import { requestLogger } from "./plugins/request-logger";
@@ -133,6 +134,7 @@ export function createApp(env: Env, deps: AppDeps) {
     })
     .use(authModule(authDeps))
     .use(onboardingModule(onboardingDeps))
+    .use(organizationsModule({ prisma: deps.prisma, jwtSecret: env.jwtSecret }))
     .use(accountModule({ prisma: deps.prisma, jwtSecret: env.jwtSecret }))
     .use(
       inviteModule({

@@ -8,6 +8,7 @@ import type {
   ProfileDraftBody,
   SlugAvailabilityResponse,
 } from "./model";
+import { resolveOnboardingState } from "./steps";
 
 /**
  * Dependências do módulo (controller): prisma + secret para o authPlugin.
@@ -37,24 +38,20 @@ export class OnboardingService {
       }),
     ]);
     if (!user) throw Unauthenticated();
-    const isCompleted = (progress?.completed ?? false) || membershipCount > 0;
+    const state = resolveOnboardingState({
+      profileCompleted: user.profileCompletedAt !== null,
+      hasOrganization: membershipCount > 0,
+      savedProgress: progress,
+    });
     if (!progress) {
       return {
-        currentStep: isCompleted
-          ? "ORGANIZATION_SETUP"
-          : user.profileCompletedAt
-            ? "ORGANIZATION_SETUP"
-            : "PROFILE_SETUP",
-        completed: isCompleted,
+        ...state,
         draftData: {},
         version: 0,
       };
     }
     return {
-      currentStep: user.profileCompletedAt
-        ? progress.currentStep
-        : "PROFILE_SETUP",
-      completed: isCompleted,
+      ...state,
       draftData: progress.draftData as Record<string, unknown>,
       version: progress.version,
     };
@@ -139,12 +136,18 @@ export class OnboardingService {
           profileCompletedAt: new Date(),
         },
       });
+      const savedProgress = await tx.onboardingProgress.findUnique({
+        where: { userId },
+        select: { currentStep: true },
+      });
       await tx.onboardingProgress.upsert({
         where: { userId },
         create: { userId, currentStep: "ORGANIZATION_SETUP", version: 1 },
         update: {
-          currentStep: "ORGANIZATION_SETUP",
-          draftData: {},
+          currentStep:
+            savedProgress?.currentStep === "PROFILE_SETUP"
+              ? "ORGANIZATION_SETUP"
+              : (savedProgress?.currentStep ?? "ORGANIZATION_SETUP"),
           version: { increment: 1 },
         },
       });

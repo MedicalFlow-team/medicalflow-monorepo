@@ -157,7 +157,10 @@ export function AuthForm({
     <form className="space-y-[11px]" onSubmit={onSubmit}>
       {isRegister && (
         <div className="space-y-[3px]">
-          <Label htmlFor="fullName" className="text-base font-normal leading-5">
+          <Label
+            htmlFor="fullName"
+            className="required text-base font-normal leading-5"
+          >
             Nome completo
           </Label>
           <Input
@@ -175,7 +178,10 @@ export function AuthForm({
       )}
       {!isReset && (
         <div className="space-y-[3px]">
-          <Label htmlFor="email" className="text-base font-normal leading-5">
+          <Label
+            htmlFor="email"
+            className="required text-base font-normal leading-5"
+          >
             Email
           </Label>
           <Input
@@ -197,7 +203,10 @@ export function AuthForm({
       )}
       {showPassword && (
         <div className="space-y-[3px]">
-          <Label htmlFor="password" className="text-base font-normal leading-5">
+          <Label
+            htmlFor="password"
+            className="required text-base font-normal leading-5"
+          >
             Senha
           </Label>
           <Input
@@ -226,7 +235,7 @@ export function AuthForm({
         <div className="space-y-[11px]">
           <Label
             htmlFor="confirmation"
-            className="text-base font-normal leading-5"
+            className="required text-base font-normal leading-5"
           >
             Confirmar senha
           </Label>
@@ -266,7 +275,7 @@ export function AuthForm({
           />
           <Label
             htmlFor="terms"
-            className="block cursor-pointer text-xs font-normal leading-4"
+            className="required block cursor-pointer text-xs font-normal leading-4"
           >
             Ao continuar, você concorda com nossos{" "}
             <span className="underline">Termos de serviço</span> e{" "}

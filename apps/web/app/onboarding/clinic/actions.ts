@@ -42,11 +42,15 @@ export async function checkSlugAction(
 }
 
 export async function createClinicAction(
-  input: ClinicInput,
+  input: Pick<ClinicInput, "name"> & Partial<Pick<ClinicInput, "slug">>,
 ): Promise<ActionResult<OrganizationCreated>> {
+  const autoGenerateSlug = !input.slug;
+  const baseSlug = autoGenerateSlug
+    ? slugify(input.name).slice(0, 60).replace(/-+$/g, "") || "clinica"
+    : slugify(input.slug ?? "");
   const validated = clinicInputSchema.safeParse({
     name: input.name,
-    slug: slugify(input.slug || input.name),
+    slug: baseSlug,
   });
 
   if (!validated.success) {
@@ -60,15 +64,40 @@ export async function createClinicAction(
     };
   }
 
-  try {
-    const result = await createOrganizationRequest(validated.data);
-    return { ok: true, data: result };
-  } catch (error) {
-    const code = error instanceof ClinicApiError ? error.code : "UNAVAILABLE";
-    const message =
-      error instanceof ClinicApiError
-        ? error.message
-        : "Não foi possível criar a clínica. Tente novamente.";
-    return { ok: false, error: { code, message } };
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const suffix = attempt === 0 ? "" : `-${crypto.randomUUID().slice(0, 8)}`;
+    const slug = suffix
+      ? `${baseSlug.slice(0, 60 - suffix.length).replace(/-+$/g, "")}${suffix}`
+      : baseSlug;
+    try {
+      const result = await createOrganizationRequest({
+        ...validated.data,
+        slug,
+      });
+      return { ok: true, data: result };
+    } catch (error) {
+      if (
+        autoGenerateSlug &&
+        attempt < 3 &&
+        error instanceof ClinicApiError &&
+        error.code === "ALREADY_EXISTS"
+      ) {
+        continue;
+      }
+      const code = error instanceof ClinicApiError ? error.code : "UNAVAILABLE";
+      const message =
+        error instanceof ClinicApiError
+          ? error.message
+          : "Não foi possível criar a clínica. Tente novamente.";
+      return { ok: false, error: { code, message } };
+    }
   }
+
+  return {
+    ok: false,
+    error: {
+      code: "UNAVAILABLE",
+      message: "Não foi possível criar a clínica.",
+    },
+  };
 }
