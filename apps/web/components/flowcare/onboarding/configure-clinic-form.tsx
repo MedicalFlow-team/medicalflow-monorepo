@@ -77,8 +77,6 @@ const addressFields: ClinicField[] = [
     placeholder: "Sala, bloco ou referência",
   },
 ];
-const inputClass =
-  "h-[47px] rounded-lg bg-card px-3 text-base md:text-base border-transparent focus-visible:border-primary";
 const buttonClass = "h-[46px] rounded-lg px-5 text-base font-normal";
 
 export function ConfigureClinicForm({
@@ -256,11 +254,7 @@ export function ConfigureClinicForm({
                 </FieldLabel>
                 <div className="relative">
                   <Input
-                    className={
-                      field.key === "postalCode"
-                        ? `${inputClass} pr-10`
-                        : inputClass
-                    }
+                    className={field.key === "postalCode" ? "pr-10" : undefined}
                     id={field.key}
                     name={control.name}
                     type={field.type ?? "text"}

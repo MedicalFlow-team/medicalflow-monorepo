@@ -22,8 +22,6 @@ import {
 } from "@/lib/onboarding-profile";
 import { formatPhoneWithAreaCode } from "@/lib/phone";
 
-const inputClass =
-  "h-[47px] rounded-lg bg-card px-3 text-base md:text-base border-transparent focus-visible:border-primary";
 const buttonClass = "h-[46px] rounded-lg px-5 text-base font-normal";
 const professionalRoles = {
   MANAGEMENT: "Gestão administrativa",
@@ -86,7 +84,6 @@ export function ProfileForm({ initialProfile }: { initialProfile: Profile }) {
             </FieldLabel>
             <Input
               id="fullName"
-              className={inputClass}
               placeholder="Seu nome completo"
               name={field.name}
               autoComplete="name"
@@ -109,7 +106,6 @@ export function ProfileForm({ initialProfile }: { initialProfile: Profile }) {
             </FieldLabel>
             <Input
               id="phone"
-              className={inputClass}
               placeholder="(85) 99999-9999"
               name={field.name}
               type="tel"
@@ -191,7 +187,6 @@ export function ProfileForm({ initialProfile }: { initialProfile: Profile }) {
                     </FieldLabel>
                     <Input
                       id="professionalTitle"
-                      className={inputClass}
                       placeholder="Ex.: Medicina"
                       name={field.name}
                       value={field.state.value}
@@ -217,7 +212,6 @@ export function ProfileForm({ initialProfile }: { initialProfile: Profile }) {
                     </FieldLabel>
                     <Input
                       id="registrationNumber"
-                      className={inputClass}
                       name={field.name}
                       placeholder="Ex.: CRM/CE 123456"
                       value={field.state.value}
