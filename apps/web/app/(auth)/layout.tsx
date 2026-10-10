@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { AuthTransition } from "@/components/flowcare/auth-transition";
+import { AuthTransition } from "@/components/flowcare/auth/auth-transition";
 
 export default function AuthLayout({
   children,

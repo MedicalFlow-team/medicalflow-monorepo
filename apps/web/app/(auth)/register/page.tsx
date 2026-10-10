@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { AuthForm } from "@/components/flowcare/auth-form";
+import { RegisterForm } from "@/components/flowcare/auth/register-form";
 
 export const metadata: Metadata = { title: "Cadastro | Flowcare" };
 
@@ -12,7 +12,7 @@ export default function Page() {
       >
         Cadastro
       </h1>
-      <AuthForm mode="register" />
+      <RegisterForm />
     </section>
   );
 }

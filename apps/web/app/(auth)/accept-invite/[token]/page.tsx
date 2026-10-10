@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { AcceptInvite } from "@/components/flowcare/accept-invite";
+import { AcceptInvite } from "@/components/flowcare/auth/accept-invite";
 import { getCurrentUser, getInviteDetails } from "@/server/invites";
 
 export const metadata: Metadata = {

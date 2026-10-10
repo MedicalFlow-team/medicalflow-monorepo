@@ -1,0 +1,131 @@
+"use client";
+
+import { useForm } from "@tanstack/react-form";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { toast } from "sonner";
+import { z } from "zod";
+import { resetPasswordAction } from "@/app/(auth)/actions";
+import { Button } from "@/components/ui/button";
+import { unwrapActionResult } from "@/lib/auth";
+import {
+  AuthInputField,
+  AuthSubmitButton,
+  buttonClass,
+  confirmationSchema,
+  firstError,
+  passwordSchema,
+  showAuthError,
+  showValidationError,
+} from "./shared";
+
+const resetPasswordSchema = z.object({
+  password: passwordSchema,
+  confirmation: confirmationSchema,
+});
+
+function validate(value: { password: string; confirmation: string }) {
+  return (
+    firstError(resetPasswordSchema, value) ??
+    (value.password !== value.confirmation
+      ? "As senhas precisam ser iguais."
+      : undefined)
+  );
+}
+
+export function ResetPasswordForm({ token }: { token?: string }) {
+  const router = useRouter();
+  const [success, setSuccess] = useState(false);
+  const form = useForm({
+    defaultValues: { password: "", confirmation: "" },
+    validators: { onSubmit: ({ value }) => validate(value) },
+    onSubmitInvalid: ({ value }) => showValidationError(validate(value)),
+    onSubmit: async ({ value }) => {
+      if (success) return;
+      if (!token) {
+        toast.error("Link inválido. Solicite um novo link de recuperação.");
+        return;
+      }
+      try {
+        unwrapActionResult(
+          await resetPasswordAction({
+            token,
+            newPassword: value.password,
+          }),
+        );
+        setSuccess(true);
+        toast.success("Senha redefinida com sucesso! Entre com a nova senha.");
+        router.replace("/login");
+      } catch (cause) {
+        showAuthError(cause);
+      }
+    },
+  });
+
+  return (
+    <form
+      className="space-y-[11px]"
+      noValidate
+      onSubmit={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        void form.handleSubmit();
+      }}
+    >
+      <form.Field name="password">
+        {(field) => (
+          <AuthInputField
+            id={field.name}
+            name={field.name}
+            label="Senha"
+            type="password"
+            autoComplete="new-password"
+            minLength={8}
+            maxLength={72}
+            placeholder="Digite sua nova senha"
+            required
+            disabled={success}
+            value={field.state.value}
+            onBlur={field.handleBlur}
+            onChange={field.handleChange}
+          />
+        )}
+      </form.Field>
+      <form.Field name="confirmation">
+        {(field) => (
+          <AuthInputField
+            id={field.name}
+            name={field.name}
+            label="Confirmar senha"
+            type="password"
+            autoComplete="new-password"
+            minLength={8}
+            maxLength={72}
+            placeholder="Confirme sua senha"
+            required
+            disabled={success}
+            value={field.state.value}
+            onBlur={field.handleBlur}
+            onChange={field.handleChange}
+            fieldGap="gap-[11px]"
+          />
+        )}
+      </form.Field>
+      <form.Subscribe selector={(state) => state.isSubmitting}>
+        {(pending) => (
+          <AuthSubmitButton
+            pending={pending}
+            success={success}
+            label="Alterar"
+            pendingLabel="Alterando..."
+            successLabel="Senha alterada!"
+          />
+        )}
+      </form.Subscribe>
+      <Button asChild variant="outline" className={`${buttonClass} h-12`}>
+        <Link href="/login">Voltar para login</Link>
+      </Button>
+    </form>
+  );
+}
