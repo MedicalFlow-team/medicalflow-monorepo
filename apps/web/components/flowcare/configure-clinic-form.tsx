@@ -3,15 +3,18 @@
 import { useRouter } from "next/navigation";
 import { type FormEvent, useEffect, useState } from "react";
 import { toast } from "sonner";
-import { saveClinicDetails } from "@/app/onboarding/configure-clinic/actions";
+import {
+  saveClinicAddress,
+  saveClinicContact,
+} from "@/app/onboarding/configure-clinic/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   type ClinicDetails,
   type ClinicDetailsInput,
+  clinicAddressSchema,
   clinicContactSchema,
-  clinicDetailsSchema,
 } from "@/lib/clinic-details";
 
 type Field = {
@@ -69,9 +72,17 @@ const addressFields: Field[] = [
     placeholder: "Sala, bloco ou referência",
   },
 ];
-const fields = [...contactFields, ...addressFields];
+const inputClass =
+  "h-[47px] rounded-lg bg-card px-3 text-base md:text-base border-transparent focus-visible:border-primary";
+const buttonClass = "h-[46px] rounded-lg px-5 text-base font-normal";
 
-export function ConfigureClinicForm({ initial }: { initial: ClinicDetails }) {
+export function ConfigureClinicForm({
+  initial,
+  step,
+}: {
+  initial: ClinicDetails;
+  step: "contact" | "address";
+}) {
   const router = useRouter();
   const [values, setValues] = useState<ClinicDetailsInput>(() => {
     const {
@@ -87,7 +98,7 @@ export function ConfigureClinicForm({ initial }: { initial: ClinicDetails }) {
   >({});
   const [pending, setPending] = useState(false);
   const [conflict, setConflict] = useState(false);
-  const [section, setSection] = useState<"contact" | "address">("contact");
+  const fields = step === "contact" ? contactFields : addressFields;
   const dirty = fields.some(
     (field) => values[field.key] !== initial[field.key],
   );
@@ -104,26 +115,9 @@ export function ConfigureClinicForm({ initial }: { initial: ClinicDetails }) {
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (pending) return;
-    if (section === "contact") {
-      const contact = clinicContactSchema.safeParse(values);
-      if (!contact.success) {
-        const fieldErrors = contact.error.flatten().fieldErrors;
-        setErrors(
-          Object.fromEntries(
-            Object.entries(fieldErrors).map(([key, messages]) => [
-              key,
-              messages?.[0],
-            ]),
-          ),
-        );
-        toast.error("Confira os campos destacados.");
-        return;
-      }
-      setErrors({});
-      setSection("address");
-      return;
-    }
-    const parsed = clinicDetailsSchema.safeParse(values);
+    const parsed = (
+      step === "contact" ? clinicContactSchema : clinicAddressSchema
+    ).safeParse(values);
     if (!parsed.success) {
       const fieldErrors = parsed.error.flatten().fieldErrors;
       setErrors(
@@ -134,18 +128,14 @@ export function ConfigureClinicForm({ initial }: { initial: ClinicDetails }) {
           ]),
         ),
       );
-      if (
-        Object.keys(fieldErrors).some((key) =>
-          contactFields.some((field) => field.key === key),
-        )
-      )
-        setSection("contact");
       toast.error("Confira os campos destacados.");
       return;
     }
     setPending(true);
     try {
-      const result = await saveClinicDetails(initial.slug, parsed.data);
+      const result = await (step === "contact"
+        ? saveClinicContact(initial.slug, values)
+        : saveClinicAddress(initial.slug, values));
       if (!result.ok) {
         if (result.fieldErrors)
           setErrors(
@@ -156,19 +146,14 @@ export function ConfigureClinicForm({ initial }: { initial: ClinicDetails }) {
               ]),
             ),
           );
-        if (
-          result.fieldErrors &&
-          Object.keys(result.fieldErrors).some((key) =>
-            contactFields.some((field) => field.key === key),
-          )
-        )
-          setSection("contact");
         if (result.code === "CONFLICT") setConflict(true);
         toast.error(result.message);
         return;
       }
       toast.success("Dados da clínica salvos.");
-      router.replace("/");
+      router.replace(
+        step === "contact" ? "/onboarding/configure-clinic/address" : "/",
+      );
     } finally {
       setPending(false);
     }
@@ -176,29 +161,6 @@ export function ConfigureClinicForm({ initial }: { initial: ClinicDetails }) {
 
   return (
     <form onSubmit={submit} noValidate className="mt-8 space-y-5">
-      <fieldset className="flex w-full rounded-lg bg-muted p-1">
-        <legend className="sr-only">Partes da configuração da clínica</legend>
-        <Button
-          type="button"
-          variant={section === "contact" ? "secondary" : "ghost"}
-          aria-pressed={section === "contact"}
-          onClick={() => setSection("contact")}
-          disabled={pending}
-          className="flex-1"
-        >
-          Dados e contato
-        </Button>
-        <Button
-          type="button"
-          variant={section === "address" ? "secondary" : "ghost"}
-          aria-pressed={section === "address"}
-          onClick={() => setSection("address")}
-          disabled={pending}
-          className="flex-1"
-        >
-          Endereço
-        </Button>
-      </fieldset>
       {dirty && !conflict && (
         <output className="text-sm text-muted-foreground">
           Alterações não salvas
@@ -211,58 +173,58 @@ export function ConfigureClinicForm({ initial }: { initial: ClinicDetails }) {
         </p>
       )}
       <div className="grid gap-5 sm:grid-cols-2">
-        {(section === "contact" ? contactFields : addressFields).map(
-          (field) => (
-            <div
-              key={field.key}
-              className={
-                field.key === "legalName" ||
-                field.key === "contactEmail" ||
-                field.key === "street"
-                  ? "space-y-2 sm:col-span-2"
-                  : "space-y-2"
-              }
+        {fields.map((field) => (
+          <div
+            key={field.key}
+            className={
+              field.key === "legalName" ||
+              field.key === "contactEmail" ||
+              field.key === "street"
+                ? "space-y-2 sm:col-span-2"
+                : "space-y-2"
+            }
+          >
+            <Label
+              htmlFor={field.key}
+              className={field.required ? "required" : undefined}
             >
-              <Label
-                htmlFor={field.key}
-                className={field.required ? "required" : undefined}
-              >
-                {field.label}
-              </Label>
-              <Input
-                id={field.key}
-                name={field.key}
-                type={field.type ?? "text"}
-                placeholder={field.placeholder}
-                value={values[field.key]}
-                required={field.required}
-                aria-invalid={!!errors[field.key]}
-                aria-describedby={
-                  errors[field.key] ? `${field.key}-error` : undefined
-                }
-                disabled={pending || conflict}
-                onChange={(event) => {
-                  setValues((old) => ({
-                    ...old,
-                    [field.key]: event.target.value,
-                  }));
-                  setErrors((old) => ({ ...old, [field.key]: undefined }));
-                }}
-              />
-              {errors[field.key] && (
-                <p
-                  id={`${field.key}-error`}
-                  className="text-sm text-destructive"
-                >
-                  {errors[field.key]}
-                </p>
-              )}
-            </div>
-          ),
-        )}
+              {field.label}
+            </Label>
+            <Input
+              className={inputClass}
+              id={field.key}
+              name={field.key}
+              type={field.type ?? "text"}
+              placeholder={field.placeholder}
+              value={values[field.key]}
+              required={field.required}
+              aria-invalid={!!errors[field.key]}
+              aria-describedby={
+                errors[field.key] ? `${field.key}-error` : undefined
+              }
+              disabled={pending || conflict}
+              onChange={(event) => {
+                setValues((old) => ({
+                  ...old,
+                  [field.key]: event.target.value,
+                }));
+                setErrors((old) => ({ ...old, [field.key]: undefined }));
+              }}
+            />
+            {errors[field.key] && (
+              <p id={`${field.key}-error`} className="text-sm text-destructive">
+                {errors[field.key]}
+              </p>
+            )}
+          </div>
+        ))}
       </div>
       <div className="flex items-center justify-end pt-2">
-        <Button type="submit" disabled={pending || conflict}>
+        <Button
+          type="submit"
+          className={buttonClass}
+          disabled={pending || conflict}
+        >
           {pending ? "Salvando..." : "Continuar"}
         </Button>
       </div>

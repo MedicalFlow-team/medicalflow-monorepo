@@ -8,7 +8,7 @@ import {
 
 const steps = ["PROFILE_SETUP", "ORGANIZATION_SETUP", "SCHEDULE_SETUP"];
 
-test("existing clinics resume at clinic details and complete after saving it", () => {
+test("existing clinics resume at contact, then address, and complete after both", () => {
   const input = { profileCompleted: true, hasOrganization: true };
   expect(
     resolveOnboardingState(
@@ -27,7 +27,16 @@ test("existing clinics resume at clinic details and complete after saving it", (
       },
       onboardingSteps,
     ),
-  ).toEqual({ currentStep: "CLINIC_DETAILS", completed: true });
+  ).toEqual({ currentStep: "CLINIC_ADDRESS", completed: false });
+  expect(
+    resolveOnboardingState(
+      {
+        ...input,
+        savedProgress: { currentStep: "CLINIC_ADDRESS", completed: true },
+      },
+      onboardingSteps,
+    ),
+  ).toEqual({ currentStep: "CLINIC_ADDRESS", completed: true });
 });
 
 test("routes a new account to the profile", () => {

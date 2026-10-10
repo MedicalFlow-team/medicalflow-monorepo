@@ -7,19 +7,15 @@ import { clinicDetailsRequest } from "@/server/clinic-details";
 import { getOnboardingProgress } from "@/server/onboarding";
 import { getAvailableOrganizations } from "@/server/organizations";
 
-export const metadata: Metadata = { title: "Configurar clínica | Flowcare" };
+export const metadata: Metadata = { title: "Endereço da clínica | Flowcare" };
 
-export default async function ConfigureClinicPage() {
+export default async function ClinicAddressPage() {
   const progress = await getOnboardingProgress();
   if (!progress) redirect("/login");
   if (progress.completed) redirect("/app");
-  if (
-    progress.currentStep === "PROFILE_SETUP" ||
-    progress.currentStep === "ORGANIZATION_SETUP"
-  )
+  if (progress.currentStep !== "CLINIC_ADDRESS")
     redirect(onboardingStepPath(progress.currentStep));
-  if (progress.currentStep !== "CLINIC_DETAILS" && !progress.completed)
-    redirect(onboardingStepPath(progress.currentStep));
+
   const organizations = await getAvailableOrganizations();
   const organizationId = progress.draftData.organizationId;
   const clinic = organizations?.find(
@@ -38,16 +34,16 @@ export default async function ConfigureClinicPage() {
     <main className="flex flex-1 justify-center px-5 pt-8">
       <div className="mx-auto w-full max-w-lg">
         <div className="mb-8">
-          <OnboardingStepper currentStep="CLINIC_DETAILS" />
+          <OnboardingStepper currentStep="CLINIC_ADDRESS" />
         </div>
         <h1 className="text-3xl font-semibold tracking-tight">
-          Configure sua clínica
+          Endereço da clínica
         </h1>
         <p className="mt-3 text-sm text-muted-foreground">
-          Informe os dados usados no sistema e nos documentos.
+          Informe o endereço usado no sistema e nos documentos.
         </p>
         {details ? (
-          <ConfigureClinicForm initial={details} step="contact" />
+          <ConfigureClinicForm initial={details} step="address" />
         ) : (
           <p role="alert" className="mt-8 text-destructive">
             Não foi possível carregar os dados da clínica. Recarregue a página.

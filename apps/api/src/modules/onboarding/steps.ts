@@ -2,6 +2,7 @@ export const onboardingSteps = [
   "PROFILE_SETUP",
   "ORGANIZATION_SETUP",
   "CLINIC_DETAILS",
+  "CLINIC_ADDRESS",
 ] as const;
 
 type SavedProgress = {

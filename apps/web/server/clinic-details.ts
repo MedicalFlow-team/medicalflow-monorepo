@@ -17,9 +17,9 @@ export class ClinicDetailsApiError extends Error {
 }
 
 export async function clinicDetailsRequest(
-  method: "GET" | "PUT",
+  method: "GET" | "CONTACT" | "ADDRESS",
   slug: string,
-  body?: ClinicDetailsInput,
+  body?: Partial<ClinicDetailsInput>,
 ) {
   const token = await getSessionToken();
   if (!token)
@@ -31,9 +31,9 @@ export async function clinicDetailsRequest(
   let response: Response;
   try {
     response = await fetch(
-      `${apiBaseUrl}/organizations/${encodeURIComponent(slug)}/onboarding-details`,
+      `${apiBaseUrl}/organizations/${encodeURIComponent(slug)}/onboarding-${method === "GET" ? "details" : method === "CONTACT" ? "contact" : "address"}`,
       {
-        method,
+        method: method === "GET" ? "GET" : "PUT",
         headers: {
           Authorization: `Bearer ${token}`,
           Accept: "application/json",

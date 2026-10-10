@@ -58,6 +58,7 @@ test("loads a newly created clinic before its required details are filled", () =
 
 test("contact can advance to address before address fields are filled", () => {
   const partial = {
+    version: valid.version,
     legalName: valid.legalName,
     taxId: valid.taxId,
     contactEmail: valid.contactEmail,

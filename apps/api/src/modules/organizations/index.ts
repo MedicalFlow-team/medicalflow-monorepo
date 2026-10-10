@@ -2,7 +2,8 @@ import { Elysia, t } from "elysia";
 import type { PrismaClient } from "../../generated/prisma/client";
 import { authPlugin } from "../../plugins/auth";
 import {
-  clinicDetailsBody,
+  clinicAddressBody,
+  clinicContactBody,
   clinicDetailsResponse,
   organizationsResponse,
 } from "./model";
@@ -31,14 +32,26 @@ export function organizationsModule(deps: {
       },
     )
     .put(
-      "/organizations/:orgSlug/onboarding-details",
+      "/organizations/:orgSlug/onboarding-contact",
       ({ auth, params, body }) =>
-        service.saveClinicDetails(auth.userId, params.orgSlug, body),
+        service.saveClinicContact(auth.userId, params.orgSlug, body),
       {
         params: t.Object({
           orgSlug: t.String({ minLength: 2, maxLength: 60 }),
         }),
-        body: clinicDetailsBody,
+        body: clinicContactBody,
+        response: { 200: clinicDetailsResponse },
+      },
+    )
+    .put(
+      "/organizations/:orgSlug/onboarding-address",
+      ({ auth, params, body }) =>
+        service.saveClinicAddress(auth.userId, params.orgSlug, body),
+      {
+        params: t.Object({
+          orgSlug: t.String({ minLength: 2, maxLength: 60 }),
+        }),
+        body: clinicAddressBody,
         response: { 200: clinicDetailsResponse },
       },
     );

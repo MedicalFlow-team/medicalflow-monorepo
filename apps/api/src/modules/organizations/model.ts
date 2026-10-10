@@ -30,6 +30,24 @@ export const clinicDetailsBody = t.Object({
   addressComplement: t.String({ maxLength: 100 }),
 });
 
+export const clinicContactBody = t.Pick(clinicDetailsBody, [
+  "version",
+  "legalName",
+  "taxId",
+  "contactEmail",
+  "contactPhone",
+]);
+export const clinicAddressBody = t.Pick(clinicDetailsBody, [
+  "version",
+  "postalCode",
+  "state",
+  "city",
+  "district",
+  "street",
+  "streetNumber",
+  "addressComplement",
+]);
+
 export const clinicDetailsResponse = t.Object({
   name: t.String(),
   slug: t.String(),
@@ -49,3 +67,5 @@ export const clinicDetailsResponse = t.Object({
 });
 
 export type ClinicDetailsBody = typeof clinicDetailsBody.static;
+export type ClinicContactBody = typeof clinicContactBody.static;
+export type ClinicAddressBody = typeof clinicAddressBody.static;

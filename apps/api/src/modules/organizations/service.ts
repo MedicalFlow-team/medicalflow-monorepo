@@ -1,6 +1,6 @@
 import type { PrismaClient } from "../../generated/prisma/client";
 import { ApiError } from "../../lib/api-error";
-import type { ClinicDetailsBody } from "./model";
+import type { ClinicAddressBody, ClinicContactBody } from "./model";
 
 function validCnpj(value: string) {
   if (!value) return true;
@@ -79,10 +79,27 @@ export class OrganizationsService {
     };
   }
 
-  async saveClinicDetails(
+  async saveClinicContact(
     userId: string,
     slug: string,
-    body: ClinicDetailsBody,
+    body: ClinicContactBody,
+  ) {
+    return this.saveClinicStep(userId, slug, "CLINIC_DETAILS", body);
+  }
+
+  async saveClinicAddress(
+    userId: string,
+    slug: string,
+    body: ClinicAddressBody,
+  ) {
+    return this.saveClinicStep(userId, slug, "CLINIC_ADDRESS", body);
+  }
+
+  private async saveClinicStep(
+    userId: string,
+    slug: string,
+    step: "CLINIC_DETAILS" | "CLINIC_ADDRESS",
+    body: ClinicContactBody | ClinicAddressBody,
   ) {
     const org = await this.editableClinic(userId, slug);
     const savedProgress = await this.prisma.onboardingProgress.findUnique({
@@ -98,17 +115,40 @@ export class OrganizationsService {
     ) {
       throw new ApiError("NOT_FOUND", 404, "Clínica não encontrada.");
     }
-    const taxId = body.taxId.replace(/\D/g, "");
-    const phone = body.contactPhone.replace(/\D/g, "");
+    const canSave = (
+      progress: { currentStep: string; completed: boolean } | null,
+    ) =>
+      !!progress &&
+      (step === "CLINIC_DETAILS"
+        ? (progress.currentStep === "ORGANIZATION_SETUP" &&
+            progress.completed) ||
+          (progress.currentStep === "CLINIC_DETAILS" && !progress.completed)
+        : progress.currentStep === "CLINIC_DETAILS" && progress.completed);
+    if (!canSave(savedProgress)) {
+      throw new ApiError(
+        "STEP_ALREADY_COMPLETED",
+        409,
+        "Esta etapa não está disponível.",
+      );
+    }
+    const contact =
+      step === "CLINIC_DETAILS" ? (body as ClinicContactBody) : null;
+    const address =
+      step === "CLINIC_ADDRESS" ? (body as ClinicAddressBody) : null;
+    const taxId = contact?.taxId.replace(/\D/g, "") ?? "";
+    const phone = contact?.contactPhone.replace(/\D/g, "") ?? "";
     if (
-      !validCnpj(taxId) ||
-      phone.length < 10 ||
-      phone.length > 13 ||
-      ![body.legalName, body.city, body.district, body.street].every(
-        (value) => value.trim().length >= 2,
-      ) ||
-      !body.streetNumber.trim() ||
-      !/^\d{8}$/.test(body.postalCode)
+      contact
+        ? !validCnpj(taxId) ||
+          phone.length < 10 ||
+          phone.length > 13 ||
+          contact.legalName.trim().length < 2
+        : !address ||
+          ![address.city, address.district, address.street].every(
+            (value) => value.trim().length >= 2,
+          ) ||
+          !address.streetNumber.trim() ||
+          !/^\d{8}$/.test(address.postalCode)
     ) {
       throw new ApiError(
         "VALIDATION_ERROR",
@@ -116,6 +156,23 @@ export class OrganizationsService {
         "Confira os dados da clínica e o endereço.",
       );
     }
+    const stepData = contact
+      ? {
+          legalName: contact.legalName.trim(),
+          taxId: taxId || null,
+          contactEmail: contact.contactEmail.trim().toLowerCase(),
+          contactPhone: phone,
+        }
+      : {
+          postalCode: address?.postalCode,
+          state: address?.state.toUpperCase(),
+          city: address?.city.trim(),
+          district: address?.district.trim(),
+          street: address?.street.trim(),
+          streetNumber: address?.streetNumber.trim(),
+          addressComplement: address?.addressComplement.trim() || null,
+          detailsCompletedAt: new Date(),
+        };
     await this.prisma.$transaction(async (tx) => {
       const stillAdmin = await tx.membership.findFirst({
         where: {
@@ -128,22 +185,21 @@ export class OrganizationsService {
       });
       if (!stillAdmin)
         throw new ApiError("NOT_FOUND", 404, "Clínica não encontrada.");
+      const currentProgress = await tx.onboardingProgress.findUnique({
+        where: { userId },
+      });
+      if (!canSave(currentProgress)) {
+        throw new ApiError(
+          "STEP_ALREADY_COMPLETED",
+          409,
+          "Esta etapa não está disponível.",
+        );
+      }
       const updated = await tx.organization.updateMany({
         where: { id: org.id, detailsVersion: body.version },
         data: {
-          legalName: body.legalName.trim(),
-          taxId: taxId || null,
-          contactEmail: body.contactEmail.trim().toLowerCase(),
-          contactPhone: phone,
-          postalCode: body.postalCode,
-          state: body.state.toUpperCase(),
-          city: body.city.trim(),
-          district: body.district.trim(),
-          street: body.street.trim(),
-          streetNumber: body.streetNumber.trim(),
-          addressComplement: body.addressComplement.trim() || null,
+          ...stepData,
           detailsVersion: { increment: 1 },
-          detailsCompletedAt: new Date(),
         },
       });
       if (!updated.count)
@@ -152,21 +208,10 @@ export class OrganizationsService {
           409,
           "A clínica foi alterada em outra sessão. Recarregue os dados.",
         );
-      if (
-        savedProgress &&
-        ["ORGANIZATION_SETUP", "CLINIC_DETAILS"].includes(
-          savedProgress.currentStep,
-        )
-      ) {
-        await tx.onboardingProgress.update({
-          where: { userId },
-          data: {
-            currentStep: "CLINIC_DETAILS",
-            completed: true,
-            version: { increment: 1 },
-          },
-        });
-      }
+      await tx.onboardingProgress.update({
+        where: { userId },
+        data: { currentStep: step, completed: true, version: { increment: 1 } },
+      });
     });
     return this.getClinicDetails(userId, slug);
   }

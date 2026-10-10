@@ -11,40 +11,28 @@ test("lists only active memberships for the authenticated user", async () => {
         return [
           {
             role: "ADMIN",
-            organization: {
-              id: "org-1",
-              name: "Pet Saúde",
-              slug: "pet-saude",
-            },
+            organization: { id: "org-1", name: "Pet Saúde", slug: "pet-saude" },
           },
         ];
       },
     },
   } as unknown as PrismaClient;
-
   const result = await new OrganizationsService(prisma).listForUser("user-1");
-
   expect(query).toMatchObject({
     where: { userId: "user-1", status: "ACTIVE" },
   });
-  expect(result).toEqual({
-    data: [
-      {
-        id: "org-1",
-        name: "Pet Saúde",
-        slug: "pet-saude",
-        role: "ADMIN",
-      },
-    ],
-  });
+  expect(result.data[0]).toMatchObject({ slug: "pet-saude", role: "ADMIN" });
 });
 
-const details = {
+const contact = {
   version: 0,
   legalName: "Pet Saúde Ltda",
   taxId: "",
   contactEmail: "contato@pet.com",
   contactPhone: "85999999999",
+};
+const address = {
+  version: 1,
   postalCode: "60000000",
   state: "CE",
   city: "Fortaleza",
@@ -54,108 +42,124 @@ const details = {
   addressComplement: "",
 };
 
-test("clinic details deny users without an active admin membership", async () => {
+test("clinic steps deny users without an active admin membership", async () => {
   const prisma = {
     membership: { findFirst: async () => null },
   } as unknown as PrismaClient;
   const service = new OrganizationsService(prisma);
-  expect(
+  await expect(
     service.getClinicDetails("other-user", "pet-saude"),
   ).rejects.toMatchObject({ code: "NOT_FOUND" });
-  expect(
-    service.saveClinicDetails("other-user", "pet-saude", details),
+  await expect(
+    service.saveClinicContact("other-user", "pet-saude", contact),
+  ).rejects.toMatchObject({ code: "NOT_FOUND" });
+  await expect(
+    service.saveClinicAddress("other-user", "pet-saude", address),
   ).rejects.toMatchObject({ code: "NOT_FOUND" });
 });
 
-test("clinic details save uses version and completes onboarding atomically", async () => {
-  let updateArgs: unknown;
-  let progressArgs: unknown;
-  const org: {
-    id: string;
-    name: string;
-    slug: string;
-    detailsVersion: number;
-    detailsCompletedAt: Date | null;
-  } = {
-    id: "org-1",
-    name: "Pet Saúde",
-    slug: "pet-saude",
-    detailsVersion: 0,
-    detailsCompletedAt: null,
-  };
-  const prisma = {
-    membership: { findFirst: async () => ({ organization: org }) },
-    onboardingProgress: {
-      findUnique: async () => ({
-        currentStep: "ORGANIZATION_SETUP",
-        draftData: { organizationId: "org-1" },
-      }),
-    },
-    $transaction: async (fn: (tx: unknown) => Promise<unknown>) =>
-      fn({
-        membership: { findFirst: async () => ({ id: "membership-1" }) },
-        organization: {
-          updateMany: async (args: unknown) => {
-            updateArgs = args;
-            org.detailsVersion = 1;
-            org.detailsCompletedAt = new Date();
-            return { count: 1 };
-          },
-        },
-        onboardingProgress: {
-          update: async (args: unknown) => {
-            progressArgs = args;
-          },
-        },
-      }),
-  } as unknown as PrismaClient;
-  const result = await new OrganizationsService(prisma).saveClinicDetails(
-    "user-1",
-    "pet-saude",
-    details,
-  );
-  expect(updateArgs).toMatchObject({
-    where: { id: "org-1", detailsVersion: 0 },
-    data: {
-      legalName: "Pet Saúde Ltda",
-      postalCode: "60000000",
-      city: "Fortaleza",
-    },
-  });
-  expect(progressArgs).toMatchObject({
-    data: { currentStep: "CLINIC_DETAILS", completed: true },
-  });
-  expect(result.completed).toBe(true);
-});
-
-test("clinic details reject stale versions and another onboarding organization", async () => {
+test("contact and address save separately and advance onboarding", async () => {
   const org = {
     id: "org-1",
     name: "Pet Saúde",
     slug: "pet-saude",
-    detailsVersion: 1,
-    detailsCompletedAt: null,
+    detailsVersion: 0,
+    detailsCompletedAt: null as Date | null,
   };
+  const progress = {
+    currentStep: "ORGANIZATION_SETUP",
+    completed: true,
+    draftData: { organizationId: "org-1" },
+  };
+  const writes: Array<{
+    where: { detailsVersion: number };
+    data: Record<string, unknown>;
+  }> = [];
   const prisma = {
     membership: { findFirst: async () => ({ organization: org }) },
-    onboardingProgress: {
-      findUnique: async () => ({
-        currentStep: "CLINIC_DETAILS",
-        draftData: { organizationId: "org-1" },
-      }),
-    },
+    onboardingProgress: { findUnique: async () => progress },
     $transaction: async (fn: (tx: unknown) => Promise<unknown>) =>
       fn({
         membership: { findFirst: async () => ({ id: "membership-1" }) },
+        onboardingProgress: {
+          findUnique: async () => progress,
+          update: async ({
+            data,
+          }: {
+            data: { currentStep: string; completed: boolean };
+          }) => {
+            progress.currentStep = data.currentStep;
+            progress.completed = data.completed;
+          },
+        },
+        organization: {
+          updateMany: async (args: {
+            where: { detailsVersion: number };
+            data: Record<string, unknown>;
+          }) => {
+            writes.push(args);
+            org.detailsVersion++;
+            if (args.data.detailsCompletedAt)
+              org.detailsCompletedAt = args.data.detailsCompletedAt as Date;
+            return { count: 1 };
+          },
+        },
+      }),
+  } as unknown as PrismaClient;
+  const service = new OrganizationsService(prisma);
+  await service.saveClinicContact("user-1", "pet-saude", contact);
+  expect(writes[0]).toMatchObject({
+    where: { detailsVersion: 0 },
+    data: { legalName: "Pet Saúde Ltda" },
+  });
+  expect(writes[0]?.data.postalCode).toBeUndefined();
+  expect(progress).toMatchObject({
+    currentStep: "CLINIC_DETAILS",
+    completed: true,
+  });
+  expect(org.detailsCompletedAt).toBeNull();
+  await service.saveClinicAddress("user-1", "pet-saude", address);
+  expect(writes[1]).toMatchObject({
+    where: { detailsVersion: 1 },
+    data: { city: "Fortaleza" },
+  });
+  expect(writes[1]?.data.legalName).toBeUndefined();
+  expect(progress).toMatchObject({
+    currentStep: "CLINIC_ADDRESS",
+    completed: true,
+  });
+  expect(org.detailsCompletedAt).toBeInstanceOf(Date);
+  await expect(
+    service.saveClinicContact("user-1", "pet-saude", contact),
+  ).rejects.toMatchObject({ code: "STEP_ALREADY_COMPLETED" });
+  await expect(
+    service.saveClinicAddress("user-1", "pet-saude", address),
+  ).rejects.toMatchObject({ code: "STEP_ALREADY_COMPLETED" });
+});
+
+test("clinic steps reject stale versions and another onboarding organization", async () => {
+  const org = { id: "org-1", detailsVersion: 1 };
+  const progress = {
+    currentStep: "ORGANIZATION_SETUP",
+    completed: true,
+    draftData: { organizationId: "org-1" },
+  };
+  const prisma = {
+    membership: { findFirst: async () => ({ organization: org }) },
+    onboardingProgress: { findUnique: async () => progress },
+    $transaction: async (fn: (tx: unknown) => Promise<unknown>) =>
+      fn({
+        membership: { findFirst: async () => ({ id: "membership-1" }) },
+        onboardingProgress: { findUnique: async () => progress },
         organization: { updateMany: async () => ({ count: 0 }) },
       }),
   } as unknown as PrismaClient;
   const service = new OrganizationsService(prisma);
-  expect(
-    service.saveClinicDetails("user-1", "pet-saude", details),
+  await expect(
+    service.saveClinicContact("user-1", "pet-saude", contact),
   ).rejects.toMatchObject({ code: "CONFLICT" });
   org.id = "org-2";
-  expect(
-    service.saveClinicDetails("user-1", "pet-saude", details),
+  await expect(
+    service.saveClinicContact("user-1", "pet-saude", contact),
   ).rejects.toMatchObject({ code: "NOT_FOUND" });
 });

@@ -38,10 +38,22 @@ export const clinicDetailsSchema = z.object({
 });
 
 export const clinicContactSchema = clinicDetailsSchema.pick({
+  version: true,
   legalName: true,
   taxId: true,
   contactEmail: true,
   contactPhone: true,
+});
+
+export const clinicAddressSchema = clinicDetailsSchema.pick({
+  version: true,
+  postalCode: true,
+  state: true,
+  city: true,
+  district: true,
+  street: true,
+  streetNumber: true,
+  addressComplement: true,
 });
 
 export const clinicDetailsResponseSchema = z.object({

@@ -2,18 +2,22 @@
 
 import {
   type ClinicDetailsInput,
-  clinicDetailsSchema,
+  clinicAddressSchema,
+  clinicContactSchema,
 } from "@/lib/clinic-details";
 import {
   ClinicDetailsApiError,
   clinicDetailsRequest,
 } from "@/server/clinic-details";
 
-export async function saveClinicDetails(
+async function saveStep(
   slug: string,
   input: ClinicDetailsInput,
+  step: "CONTACT" | "ADDRESS",
 ) {
-  const parsed = clinicDetailsSchema.safeParse(input);
+  const parsed = (
+    step === "CONTACT" ? clinicContactSchema : clinicAddressSchema
+  ).safeParse(input);
   if (!parsed.success) {
     return {
       ok: false as const,
@@ -24,7 +28,7 @@ export async function saveClinicDetails(
   try {
     return {
       ok: true as const,
-      data: await clinicDetailsRequest("PUT", slug, parsed.data),
+      data: await clinicDetailsRequest(step, slug, parsed.data),
     };
   } catch (error) {
     return {
@@ -34,4 +38,18 @@ export async function saveClinicDetails(
         error instanceof Error ? error.message : "Não foi possível salvar.",
     };
   }
+}
+
+export async function saveClinicContact(
+  slug: string,
+  input: ClinicDetailsInput,
+) {
+  return saveStep(slug, input, "CONTACT");
+}
+
+export async function saveClinicAddress(
+  slug: string,
+  input: ClinicDetailsInput,
+) {
+  return saveStep(slug, input, "ADDRESS");
 }
